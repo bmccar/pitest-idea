@@ -1,0 +1,62 @@
+<!-- Copyright 2000-2023 JetBrains s.r.o. and other contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file. -->
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+
+<idea-plugin>
+
+  <!-- Unique id for this plugin. Must stay constant for the life of the plugin. -->
+  <id>PITest for IntelliJ</id>
+
+  <!-- Text to display as name on Settings | Plugin page -->
+  <name>Run PITest from IDE</name>
+
+  <!-- Product and plugin compatibility requirements -->
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.java</depends>
+
+
+  <!-- Text to display as description on Settings | Plugin page -->
+  <description>
+    <![CDATA[
+       This plugin allows users to run mutation tests using PITest directly from IntelliJ IDEA. It provides seamless integration and easy-to-use features to improve test coverage and code quality.
+    ]]>
+  </description>
+  <change-notes>
+    <![CDATA[
+      <ul>
+        <li><b>1.0.0</b> First release.</li>
+      </ul>
+    ]]>
+  </change-notes>
+
+  <!-- Text to display as company information on Settings | Plugin page -->
+  <vendor email="bmccarthy@sidecourt.com">Brendan McCarthy</vendor>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <configurationType implementation="org.pitestidea.configuration.PitIJRunConfigurationType"/>
+
+    <toolWindow id="PITest tool window" secondary="true" icon="AllIcons.Toolwindows.WebToolWindow" anchor="bottom"
+                factoryClass="org.pitestidea.toolwindow.PitToolWindowFactory"/>
+
+    <toolWindow id="Package Contents" icon="AllIcons.Toolwindows.ToolWindowStructure" anchor="left"
+                factoryClass="org.pitestidea.toolwindow.PackageContentsToolWindowFactory"/>
+  </extensions>
+
+  <actions>
+    <action id="MutationAction"
+            class="org.pitestidea.actions.MutationAction"
+            text="Run PITest against this file and its test"
+            icon="/icons/pitest.svg"
+            description="Finds a matching unit test and runs that against this class">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+    </action>
+
+    <action id="OpenPackageContents" class="org.pitestidea.actions.MutationMultiAction"
+            text="Run PITest here" description="Open a tool window with this package's contents">
+      <add-to-group group-id="ProjectViewPopupMenu" />
+      <!--
+      <enable-on-package />
+      -->
+    </action>
+  </actions>
+
+</idea-plugin>

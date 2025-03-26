@@ -1,0 +1,16 @@
+.mvn
+.gradle
+build
+target
+out/*%
+
+.DS_Store
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+*~
+no-compile-bucket

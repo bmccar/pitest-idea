@@ -1,0 +1,113 @@
+package org.pitestidea.model;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+public class FileMutationsTest {
+
+    private Mutation mutation(int lineNumber, CoverageImpact impact) {
+        return new Mutation(impact, String.format("%d-%s", lineNumber, impact));
+    }
+
+    @Test
+    public void lineSummary() {
+        Mutation survived = mutation(1, CoverageImpact.SURVIVED);
+        Mutation killed = mutation(1, CoverageImpact.KILLED);
+        Mutation no_coverage = mutation(1, CoverageImpact.NO_COVERAGE);
+        Mutation timed_out = mutation(1, CoverageImpact.TIMED_OUT);
+
+        assertEquals(CoverageImpact.SURVIVED, FileMutations.lineSummary(List.of(survived)));
+        assertEquals(CoverageImpact.KILLED, FileMutations.lineSummary(List.of(killed)));
+        assertEquals(CoverageImpact.NO_COVERAGE, FileMutations.lineSummary(List.of(no_coverage)));
+        assertEquals(CoverageImpact.TIMED_OUT, FileMutations.lineSummary(List.of(timed_out)));
+
+        assertEquals(CoverageImpact.SURVIVED, FileMutations.lineSummary(Arrays.asList(survived,survived)));
+        assertEquals(CoverageImpact.SURVIVED, FileMutations.lineSummary(Arrays.asList(survived,killed)));
+        assertEquals(CoverageImpact.TIMED_OUT, FileMutations.lineSummary(Arrays.asList(killed,timed_out)));
+    }
+
+    private void mutate(FileMutations fm, int lineNumber, CoverageImpact impact) {
+        Mutation mutation = mutation(lineNumber, impact);
+        fm.add(lineNumber, mutation);
+        new Track(lineNumber, mutation(lineNumber, impact));
+    }
+
+    @BeforeEach
+    public void init() {
+        Track.tracks = new ArrayList<>();
+    }
+
+    private static class Track {
+        static List<Track> tracks;
+        final Mutation mutation;
+        final int lineNumber;
+        boolean found = false;
+
+        private Track(int lineNumber, Mutation mutation) {
+            this.lineNumber = lineNumber;
+            this.mutation = mutation;
+            tracks.add(this);
+        }
+
+        static Optional<Track> find(int lineNumber, CoverageImpact impact) {
+            return tracks.stream().filter(track -> track.lineNumber==lineNumber && track.mutation.coverageImpact()==impact).findFirst();
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%d[%s]", lineNumber, mutation);
+        }
+    };
+
+    @Test
+    public void mutationTypes() {
+        FileMutations fm = new FileMutations();
+        mutate(fm, 1, CoverageImpact.SURVIVED);
+        mutate(fm, 2, CoverageImpact.KILLED);
+        mutate(fm, 3, CoverageImpact.NO_COVERAGE);
+        mutate(fm, 4, CoverageImpact.TIMED_OUT);
+
+        assertEquals(1, fm.getSurvived());
+        assertEquals(1, fm.getKilled());
+        assertEquals(1, fm.getNoCoverage());
+        assertEquals(1, fm.getTimedOut());
+        assertEquals(4, fm.getMutationsTotal());
+    }
+
+    @Test
+    public void testGetMutationsTotalWithNoMutations() {
+        FileMutations fm = new FileMutations();
+        assertEquals(0, fm.getMutationsTotal());
+        mutate(fm, 5, CoverageImpact.KILLED);
+        mutate(fm, 5, CoverageImpact.SURVIVED);
+        mutate(fm, 8, CoverageImpact.KILLED);
+
+        assertEquals(1, fm.getSurvived());
+        assertEquals(2, fm.getKilled());
+        assertEquals(3, fm.getMutationsTotal());
+
+        fm.visit(new FileMutations.LineVisitor() {
+            @Override
+            public void visit(int lineNumber, CoverageImpact lineImpact, List<Mutation> mutations) {
+                mutations.forEach(mutation -> {
+                    Optional<Track> track =  Track.find(lineNumber,mutation.coverageImpact());
+                    Assertions.assertTrue(track.isPresent());
+                    track.get().found = true;
+                });
+
+            }
+        });
+
+        Track.tracks.stream().filter(track -> !track.found).forEach(track -> Assertions.fail("Missing track " + track));
+
+        assertEquals(66, (int)fm.getMutationCoverageScore());
+    }
+}
