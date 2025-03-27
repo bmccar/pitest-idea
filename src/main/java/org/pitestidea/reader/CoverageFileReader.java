@@ -1,6 +1,8 @@
 package org.pitestidea.reader;
 
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ProjectRootManager;
+import com.intellij.openapi.vfs.VirtualFile;
 import org.pitestidea.model.CoverageImpact;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -18,8 +20,8 @@ public class CoverageFileReader {
      * Reads and parses mutation lines from the file generated from pitest, and sends each
      * line individually to a recorder.
      *
+     * @param project context
      * @param file to read and parse
-     * @param className in file
      * @param recorder to send results to
      */
     public static void read(Project project, File file, ICoverageRecorder recorder) {
@@ -43,9 +45,30 @@ public class CoverageFileReader {
             String description = node.getElementsByTagName("description").item(0).getTextContent();
             CoverageImpact impact = CoverageImpact.valueOf(node.getAttribute("status"));
             String sourceFile = node.getElementsByTagName("sourceFile").item(0).getTextContent();
-            //String className = IdeaDiscovery.findVirtualFileByFQN(project,sourceFile
-            String className = node.getElementsByTagName("mutatedClass").item(0).getTextContent();
-            recorder.record(className, impact,lineNumber,description);
+            String filePath = node.getElementsByTagName("mutatedClass").item(0).getTextContent();
+            int ix = filePath.lastIndexOf('.');
+            if (ix > 0) {
+                filePath = filePath.substring(0,ix);
+            }
+
+            filePath = filePath.replace('.','/') + '/' + sourceFile;
+
+            VirtualFile virtualFile = findFromPath(project,filePath);
+
+            recorder.record(virtualFile, impact,lineNumber,description);
         }
     }
+
+    private static VirtualFile findFromPath(Project project, String filePath) {
+        VirtualFile[] projectSourceRoots = ProjectRootManager.getInstance(project).getContentSourceRoots();
+        for (VirtualFile sourceRoot : projectSourceRoots) {
+            VirtualFile file = sourceRoot.findFileByRelativePath(filePath);
+            if (file != null) {
+                return file;
+            }
+        }
+        return null;
+    }
+
+
 }

@@ -37,14 +37,12 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
     @Override
     public void render(Project project, PitExecutionRecorder recorder) {
         Document currentDoc = FileEditorManager.getInstance(project).getSelectedTextEditor().getDocument();
-        //VirtualFile currentFile = FileDocumentManager.getInstance().getFile(currentDoc);
         removeGutterIcons();
         recorder.visit(new PitExecutionRecorder.FileVisitor() {
             @Override
-            public void visit(String filePath, FileMutations fileMutations) {
+            public void visit(VirtualFile file, FileMutations fileMutations) {
                 fileMutations.visit((lineNumber, lineImpact, mutations) -> {
-                    VirtualFile currentFile = IdeaDiscovery.findVirtualFileByFQN(project, filePath);
-                    addGutterIcon(project, currentFile, lineNumber, mutations);
+                    addGutterIcon(project, file, lineNumber, mutations);
                 });
             }
         });
