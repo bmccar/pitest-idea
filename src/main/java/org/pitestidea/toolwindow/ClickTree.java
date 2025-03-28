@@ -1,9 +1,14 @@
 package org.pitestidea.toolwindow;
 
+import com.intellij.openapi.fileEditor.FileEditorManager;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+
 import javax.swing.*;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
 
@@ -49,17 +54,21 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
     }
 
     static class ClickableFileNode extends ClickableNode {
-        private final String pathName;
+        private final Project project;
+        private final VirtualFile file;
         private final String fileName;
 
-        ClickableFileNode(String pathName, String fileName) {
-            this.pathName = pathName;
+        ClickableFileNode(Project project, VirtualFile file, String fileName) {
+            this.project = project;
+            this.file = file;
             this.fileName = fileName;
         }
 
         @Override
         public void onClick() {
-            System.out.println("Open " + pathName);
+            System.out.println("Open " + file.getCanonicalPath());
+                        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+            fileEditorManager.openFile(file, true); // true to focus the file
         }
 
         public String toString() {
@@ -67,7 +76,23 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         }
     }
 
-    void addClickableFileRow(String pathName, String fileName) {
-        root.add(new DefaultMutableTreeNode(new ClickableFileNode(pathName, fileName)));
+    void addClickableFileRow(Project project, VirtualFile file, String fileName) {
+        root.add(new DefaultMutableTreeNode(new ClickableFileNode(project, file, fileName)));
+    }
+
+    void refresh() {
+        int childCount = root.getChildCount();
+
+        // Auto-expand the first level of the tree
+        for (int i = 0; i < childCount; i++) {
+            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) root.getChildAt(i);
+            TreePath path = new TreePath(childNode.getPath());
+            tree.expandPath(path);
+        }
+        tree.updateUI();
+    }
+
+    void clearExistingRows() {
+        root.removeAllChildren();
     }
 }

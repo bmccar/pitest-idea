@@ -25,10 +25,6 @@ public class MutationAction extends AnAction {
         Module[] modules = ModuleManager.getInstance(project).getModules();
         if (modules.length == 0) return;
 
-        Module module = modules[0]; // select first module for simplicity
-
-        //Executor executor = DefaultRunExecutor.getRunExecutorInstance();
-
         String pkg = IdeaDiscovery.getCurrentPackageName();
         String cn = IdeaDiscovery.getCurrentClassName();
         String tn = IdeaDiscovery.getCurrentTestClassName();
@@ -39,15 +35,6 @@ public class MutationAction extends AnAction {
         runProfile.acceptTestClass(qn + "Test");
 
         ExecutionUtils.execute(project, runProfile);
-
-        /*
-        try {
-            ExecutionEnvironment env = ExecutionEnvironmentBuilder.create(project, executor, runProfile).build();
-            env.getRunner().execute(env);
-        } catch (ExecutionException ex) {
-            ex.printStackTrace();
-        }
-         */
     }
 
 }

@@ -36,7 +36,6 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
 
     @Override
     public void render(Project project, PitExecutionRecorder recorder) {
-        Document currentDoc = FileEditorManager.getInstance(project).getSelectedTextEditor().getDocument();
         removeGutterIcons();
         recorder.visit(new PitExecutionRecorder.FileVisitor() {
             @Override

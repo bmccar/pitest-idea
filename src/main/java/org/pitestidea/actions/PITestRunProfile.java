@@ -32,11 +32,6 @@ import java.nio.file.FileSystems;
 class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private static final String PIT_MAIN_CLASS = "org.pitest.mutationtest.commandline.MutationCoverageReport";
 
-    /*
-    private final String pkg;
-    private final String cn;
-    private final String tn;
-     */
     private final Project project;
     private final com.intellij.openapi.module.Module module;
 
@@ -47,13 +42,6 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
         //public PITestRunProfile(String pkg, String cn, String tn, Project project, com.intellij.openapi.module.Module module) {
         this.project = project;
         this.module = ModuleManager.getInstance(project).getModules()[0];
-/*
-        this.pkg = pkg;
-        this.cn = cn;
-        this.tn = tn;
-        this.project = project;
-        this.module = module;
- */
     }
 
     private static StringBuilder appending(StringBuilder sb) {
@@ -96,20 +84,17 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     @Override
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment environment) {
-        System.out.println("*** codeClasses: " + codeClasses.toString());
-        System.out.println("*** testClasses: " + testClasses.toString());
+        //System.out.println("*** codeClasses: " + codeClasses.toString());
+        //System.out.println("*** testClasses: " + testClasses.toString());
         return new JavaCommandLineState(environment) {
             @Override
             protected JavaParameters createJavaParameters() {
-                Project project = IdeaDiscovery.getActiveProject();
                 JavaParameters javaParameters = new JavaParameters();
                 javaParameters.setJdk(ProjectRootManager.getInstance(project).getProjectSdk());
                 javaParameters.setUseClasspathJar(true);
                 String projectDir = IdeaDiscovery.getProjectDirectory();
                 ParametersList params = javaParameters.getProgramParametersList();
                 params.add("--reportDir", IdeaDiscovery.getReportDir());
-                //params.add("--targetClasses", pkg + '.' + cn);
-                //params.add("--targetTests", pkg + '.' + tn);
                 params.add("--targetClasses", codeClasses.toString());
                 params.add("--targetTests", testClasses.toString());
                 params.add("--sourceDirs", projectDir + "/src/main/java");
@@ -155,7 +140,6 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                             ApplicationManager.getApplication().invokeLater(() -> {
                                 renderer.render(project, recorder);
                                 PitToolWindowFactory.show(project, recorder);
-                                //PackageContentsToolWindowFactory.show(project, recorder);
                             });
                         });
                     }
