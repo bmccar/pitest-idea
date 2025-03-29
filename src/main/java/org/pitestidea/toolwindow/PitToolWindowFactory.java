@@ -27,7 +27,9 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
   private static MutationControlPanel mutationControlPanel = null;
 
   public static void show(Project project, PitExecutionRecorder recorder) {
-    mutationControlPanel.clear();
+    if (mutationControlPanel != null) {
+      mutationControlPanel.clear();
+    }
     String id = "PITest tool window";
     ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(id);
     if (tw != null) {

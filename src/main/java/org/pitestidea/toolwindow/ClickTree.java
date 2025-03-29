@@ -3,12 +3,13 @@ package org.pitestidea.toolwindow;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.treeStructure.Tree;
 
 import javax.swing.*;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
 
@@ -21,9 +22,11 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
 
         root = new DefaultMutableTreeNode("Results");
 
-        tree = new JTree(root);
+        tree = new Tree(root);
         tree.getSelectionModel().setSelectionMode
                 (TreeSelectionModel.SINGLE_TREE_SELECTION);
+
+        tree.setCellRenderer(new PreserveHtmlTreeCellRenderer());
 
         tree.addTreeSelectionListener(this);
 
@@ -71,8 +74,10 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
             fileEditorManager.openFile(file, true); // true to focus the file
         }
 
+        @Override
         public String toString() {
-            return fileName;
+            // Set a fixed-width font
+            return "<html><body style='font-family: Andale Mono;'" + fileName + "</body></html>";
         }
     }
 
@@ -85,14 +90,27 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
 
         // Auto-expand the first level of the tree
         for (int i = 0; i < childCount; i++) {
-            DefaultMutableTreeNode childNode = (DefaultMutableTreeNode) root.getChildAt(i);
-            TreePath path = new TreePath(childNode.getPath());
-            tree.expandPath(path);
+            tree.expandRow(i);
         }
         tree.updateUI();
     }
 
     void clearExistingRows() {
         root.removeAllChildren();
+    }
+
+    /**
+     * Needed because setting the font on tree disables html rendering.
+     */
+    private static  class PreserveHtmlTreeCellRenderer extends JEditorPane implements TreeCellRenderer {
+        public PreserveHtmlTreeCellRenderer() {
+            setContentType("text/html");
+        }
+
+        @Override
+        public Component getTreeCellRendererComponent(JTree tree, Object value, boolean selected, boolean expanded, boolean leaf, int row, boolean hasFocus) {
+            setText(value.toString());
+            return this;
+        }
     }
 }

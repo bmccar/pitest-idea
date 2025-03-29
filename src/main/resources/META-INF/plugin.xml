@@ -36,9 +36,6 @@
 
     <toolWindow id="PITest tool window" secondary="true" icon="AllIcons.Toolwindows.WebToolWindow" anchor="bottom"
                 factoryClass="org.pitestidea.toolwindow.PitToolWindowFactory"/>
-
-    <toolWindow id="Package Contents" icon="AllIcons.Toolwindows.ToolWindowStructure" anchor="left"
-                factoryClass="org.pitestidea.toolwindow.PackageContentsToolWindowFactory"/>
   </extensions>
 
   <actions>
