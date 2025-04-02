@@ -24,6 +24,8 @@ dependencies {
   implementation("org.pitest:pitest-junit5-plugin:$pitJunit5PluginVersion")
   testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.1")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
+  testImplementation("org.mockito:mockito-core:5.16.1")
+  testImplementation("org.mockito:mockito-junit-jupiter:5.16.1")
 }
 
 java {

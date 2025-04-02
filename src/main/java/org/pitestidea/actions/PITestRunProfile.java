@@ -21,7 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.PitExecutionRecorder;
 import org.pitestidea.psi.IPackageCollector;
-import org.pitestidea.reader.CoverageFileReader;
+import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
 import org.pitestidea.render.ICoverageRenderer;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
@@ -135,7 +135,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         Application app = ApplicationManager.getApplication();
                         app.executeOnPooledThread(() -> {
                             app.runReadAction(() -> {
-                                CoverageFileReader.read(project, file, recorder);
+                                MutationsFileReader.read(project, file, recorder);
                             });
                             ApplicationManager.getApplication().invokeLater(() -> {
                                 renderer.render(project, recorder);

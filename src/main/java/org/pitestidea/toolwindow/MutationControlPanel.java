@@ -7,6 +7,9 @@ import org.pitestidea.render.CoverageGutterRenderer;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * Results tool window.
+ */
 public class MutationControlPanel {
 
     private final JPanel panel;
@@ -34,8 +37,25 @@ public class MutationControlPanel {
         tree.refresh();
     }
 
-    public void setLine(Project project, VirtualFile file, String fileName, float score) {
-        tree.addClickableFileRow(project, file, createLine(fileName, score));
+    public Level getLevel() {
+        return new Level(tree.getRootTreeLevel());
+    }
+
+    public static class Level {
+        private final ClickTree.TreeLevel treeLevel;
+
+        Level(ClickTree.TreeLevel treeLevel) {
+            this.treeLevel = treeLevel;
+        }
+
+        public void setLine(Project project, VirtualFile file, String fileName, float score) {
+            treeLevel.addClickableFileRow(project, file, createLine(fileName, score));
+        }
+
+        public Level setLine(Project project, String pkgName, float score) {
+            return new Level(treeLevel.addPackageRow(project, createLine(pkgName, score)));
+
+        }
     }
 
     private static String createLine(String text, float score) {

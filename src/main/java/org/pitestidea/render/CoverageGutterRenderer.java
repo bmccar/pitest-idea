@@ -44,6 +44,11 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
                     addGutterIcon(project, file, lineNumber, mutations);
                 });
             }
+
+            @Override
+            public void visit(String pkg, PitExecutionRecorder.PackageDiver diver) {
+                // Nothing to do for packages
+            }
         });
     }
 
@@ -55,7 +60,7 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
         int no_coverage = 0;
         int timed_out = 0;
         for (Mutation record : records) {
-            switch (record.coverageImpact()) {
+            switch (record.mutationImpact()) {
                 case KILLED -> killed++;
                 case SURVIVED -> survived++;
                 case NO_COVERAGE -> no_coverage++;
@@ -94,7 +99,7 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
                     highlighter.putUserData(HIGHLIGHTER_KEY,Boolean.TRUE);
                     StringBuilder sb = new StringBuilder();
                     for (Mutation record : records) {
-                        sb.append(String.format("%s: %s%n", record.coverageImpact(), record.description()));
+                        sb.append(String.format("%s: %s%n", record.mutationImpact(), record.description()));
                     }
                     String tooltip = sb.toString();
                     highlighter.setGutterIconRenderer(new MutationGutterIconographer(icon,tooltip));

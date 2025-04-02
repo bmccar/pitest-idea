@@ -3,7 +3,7 @@ package org.pitestidea.reader;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
-import org.pitestidea.model.CoverageImpact;
+import org.pitestidea.model.MutationImpact;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -15,7 +15,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
 import java.io.IOException;
 
-public class CoverageFileReader {
+/**
+ * Reads files output from PIT and generates mutations line-by-line.
+ */
+public class MutationsFileReader {
     /**
      * Reads and parses mutation lines from the file generated from pitest, and sends each
      * line individually to a recorder.
@@ -24,7 +27,7 @@ public class CoverageFileReader {
      * @param file to read and parse
      * @param recorder to send results to
      */
-    public static void read(Project project, File file, ICoverageRecorder recorder) {
+    public static void read(Project project, File file, IMutationsRecorder recorder) {
         try {
             readFull(project, file, recorder);
         } catch (ParserConfigurationException | IOException | SAXException e) {
@@ -32,7 +35,7 @@ public class CoverageFileReader {
         }
     }
 
-    static void readFull(Project project, File file, ICoverageRecorder recorder) throws ParserConfigurationException, IOException, SAXException {
+    static void readFull(Project project, File file, IMutationsRecorder recorder) throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
 
@@ -43,7 +46,7 @@ public class CoverageFileReader {
             Element node = (Element)nodeList.item(i);
             int lineNumber = Integer.parseInt(node.getElementsByTagName("lineNumber").item(0).getTextContent());
             String description = node.getElementsByTagName("description").item(0).getTextContent();
-            CoverageImpact impact = CoverageImpact.valueOf(node.getAttribute("status"));
+            MutationImpact impact = MutationImpact.valueOf(node.getAttribute("status"));
             String sourceFile = node.getElementsByTagName("sourceFile").item(0).getTextContent();
             String filePath = node.getElementsByTagName("mutatedClass").item(0).getTextContent();
             int ix = filePath.lastIndexOf('.');
@@ -51,11 +54,14 @@ public class CoverageFileReader {
                 filePath = filePath.substring(0,ix);
             }
 
+            String pkg = filePath;
+            System.out.println("pkg="+pkg);
+
             filePath = filePath.replace('.','/') + '/' + sourceFile;
 
             VirtualFile virtualFile = findFromPath(project,filePath);
 
-            recorder.record(virtualFile, impact,lineNumber,description);
+            recorder.record(pkg, virtualFile, impact,lineNumber,description);
         }
     }
 

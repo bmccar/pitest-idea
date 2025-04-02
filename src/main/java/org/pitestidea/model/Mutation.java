@@ -1,6 +1,6 @@
 package org.pitestidea.model;
 
 public record Mutation(
-        CoverageImpact coverageImpact,
+        MutationImpact mutationImpact,
         String description) {
 }

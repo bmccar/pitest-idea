@@ -1,6 +1,6 @@
 package org.pitestidea.model;
 
-public enum CoverageImpact {
+public enum MutationImpact {
     KILLED,
     SURVIVED,
     NO_COVERAGE,
@@ -8,7 +8,7 @@ public enum CoverageImpact {
 
     final public String displayString;
 
-    CoverageImpact() {
+    MutationImpact() {
         this.displayString = name().toLowerCase();
     }
 }

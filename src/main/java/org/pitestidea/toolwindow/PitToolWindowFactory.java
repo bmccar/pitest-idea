@@ -7,60 +7,62 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.openapi.wm.ToolWindowManager;
-import com.intellij.ui.JBColor;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
-import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.model.FileMutations;
 import org.pitestidea.model.PitExecutionRecorder;
 
-import javax.swing.*;
-import javax.swing.border.LineBorder;
-import java.awt.*;
-import java.awt.event.*;
-import java.util.Calendar;
-import java.util.Objects;
-
 public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware {
 
-  private static MutationControlPanel mutationControlPanel = null;
+    private static final MutationControlPanel mutationControlPanel = new MutationControlPanel();
 
-  public static void show(Project project, PitExecutionRecorder recorder) {
-    if (mutationControlPanel != null) {
-      mutationControlPanel.clear();
+    public static void show(Project project, PitExecutionRecorder recorder) {
+        mutationControlPanel.clear();
+        String id = "PITest tool window";
+        ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(id);
+        if (tw != null) {
+            if (tw.isActive()) {
+                addAll(project, recorder);
+            } else {
+                tw.activate(() -> addAll(project, recorder));
+            }
+        }
     }
-    String id = "PITest tool window";
-    ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(id);
-    if (tw != null) {
-      if (tw.isActive()) {
-        addAll(project, recorder);
-      } else {
-        tw.activate(() -> addAll(project, recorder));
-      }
+
+    /**
+     * Accepts directory/file lines and, based on user selections, filters/groups/orders them
+     * into a set of lines for display.
+     */
+    private record HierarchyPlanner(Project project,
+                                    MutationControlPanel.Level level) implements PitExecutionRecorder.FileVisitor {
+
+        @Override
+        public void visit(VirtualFile file, FileMutations fileMutations) {
+            float score = fileMutations.getMutationCoverageScore();
+            String filePath = file.getPath();
+            String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+            level.setLine(project, file, fileName, score);
+        }
+
+        @Override
+        public void visit(String pkg, PitExecutionRecorder.PackageDiver diver) {
+            MutationControlPanel.Level nested = level.setLine(project, pkg, 1); // TODO
+            diver.apply(new HierarchyPlanner(project, nested));
+        }
     }
-  }
 
-  private static void addAll(Project project, PitExecutionRecorder recorder) {
-    recorder.visit(new PitExecutionRecorder.FileVisitor() {
-      @Override
-      public void visit(VirtualFile file, FileMutations fileMutations) {
-        float score = fileMutations.getMutationCoverageScore();
-        String filePath = file.getPath();
-        String fileName = filePath.substring(filePath.lastIndexOf("/")+1);
-        mutationControlPanel.setLine(project, file, fileName, score);
-      }
-    });
-    mutationControlPanel.refresh();
-  }
+    private static void addAll(Project project, PitExecutionRecorder recorder) {
+        recorder.visit(new HierarchyPlanner(project, mutationControlPanel.getLevel()));
+        mutationControlPanel.refresh();
+    }
 
-  @Override
-  public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-    System.out.println("Creating tool window content !!!");
-    mutationControlPanel = new MutationControlPanel();
+    @Override
+    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+        System.out.println("Creating tool window content !!!");
 
-    ContentFactory contentFactory = ContentFactory.getInstance();
-    Content content = contentFactory.createContent(mutationControlPanel.getPanel(), null, false);
-    toolWindow.getContentManager().addContent(content);
-  }
+        ContentFactory contentFactory = ContentFactory.getInstance();
+        Content content = contentFactory.createContent(mutationControlPanel.getPanel(), null, false);
+        toolWindow.getContentManager().addContent(content);
+    }
 }

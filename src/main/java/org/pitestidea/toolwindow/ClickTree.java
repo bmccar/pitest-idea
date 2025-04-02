@@ -4,6 +4,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.treeStructure.Tree;
+import com.thaiopensource.xml.dtd.om.Def;
 
 import javax.swing.*;
 import javax.swing.event.TreeSelectionEvent;
@@ -13,6 +14,9 @@ import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
 
+/**
+ * A tree with text lines that are clickable.
+ */
 public class ClickTree extends JPanel implements TreeSelectionListener {
     private final JTree tree;
     private final DefaultMutableTreeNode root;
@@ -70,7 +74,7 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         @Override
         public void onClick() {
             System.out.println("Open " + file.getCanonicalPath());
-                        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+            FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
             fileEditorManager.openFile(file, true); // true to focus the file
         }
 
@@ -99,10 +103,33 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         root.removeAllChildren();
     }
 
+    TreeLevel getRootTreeLevel() {
+        return new TreeLevel(root);
+    }
+
+    static class TreeLevel {
+        private final DefaultMutableTreeNode node;
+
+        TreeLevel(DefaultMutableTreeNode node) {
+            this.node = node;
+        }
+
+        void addClickableFileRow(Project project, VirtualFile file, String fileName) {
+            node.add(new DefaultMutableTreeNode(new ClickableFileNode(project, file, fileName)));
+        }
+
+        TreeLevel addPackageRow(Project project, String pkg) {
+            //node.add(new DefaultMutableTreeNode(new PackageNode(project, pkg)));
+            DefaultMutableTreeNode child = new DefaultMutableTreeNode(pkg);
+            this.node.add(child);
+            return new TreeLevel(child);
+        }
+    }
+
     /**
      * Needed because setting the font on tree disables html rendering.
      */
-    private static  class PreserveHtmlTreeCellRenderer extends JEditorPane implements TreeCellRenderer {
+    private static class PreserveHtmlTreeCellRenderer extends JEditorPane implements TreeCellRenderer {
         public PreserveHtmlTreeCellRenderer() {
             setContentType("text/html");
         }
