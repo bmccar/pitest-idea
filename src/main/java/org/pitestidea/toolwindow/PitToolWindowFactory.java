@@ -11,6 +11,7 @@ import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.model.FileMutations;
+import org.pitestidea.model.IMutationScore;
 import org.pitestidea.model.PitExecutionRecorder;
 
 public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware {
@@ -38,16 +39,15 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
                                     MutationControlPanel.Level level) implements PitExecutionRecorder.FileVisitor {
 
         @Override
-        public void visit(VirtualFile file, FileMutations fileMutations) {
-            float score = fileMutations.getMutationCoverageScore();
+        public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
             String filePath = file.getPath();
             String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
             level.setLine(project, file, fileName, score);
         }
 
         @Override
-        public void visit(String pkg, PitExecutionRecorder.PackageDiver diver) {
-            MutationControlPanel.Level nested = level.setLine(project, pkg, 1); // TODO
+        public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
+            MutationControlPanel.Level nested = level.setLine(project, pkg, score);
             diver.apply(new HierarchyPlanner(project, nested));
         }
     }

@@ -47,7 +47,7 @@ class PitExecutionRecorderTest {
         }
 
         @Override
-        public void visit(VirtualFile file, FileMutations fileMutations) {
+        public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
             System.out.println("[TEST] Visiting file " + fileMutations.getPkg() + '.' + file.getName());
             fileMutations.visit((lineNumber, lineImpactSummary, mutations) -> {
                 System.out.println("[TEST] Visiting ln " + lineNumber + ", impactSummary " + lineImpactSummary);
@@ -63,7 +63,7 @@ class PitExecutionRecorderTest {
         }
 
         @Override
-        public void visit(String pkg, PitExecutionRecorder.PackageDiver diver) {
+        public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
             System.out.println("[TEST] Visiting package " + pkg);
             expectedPackages.remove(pkg);
             diver.apply(this);

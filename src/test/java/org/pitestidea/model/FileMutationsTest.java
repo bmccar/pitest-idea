@@ -74,25 +74,14 @@ public class FileMutationsTest {
         mutate(fm, 2, MutationImpact.KILLED);
         mutate(fm, 3, MutationImpact.NO_COVERAGE);
         mutate(fm, 4, MutationImpact.TIMED_OUT);
-
-        assertEquals(1, fm.getSurvived());
-        assertEquals(1, fm.getKilled());
-        assertEquals(1, fm.getNoCoverage());
-        assertEquals(1, fm.getTimedOut());
-        assertEquals(4, fm.getMutationsTotal());
     }
 
     @Test
     public void testGetMutationsTotalWithNoMutations() {
         FileMutations fm = new FileMutations("somePkg");
-        assertEquals(0, fm.getMutationsTotal());
         mutate(fm, 5, MutationImpact.KILLED);
         mutate(fm, 5, MutationImpact.SURVIVED);
         mutate(fm, 8, MutationImpact.KILLED);
-
-        assertEquals(1, fm.getSurvived());
-        assertEquals(2, fm.getKilled());
-        assertEquals(3, fm.getMutationsTotal());
 
         fm.visit(new FileMutations.LineVisitor() {
             @Override
@@ -107,7 +96,5 @@ public class FileMutationsTest {
         });
 
         Track.tracks.stream().filter(track -> !track.found).forEach(track -> Assertions.fail("Missing track " + track));
-
-        assertEquals(66, (int)fm.getMutationCoverageScore());
     }
 }

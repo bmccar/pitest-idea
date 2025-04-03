@@ -19,6 +19,7 @@ import com.intellij.psi.PsiDocumentManager;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.FileMutations;
+import org.pitestidea.model.IMutationScore;
 import org.pitestidea.model.Mutation;
 import org.pitestidea.model.PitExecutionRecorder;
 
@@ -39,14 +40,14 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
         removeGutterIcons();
         recorder.visit(new PitExecutionRecorder.FileVisitor() {
             @Override
-            public void visit(VirtualFile file, FileMutations fileMutations) {
+            public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
                 fileMutations.visit((lineNumber, lineImpact, mutations) -> {
                     addGutterIcon(project, file, lineNumber, mutations);
                 });
             }
 
             @Override
-            public void visit(String pkg, PitExecutionRecorder.PackageDiver diver) {
+            public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
                 // Nothing to do for packages
             }
         });

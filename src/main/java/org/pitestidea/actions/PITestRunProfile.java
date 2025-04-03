@@ -53,7 +53,9 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     @Override
     public void acceptCodePackage(String pkg) {
-        appending(codeClasses).append(pkg);
+        StringBuilder sb = appending(codeClasses);
+        sb.append(pkg);
+        sb.append(".*");
     }
 
     @Override
@@ -63,7 +65,9 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     @Override
     public void acceptTestPackage(String pkg) {
-        appending(testClasses).append(pkg);
+        StringBuilder sb = appending(testClasses);
+        sb.append(pkg);
+        sb.append(".*");
     }
 
     @Override
@@ -164,7 +168,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     }
 
     @Override
-    public String getName() {
+    public @NotNull String getName() {
         return "Run PITest";
     }
 
@@ -174,7 +178,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     }
 
     @Override
-    public com.intellij.openapi.module.Module[] getModules() {
+    public com.intellij.openapi.module.Module @NotNull [] getModules() {
         return new Module[]{module};
     }
 }

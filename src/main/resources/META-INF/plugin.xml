@@ -48,7 +48,8 @@
     </action>
 
     <action id="OpenPackageContents" class="org.pitestidea.actions.MutationMultiAction"
-            text="Run PITest here" description="Open a tool window with this package's contents">
+            text="Run PITest here" icon="/icons/pitest.svg"
+            description="Open a tool window with this package's contents">
       <add-to-group group-id="ProjectViewPopupMenu" />
       <!--
       <enable-on-package />

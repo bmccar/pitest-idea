@@ -2,6 +2,7 @@ package org.pitestidea.toolwindow;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.pitestidea.model.IMutationScore;
 import org.pitestidea.render.CoverageGutterRenderer;
 
 import javax.swing.*;
@@ -48,12 +49,12 @@ public class MutationControlPanel {
             this.treeLevel = treeLevel;
         }
 
-        public void setLine(Project project, VirtualFile file, String fileName, float score) {
-            treeLevel.addClickableFileRow(project, file, createLine(fileName, score));
+        public void setLine(Project project, VirtualFile file, String fileName, IMutationScore score) {
+            treeLevel.addClickableFileRow(project, file, createLine(fileName, score.getScore()));
         }
 
-        public Level setLine(Project project, String pkgName, float score) {
-            return new Level(treeLevel.addPackageRow(project, createLine(pkgName, score)));
+        public Level setLine(Project project, String pkgName, IMutationScore score) {
+            return new Level(treeLevel.addPackageRow(createLine(pkgName, score.getScore())));
 
         }
     }

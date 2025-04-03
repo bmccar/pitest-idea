@@ -10,13 +10,9 @@ import java.util.Map;
 /**
  * Records the outcome of PITest for a given file.
  */
-public class FileMutations {
+public class FileMutations /*extends BaseMutationsScore*/ {
     private final String pkg;
     private final Map<Integer, List<Mutation>> lineMutations = new HashMap<>();
-    private int survived = 0;
-    private int killed = 0;
-    private int noCoverage = 0;
-    private int timedOut = 0;
 
     public FileMutations(String pkg) {
         this.pkg = pkg;
@@ -26,39 +22,9 @@ public class FileMutations {
         return pkg;
     }
 
-    public int getSurvived() {
-        return survived;
-    }
-
-    public int getKilled() {
-        return killed;
-    }
-
-    public int getNoCoverage() {
-        return noCoverage;
-    }
-
-    public int getTimedOut() {
-        return timedOut;
-    }
-
-    public int getMutationsTotal() {
-        return survived + killed + noCoverage + timedOut;
-    }
-
-    public float getMutationCoverageScore() {
-        return 100*(float)killed/(float)getMutationsTotal();
-    }
-
     public void add(int lineNumber, Mutation mutation) {
         List<Mutation> mutations = lineMutations.computeIfAbsent(lineNumber, _x -> new ArrayList<>());
         mutations.add(mutation);
-        switch (mutation.mutationImpact()) {
-            case KILLED -> killed++;
-            case SURVIVED -> survived++;
-            case NO_COVERAGE -> noCoverage++;
-            case TIMED_OUT -> timedOut++;
-        }
     }
 
     public interface LineVisitor {

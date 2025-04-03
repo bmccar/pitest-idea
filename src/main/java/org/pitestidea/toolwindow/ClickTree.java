@@ -3,8 +3,8 @@ package org.pitestidea.toolwindow;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.components.JBScrollPane;
 import com.intellij.ui.treeStructure.Tree;
-import com.thaiopensource.xml.dtd.om.Def;
 
 import javax.swing.*;
 import javax.swing.event.TreeSelectionEvent;
@@ -24,7 +24,7 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
     public ClickTree() {
         super(new GridLayout(1, 0));
 
-        root = new DefaultMutableTreeNode("Results");
+        root = new DefaultMutableTreeNode("Default_root"); // value overridden on 1st child add
 
         tree = new Tree(root);
         tree.getSelectionModel().setSelectionMode
@@ -38,7 +38,7 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         tree.setMinimumSize(minimumSize);
         tree.setPreferredSize(new Dimension(500, 300));
 
-        JScrollPane treeView = new JScrollPane(tree);
+        JScrollPane treeView = new JBScrollPane(tree);
         add(treeView);
     }
 
@@ -85,10 +85,6 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         }
     }
 
-    void addClickableFileRow(Project project, VirtualFile file, String fileName) {
-        root.add(new DefaultMutableTreeNode(new ClickableFileNode(project, file, fileName)));
-    }
-
     void refresh() {
         int childCount = root.getChildCount();
 
@@ -97,14 +93,6 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
             tree.expandRow(i);
         }
         tree.updateUI();
-    }
-
-    void clearExistingRows() {
-        root.removeAllChildren();
-    }
-
-    TreeLevel getRootTreeLevel() {
-        return new TreeLevel(root);
     }
 
     static class TreeLevel {
@@ -118,12 +106,27 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
             node.add(new DefaultMutableTreeNode(new ClickableFileNode(project, file, fileName)));
         }
 
-        TreeLevel addPackageRow(Project project, String pkg) {
-            //node.add(new DefaultMutableTreeNode(new PackageNode(project, pkg)));
+        TreeLevel addPackageRow(String pkg) {
             DefaultMutableTreeNode child = new DefaultMutableTreeNode(pkg);
             this.node.add(child);
             return new TreeLevel(child);
         }
+    }
+
+    private final TreeLevel rootTreeLevel = new TreeLevel(null) {
+        @Override
+        TreeLevel addPackageRow(String pkg) {
+            root.setUserObject(pkg);
+            return new TreeLevel(root);
+        }
+    };
+    void clearExistingRows() {
+        System.out.println("--> clearExistingRows");
+        root.removeAllChildren();
+    }
+
+    TreeLevel getRootTreeLevel() {
+        return rootTreeLevel;
     }
 
     /**
