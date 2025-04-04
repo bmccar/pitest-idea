@@ -6,6 +6,8 @@ import org.pitestidea.reader.IMutationsRecorder;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Records the output of a single execution of PITest and reorganizes individual lines into
@@ -14,18 +16,25 @@ import java.util.Map;
 public class PitExecutionRecorder implements IMutationsRecorder {
     public static final String ROOT_PACKAGE_NAME = "Results";
     private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME);
+    {
+        rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
+    }
 
     public interface PackageDiver {
         void apply(FileVisitor visitor);
+        boolean hasCodeFileChildren();
+        boolean isTopLevel();
     }
 
     private interface Directory extends IMutationScore {
         void walkInternal(FileVisitor visitor);
+        void coalesce(boolean topLevel);
     }
 
-    private static class PkgGroup extends BaseMutationsScore implements Directory, PackageDiver {
-        private final String name;
-        private final Map<String, Directory> children = new HashMap<>();
+    private class PkgGroup extends BaseMutationsScore implements Directory, PackageDiver {
+        private String name;
+        private Map<String, Directory> children = new HashMap<>();
+        private boolean hasCodeFileChildren = false;
 
         private PkgGroup(String name) {
             this.name = name;
@@ -36,9 +45,42 @@ public class PitExecutionRecorder implements IMutationsRecorder {
             visitor.visit(name, this, this);
         }
 
+        /**
+         * Modifies the tree by merging packages containing a single package child by absorbing that child,
+         * e.g. "com"->"foo"->"bar.java" becomes "com.foo"->"bar.java" if "foo" is the only child of "com".
+         *
+         * @param topLevel true if this is the top level line, which should not be merged
+         */
+        @Override
+        public void coalesce(boolean topLevel) {
+            children.values().forEach(c->c.coalesce(false));
+            if (children.size() == 1 && !topLevel) {
+                String key = children.keySet().stream().findFirst().get();
+                Directory dir = children.get(key);
+                if (dir instanceof PkgGroup pkgGroup) {
+                    children.remove(key);
+                    key = name + '.' + key;
+                    // Absorb single child
+                    name = key;
+                    children = pkgGroup.children;
+                    hasCodeFileChildren = pkgGroup.hasCodeFileChildren;
+                }
+            }
+        }
+
         @Override
         public void apply(FileVisitor visitor) {
             children.values().forEach(g->g.walkInternal(visitor));
+        }
+
+        @Override
+        public boolean hasCodeFileChildren() {
+            return hasCodeFileChildren;
+        }
+
+        @Override
+        public boolean isTopLevel() {
+            return this==rootDirectory;
         }
 
         @Override
@@ -61,6 +103,11 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         public void walkInternal(FileVisitor visitor) {
             visitor.visit(file, fileMutations, this);
         }
+
+        @Override
+        public void coalesce(boolean topLevel) {
+            // Nothing to do
+        }
     }
 
     @Override
@@ -72,9 +119,15 @@ public class PitExecutionRecorder implements IMutationsRecorder {
             dir.accountFor(impact);
             last = (PkgGroup)dir;
         }
+        last.hasCodeFileChildren = true;
         FileGroup dir = (FileGroup)last.children.computeIfAbsent(file.getName(), _k -> new FileGroup(file, pkg));
         dir.fileMutations.add(lineNumber, new Mutation(impact, description));
         dir.accountFor(impact);
+    }
+
+    @Override
+    public void postProcess() {
+        rootDirectory.coalesce(true);
     }
 
     public interface FileVisitor {

@@ -59,9 +59,13 @@ public class MutationsFileReader {
             filePath = filePath.replace('.','/') + '/' + sourceFile;
 
             VirtualFile virtualFile = findFromPath(project,filePath);
+            if (virtualFile == null) {
+                throw new RuntimeException("Unable to find file " + filePath);
+            }
 
             recorder.record(pkg, virtualFile, impact,lineNumber,description);
         }
+        recorder.postProcess();
     }
 
     private static VirtualFile findFromPath(Project project, String filePath) {

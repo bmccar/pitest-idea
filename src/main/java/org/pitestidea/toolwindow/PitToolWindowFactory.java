@@ -18,7 +18,11 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
 
     private static final MutationControlPanel mutationControlPanel = new MutationControlPanel();
 
-    public static void show(Project project, PitExecutionRecorder recorder) {
+    public static void show(Project project, PitExecutionRecorder recorder, boolean includesPackages) {
+        MutationControlPanel.PackageType packageType = includesPackages
+                ? MutationControlPanel.PackageType.PACKAGE
+                : MutationControlPanel.PackageType.NONE;
+        mutationControlPanel.setPackageSelection(packageType);
         mutationControlPanel.setPackageSelectionChangeFn(_mcp -> reshow(project, recorder));
         reshow(project, recorder);
     }
@@ -53,13 +57,15 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
 
         @Override
         public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
+            MutationControlPanel.Level nextLevel = level;
             MutationControlPanel.PackageType pkgSelection = mutationControlPanel.getPackageSelection();
-            if (pkgSelection== MutationControlPanel.PackageType.NONE) {
-                diver.apply(new HierarchyPlanner(project, level));
-            } else {
-                MutationControlPanel.Level nested = level.setLine(project, pkg, score);
-                diver.apply(new HierarchyPlanner(project, nested));
+            boolean includeLine = diver.isTopLevel();
+            includeLine |= pkgSelection == MutationControlPanel.PackageType.PACKAGE;
+            includeLine |= pkgSelection == MutationControlPanel.PackageType.CODE && diver.hasCodeFileChildren();
+            if (includeLine) {
+                nextLevel = level.setLine(project, pkg, score);
             }
+            diver.apply(new HierarchyPlanner(project, nextLevel));
         }
     }
 

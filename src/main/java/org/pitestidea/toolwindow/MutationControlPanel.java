@@ -2,6 +2,7 @@ package org.pitestidea.toolwindow;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.bouncycastle.util.Pack;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.render.CoverageGutterRenderer;
 
@@ -63,6 +64,7 @@ public class MutationControlPanel {
                 type -> {
                     packageSelectionChangeFn.accept(this);
                 });
+        radioSelector.setSelected(PackageType.PACKAGE); // Default value
         packagePanel.add(radioSelector.getPanel(), BorderLayout.NORTH);
         return packagePanel;
     }
@@ -73,6 +75,10 @@ public class MutationControlPanel {
 
     public PackageType getPackageSelection() {
         return radioSelector.getSelected();
+    }
+
+    public void setPackageSelection(PackageType packageType) {
+        radioSelector.setSelected(packageType);
     }
 
     public JPanel getPanel() {

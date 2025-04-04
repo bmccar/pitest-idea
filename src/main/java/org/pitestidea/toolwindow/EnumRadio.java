@@ -12,6 +12,7 @@ import java.util.function.Function;
 class EnumRadio<T extends Enum<?>> {
     private T selected;
     private final JPanel panel = new JPanel();
+    private final Function<T,String> displayFn;
 
     /**
      * Creates a new radio.
@@ -21,6 +22,7 @@ class EnumRadio<T extends Enum<?>> {
      * @param consumer called when a new value is selected
      */
     EnumRadio(T[] values, Function<T,String> displayFn, Consumer<T> consumer) {
+        this.displayFn = displayFn;
         panel.setLayout(new FlowLayout());
         ButtonGroup group = new ButtonGroup();
         for (T value : values) {
@@ -32,10 +34,21 @@ class EnumRadio<T extends Enum<?>> {
             });
             panel.add(button);
         }
+        this.setSelected(values[0]); // Default is first value
     }
 
     JPanel getPanel() {
         return panel;
+    }
+
+    void setSelected(T value) {
+        selected = value;
+        String match = displayFn.apply(value);
+        for (Component component : panel.getComponents()) {
+            if (component instanceof JRadioButton button) {
+                button.setSelected(button.getText().equals(match));
+            }
+        }
     }
 
     T getSelected() {

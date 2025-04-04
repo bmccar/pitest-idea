@@ -38,8 +38,9 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private final StringBuilder codeClasses = new StringBuilder();
     private final StringBuilder testClasses = new StringBuilder();
 
+    private boolean includesPackages = false;
+
     public PITestRunProfile(Project project) {
-        //public PITestRunProfile(String pkg, String cn, String tn, Project project, com.intellij.openapi.module.Module module) {
         this.project = project;
         this.module = ModuleManager.getInstance(project).getModules()[0];
     }
@@ -53,6 +54,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     @Override
     public void acceptCodePackage(String pkg) {
+        includesPackages = true;
         StringBuilder sb = appending(codeClasses);
         sb.append(pkg);
         sb.append(".*");
@@ -143,7 +145,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                             });
                             ApplicationManager.getApplication().invokeLater(() -> {
                                 renderer.render(project, recorder);
-                                PitToolWindowFactory.show(project, recorder);
+                                PitToolWindowFactory.show(project, recorder, includesPackages);
                             });
                         });
                     }
