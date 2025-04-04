@@ -1,10 +1,9 @@
 package org.pitestidea.render;
 
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.impl.DocumentMarkupModel;
-import com.intellij.openapi.editor.markup.HighlighterLayer;
-import com.intellij.openapi.editor.markup.MarkupModel;
-import com.intellij.openapi.editor.markup.RangeHighlighter;
-import com.intellij.openapi.editor.markup.TextAttributes;
+import com.intellij.openapi.editor.markup.*;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiFile;
@@ -13,8 +12,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 
 import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.fileEditor.FileDocumentManager;
-import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.psi.PsiDocumentManager;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
@@ -33,7 +30,7 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
 
     private static final Key<Boolean> HIGHLIGHTER_KEY = new Key<>("PitHighlighter");
     private static final TextAttributes ICON_TEXT_ATTRIBUTES = new TextAttributes();
-    private static int ICON_LAYER = HighlighterLayer.WARNING + 20;
+    private static final int ICON_LAYER = HighlighterLayer.WARNING + 20;
 
     @Override
     public void render(Project project, PitExecutionRecorder recorder) {
@@ -41,9 +38,7 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
         recorder.visit(new PitExecutionRecorder.FileVisitor() {
             @Override
             public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
-                fileMutations.visit((lineNumber, lineImpact, mutations) -> {
-                    addGutterIcon(project, file, lineNumber, mutations);
-                });
+                fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations));
             }
 
             @Override
@@ -96,26 +91,31 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
                 if (startOffset != -1 && endOffset != -1) {
                     Icon icon = IconLoader.getIcon(iconFile, CoverageGutterRenderer.class);
                     MarkupModel markupModel = DocumentMarkupModel.forDocument(document, project, true);
-                    TextAttributes x = new TextAttributes();
                     RangeHighlighter highlighter = markupModel.addLineHighlighter(lineNumber, ICON_LAYER, ICON_TEXT_ATTRIBUTES);
-                    highlighter.putUserData(HIGHLIGHTER_KEY,Boolean.TRUE);
+                    highlighter.putUserData(HIGHLIGHTER_KEY, Boolean.TRUE);
                     StringBuilder sb = new StringBuilder();
                     for (Mutation record : records) {
                         sb.append(String.format("%s: %s%n", record.mutationImpact(), record.description()));
                     }
                     String tooltip = sb.toString();
-                    highlighter.setGutterIconRenderer(new MutationGutterIconographer(icon,tooltip));
+                    highlighter.setGutterIconRenderer(new MutationGutterIconographer(icon, tooltip));
                 }
             }
         }
     }
 
+    // TODO: doesn't remove from non-open files
     public static void removeGutterIcons() {
         Project project = IdeaDiscovery.getActiveProject();
-        Document currentDoc = FileEditorManager.getInstance(project).getSelectedTextEditor().getDocument();
-        VirtualFile currentFile = FileDocumentManager.getInstance().getFile(currentDoc);
+        for (Editor editor : EditorFactory.getInstance().getAllEditors()) {
+            Document doc2 = editor.getDocument();
+            removeDocumentIcons(doc2, project);
+        }
+    }
+
+    private static void removeDocumentIcons(Document currentDoc, Project project) {
         MarkupModel markupModel = DocumentMarkupModel.forDocument(currentDoc, project, true);
-        for (@NotNull RangeHighlighter next: markupModel.getAllHighlighters()) {
+        for (@NotNull RangeHighlighter next : markupModel.getAllHighlighters()) {
             if (next.getUserData(HIGHLIGHTER_KEY) != null) {
                 // TODO remove empty lane if not needed
                 markupModel.removeHighlighter(next);

@@ -155,8 +155,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
         };
     }
 
-    private static void addDependencies(JavaParameters params) {
-        com.intellij.openapi.module.Module module = IdeaDiscovery.getModuleOf(IdeaDiscovery.getCurrentJavaFile());
+    private void addDependencies(JavaParameters params) {
         VirtualFile[] roots = ModuleRootManager.getInstance(module).orderEntries().classes().getRoots();
         PathsList classPath = params.getClassPath();
         for (VirtualFile vf : roots) {
