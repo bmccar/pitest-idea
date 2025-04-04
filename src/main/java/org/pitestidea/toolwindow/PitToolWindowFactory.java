@@ -19,7 +19,13 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
     private static final MutationControlPanel mutationControlPanel = new MutationControlPanel();
 
     public static void show(Project project, PitExecutionRecorder recorder) {
+        mutationControlPanel.setPackageSelectionChangeFn(_mcp -> reshow(project, recorder));
+        reshow(project, recorder);
+    }
+
+    private static void reshow(Project project, PitExecutionRecorder recorder) {
         mutationControlPanel.clear();
+
         String id = "PITest tool window";
         ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(id);
         if (tw != null) {
@@ -47,8 +53,13 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
 
         @Override
         public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
-            MutationControlPanel.Level nested = level.setLine(project, pkg, score);
-            diver.apply(new HierarchyPlanner(project, nested));
+            MutationControlPanel.PackageType pkgSelection = mutationControlPanel.getPackageSelection();
+            if (pkgSelection== MutationControlPanel.PackageType.NONE) {
+                diver.apply(new HierarchyPlanner(project, level));
+            } else {
+                MutationControlPanel.Level nested = level.setLine(project, pkg, score);
+                diver.apply(new HierarchyPlanner(project, nested));
+            }
         }
     }
 

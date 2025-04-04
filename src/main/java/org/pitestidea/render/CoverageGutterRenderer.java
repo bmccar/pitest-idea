@@ -48,7 +48,8 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
 
             @Override
             public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
-                // Nothing to do for packages
+                // No place to put icons for packages, but keep walking the tree
+                diver.apply(this);
             }
         });
     }
@@ -110,7 +111,6 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
     }
 
     public static void removeGutterIcons() {
-        System.out.println("Removing gutter icons");
         Project project = IdeaDiscovery.getActiveProject();
         Document currentDoc = FileEditorManager.getInstance(project).getSelectedTextEditor().getDocument();
         VirtualFile currentFile = FileDocumentManager.getInstance().getFile(currentDoc);

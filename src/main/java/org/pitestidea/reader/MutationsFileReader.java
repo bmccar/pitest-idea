@@ -55,7 +55,6 @@ public class MutationsFileReader {
             }
 
             String pkg = filePath;
-            System.out.println("pkg="+pkg);
 
             filePath = filePath.replace('.','/') + '/' + sourceFile;
 

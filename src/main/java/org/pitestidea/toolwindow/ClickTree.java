@@ -20,11 +20,19 @@ import java.awt.*;
 public class ClickTree extends JPanel implements TreeSelectionListener {
     private final JTree tree;
     private final DefaultMutableTreeNode root;
+    private final TreeLevel rootTreeLevel;
 
     public ClickTree() {
         super(new GridLayout(1, 0));
 
         root = new DefaultMutableTreeNode("Default_root"); // value overridden on 1st child add
+        rootTreeLevel = new TreeLevel(root) {
+            @Override
+            TreeLevel addPackageRow(String pkg) {
+                root.setUserObject(pkg);
+                return new TreeLevel(root);
+            }
+        };
 
         tree = new Tree(root);
         tree.getSelectionModel().setSelectionMode
@@ -113,15 +121,7 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         }
     }
 
-    private final TreeLevel rootTreeLevel = new TreeLevel(null) {
-        @Override
-        TreeLevel addPackageRow(String pkg) {
-            root.setUserObject(pkg);
-            return new TreeLevel(root);
-        }
-    };
     void clearExistingRows() {
-        System.out.println("--> clearExistingRows");
         root.removeAllChildren();
     }
 
