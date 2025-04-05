@@ -2,6 +2,7 @@ package org.pitestidea.reader;
 
 import com.intellij.openapi.vfs.VirtualFile;
 import org.pitestidea.model.MutationImpact;
+import org.pitestidea.toolwindow.Sorting;
 
 public interface IMutationsRecorder {
     /**
@@ -19,4 +20,12 @@ public interface IMutationsRecorder {
      * Called after all calls to {@link #record(String, VirtualFile, MutationImpact, int, String)} have completed.
      */
     void postProcess();
+
+    /**
+     * Changes the sorting order.
+     *
+     * @param by what field
+     * @param dir asc/desc
+     */
+    void sort(Sorting.By by, Sorting.Direction dir);
 }

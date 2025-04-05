@@ -2,7 +2,6 @@ package org.pitestidea.toolwindow;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import org.bouncycastle.util.Pack;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.render.CoverageGutterRenderer;
 
@@ -17,23 +16,10 @@ public class MutationControlPanel {
 
     private final JPanel panel;
     private final ClickTree tree = new ClickTree();
-    private Consumer<MutationControlPanel> packageSelectionChangeFn = null;
-    private EnumRadio<PackageType> radioSelector;
-
-    public enum PackageType {
-        PACKAGE("All"),
-        CODE("Coded"),
-        NONE("None");
-        final String displayName;
-
-        PackageType(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-    }
+    private Consumer<Boolean> optionsChangeFn = null;
+    private EnumRadio<Viewing.PackageChoice> packageSelector;
+    private EnumRadio<Sorting.By> sortSelector;
+    private EnumRadio<Sorting.Direction> dirSelector;
 
     public MutationControlPanel() {
         panel = new JPanel(new BorderLayout());
@@ -46,7 +32,7 @@ public class MutationControlPanel {
     private JPanel createHeaderPanel() {
         JPanel header = new JPanel(new BorderLayout());
         header.add(createRemoveButton(), BorderLayout.EAST);
-        header.add(createPackagePanel(), BorderLayout.WEST);
+        header.add(createOptionsPanel(), BorderLayout.WEST);
         return header;
     }
 
@@ -56,29 +42,73 @@ public class MutationControlPanel {
         return button;
     }
 
+    private JPanel createOptionsPanel() {
+        JPanel panel = new JPanel(new FlowLayout());
+        panel.add(createPackagePanel());
+        panel.add(createSortPanel());
+        panel.add(createDirPanel());
+        return panel;
+    }
+
     private JPanel createPackagePanel() {
-        JPanel packagePanel = new JPanel(new BorderLayout());
-        packagePanel.setBorder(BorderFactory.createTitledBorder("Display"));
-        radioSelector = new EnumRadio<>(PackageType.values(),
-                PackageType::getDisplayName,
-                type -> {
-                    packageSelectionChangeFn.accept(this);
-                });
-        radioSelector.setSelected(PackageType.PACKAGE); // Default value
-        packagePanel.add(radioSelector.getPanel(), BorderLayout.NORTH);
-        return packagePanel;
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Display"));
+        packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(),
+                Viewing.PackageChoice::getDisplayName,
+                type -> optionsChangeFn.accept(false));
+        packageSelector.setSelected(Viewing.PackageChoice.PACKAGE); // Default value
+        panel.add(packageSelector.getPanel(), BorderLayout.NORTH);
+        return panel;
     }
 
-    public void setPackageSelectionChangeFn(Consumer<MutationControlPanel> packageSelectionChangeFn) {
-        this.packageSelectionChangeFn = packageSelectionChangeFn;
+    private JPanel createSortPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Sort"));
+        sortSelector = new EnumRadio<>(Sorting.By.values(),
+                Sorting.By::getDisplayName,
+                type -> optionsChangeFn.accept(true));
+        sortSelector.setSelected(Sorting.By.PROJECT); // Default value
+        panel.add(sortSelector.getPanel(), BorderLayout.NORTH);
+        return panel;
     }
 
-    public PackageType getPackageSelection() {
-        return radioSelector.getSelected();
+    private JPanel createDirPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createTitledBorder("Sort Direction"));
+        dirSelector = new EnumRadio<>(Sorting.Direction.values(),
+                Sorting.Direction::getDisplayName,
+                type -> optionsChangeFn.accept(true));
+        dirSelector.setSelected(Sorting.Direction.ASC); // Default value
+        panel.add(dirSelector.getPanel(), BorderLayout.NORTH);
+        return panel;
     }
 
-    public void setPackageSelection(PackageType packageType) {
-        radioSelector.setSelected(packageType);
+    public void setOptionsChangeFn(Consumer<Boolean> optionsChangeFn) {
+        this.optionsChangeFn = optionsChangeFn;
+    }
+
+    public Viewing.PackageChoice getPackageSelection() {
+        return packageSelector.getSelected();
+    }
+
+    public void setPackageSelection(Viewing.PackageChoice packageChoice) {
+        packageSelector.setSelected(packageChoice);
+    }
+
+    public Sorting.By getSortSelection() {
+        return sortSelector.getSelected();
+    }
+
+    public void setSortSelection(Sorting.By sortChoice) {
+        sortSelector.setSelected(sortChoice);
+    }
+
+    public Sorting.Direction getDirSelection() {
+        return dirSelector.getSelected();
+    }
+
+    public void setDirSelection(Sorting.Direction dirChoice) {
+        dirSelector.setSelected(dirChoice);
     }
 
     public JPanel getPanel() {

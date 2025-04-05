@@ -19,15 +19,21 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
     private static final MutationControlPanel mutationControlPanel = new MutationControlPanel();
 
     public static void show(Project project, PitExecutionRecorder recorder, boolean includesPackages) {
-        MutationControlPanel.PackageType packageType = includesPackages
-                ? MutationControlPanel.PackageType.PACKAGE
-                : MutationControlPanel.PackageType.NONE;
-        mutationControlPanel.setPackageSelection(packageType);
-        mutationControlPanel.setPackageSelectionChangeFn(_mcp -> reshow(project, recorder));
-        reshow(project, recorder);
+        Viewing.PackageChoice packageChoice = includesPackages
+                ? Viewing.PackageChoice.PACKAGE
+                : Viewing.PackageChoice.NONE;
+        mutationControlPanel.setPackageSelection(packageChoice);
+        mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
+        mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
+        mutationControlPanel.setOptionsChangeFn(resort -> reshow(project, recorder, resort));
+        reshow(project, recorder, false);
     }
 
-    private static void reshow(Project project, PitExecutionRecorder recorder) {
+    private static void reshow(Project project, PitExecutionRecorder recorder, boolean resort) {
+        System.out.println("reshowing " + resort);
+        if (resort) {
+            recorder.sort(mutationControlPanel.getSortSelection(),mutationControlPanel.getDirSelection());
+        }
         mutationControlPanel.clear();
 
         String id = "PITest tool window";
@@ -58,10 +64,10 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         @Override
         public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
             MutationControlPanel.Level nextLevel = level;
-            MutationControlPanel.PackageType pkgSelection = mutationControlPanel.getPackageSelection();
+            Viewing.PackageChoice pkgSelection = mutationControlPanel.getPackageSelection();
             boolean includeLine = diver.isTopLevel();
-            includeLine |= pkgSelection == MutationControlPanel.PackageType.PACKAGE;
-            includeLine |= pkgSelection == MutationControlPanel.PackageType.CODE && diver.hasCodeFileChildren();
+            includeLine |= pkgSelection == Viewing.PackageChoice.PACKAGE;
+            includeLine |= pkgSelection == Viewing.PackageChoice.CODE && diver.hasCodeFileChildren();
             if (includeLine) {
                 nextLevel = level.setLine(project, pkg, score);
             }

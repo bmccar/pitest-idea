@@ -3,11 +3,9 @@ package org.pitestidea.model;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.reader.IMutationsRecorder;
+import org.pitestidea.toolwindow.Sorting;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Records the output of a single execution of PITest and reorganizes individual lines into
@@ -15,7 +13,7 @@ import java.util.Set;
  */
 public class PitExecutionRecorder implements IMutationsRecorder {
     public static final String ROOT_PACKAGE_NAME = "Results";
-    private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME);
+    private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME,null);
     {
         rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
     }
@@ -29,14 +27,17 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     private interface Directory extends IMutationScore {
         void walkInternal(FileVisitor visitor);
         void coalesce(boolean topLevel);
+        void sort(Sorting.By by, Sorting.Direction dir);
     }
 
     private class PkgGroup extends BaseMutationsScore implements Directory, PackageDiver {
         private String name;
         private Map<String, Directory> children = new HashMap<>();
+        private List<Directory> sortedChildren = null;
         private boolean hasCodeFileChildren = false;
 
-        private PkgGroup(String name) {
+        private PkgGroup(String name, PkgGroup parent) {
+            super(parent==null ? 0 : parent.children.size());
             this.name = name;
         }
 
@@ -69,8 +70,24 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         }
 
         @Override
+        public void sort(Sorting.By by, Sorting.Direction dir) {
+            Comparator<Directory> fn;
+            switch (by) {
+                case PROJECT -> fn = Comparator.comparing(Directory::getOrder);
+                case SCORE -> fn = Comparator.comparing(Directory::getScore);
+                default -> throw new IllegalArgumentException("Unsupported sorting by: " + by);
+            }
+            if (dir== Sorting.Direction.DESC) {
+                fn = fn.reversed();
+            }
+            sortedChildren = children.values().stream().sorted(fn).toList();
+            children.values().forEach(c->c.sort(by, dir));
+        }
+
+        @Override
         public void apply(FileVisitor visitor) {
-            children.values().forEach(g->g.walkInternal(visitor));
+            Collection<Directory> subs = sortedChildren==null ? children.values() : sortedChildren;
+            subs.forEach(g->g.walkInternal(visitor));
         }
 
         @Override
@@ -94,7 +111,8 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         private final VirtualFile file;
         private final FileMutations fileMutations;
 
-        private FileGroup(VirtualFile file, String pkg) {
+        private FileGroup(VirtualFile file, String pkg, PkgGroup parent) {
+            super(parent.children.size());
             this.file = file;
             this.fileMutations = new FileMutations(pkg);
         }
@@ -108,6 +126,11 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         public void coalesce(boolean topLevel) {
             // Nothing to do
         }
+
+        @Override
+        public void sort(Sorting.By by, Sorting.Direction dir) {
+            // Nothing to do
+        }
     }
 
     @Override
@@ -115,12 +138,14 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         rootDirectory.accountFor(impact);
         PkgGroup last = rootDirectory;
         for (String segment: pkg.split("\\.")) {
-            Directory dir = last.children.computeIfAbsent(segment, _k -> new PkgGroup(segment));
+            final PkgGroup parent = last;
+            Directory dir = last.children.computeIfAbsent(segment, _k -> new PkgGroup(segment, parent));
             dir.accountFor(impact);
             last = (PkgGroup)dir;
         }
         last.hasCodeFileChildren = true;
-        FileGroup dir = (FileGroup)last.children.computeIfAbsent(file.getName(), _k -> new FileGroup(file, pkg));
+        final PkgGroup parent = last;
+        FileGroup dir = (FileGroup)last.children.computeIfAbsent(file.getName(), _k -> new FileGroup(file, pkg, parent));
         dir.fileMutations.add(lineNumber, new Mutation(impact, description));
         dir.accountFor(impact);
     }
@@ -128,6 +153,11 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     @Override
     public void postProcess() {
         rootDirectory.coalesce(true);
+    }
+
+    @Override
+    public void sort(Sorting.By by, Sorting.Direction dir) {
+        rootDirectory.sort(by, dir);
     }
 
     public interface FileVisitor {

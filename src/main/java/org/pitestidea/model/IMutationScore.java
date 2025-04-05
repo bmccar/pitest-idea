@@ -8,4 +8,5 @@ public interface IMutationScore {
     int getNoCoverage();
     int getTimedOut();
     int getMutationsTotal();
+    int getOrder();
 }

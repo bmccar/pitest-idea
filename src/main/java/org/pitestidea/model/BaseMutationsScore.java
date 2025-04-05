@@ -3,11 +3,22 @@ package org.pitestidea.model;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BaseMutationsScore implements IMutationScore {
+public abstract class BaseMutationsScore implements IMutationScore {
     protected int survived = 0;
     protected int killed = 0;
     protected int noCoverage = 0;
     protected int timedOut = 0;
+
+    private final int order;
+
+    public BaseMutationsScore(int order) {
+        this.order = order;
+    }
+
+    @Override
+    public int getOrder() {
+        return order;
+    }
 
     @Override
     public void accountFor(MutationImpact impact) {
@@ -48,4 +59,5 @@ public class BaseMutationsScore implements IMutationScore {
     public float getScore() {
         return 100*(float)killed/(float)getMutationsTotal();
     }
+
 }
