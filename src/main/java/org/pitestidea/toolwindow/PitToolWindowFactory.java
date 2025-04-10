@@ -16,7 +16,7 @@ import org.pitestidea.model.PitExecutionRecorder;
 
 public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware {
 
-    private static final MutationControlPanel mutationControlPanel = new MutationControlPanel();
+    public static final MutationControlPanel mutationControlPanel = new MutationControlPanel();
 
     public static void show(Project project, PitExecutionRecorder recorder, boolean includesPackages) {
         Viewing.PackageChoice packageChoice = includesPackages
@@ -85,7 +85,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         System.out.println("Creating tool window content !!!");
 
         ContentFactory contentFactory = ContentFactory.getInstance();
-        Content content = contentFactory.createContent(mutationControlPanel.getPanel(), null, false);
+        Content content = contentFactory.createContent(mutationControlPanel.getContentPanel(), null, false);
         toolWindow.getContentManager().addContent(content);
     }
 }

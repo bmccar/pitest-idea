@@ -2,6 +2,7 @@ package org.pitestidea.toolwindow;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.components.JBScrollPane;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.render.CoverageGutterRenderer;
 
@@ -14,25 +15,108 @@ import java.util.function.Consumer;
  */
 public class MutationControlPanel {
 
-    private final JPanel panel;
+    private final JSplitPane splitPane;
+    private final JPanel rightPaneEmpty = new JPanel();
+    private final JScrollPane rightScrollPane;
     private final ClickTree tree = new ClickTree();
     private Consumer<Boolean> optionsChangeFn = null;
     private EnumRadio<Viewing.PackageChoice> packageSelector;
     private EnumRadio<Sorting.By> sortSelector;
     private EnumRadio<Sorting.Direction> dirSelector;
 
-    public MutationControlPanel() {
-        panel = new JPanel(new BorderLayout());
+    enum PaneState {
+        SCORES(1),  // Scores is maximized
+        MIXED(0.5), // Split between scores and console
+        CONSOLE(0); // Console is maximized
 
-        panel.add(new JScrollPane(tree), BorderLayout.CENTER);
+        private final double dividerLocation;
 
-        panel.add(createHeaderPanel(), BorderLayout.NORTH);
+        PaneState(double dividerLocation) {
+            this.dividerLocation = dividerLocation;
+        }
+
+        PaneState goScores() {
+            return this==SCORES ? MIXED : /* Already MIXED */ SCORES;
+        }
+
+        PaneState goConsole() {
+            return this==CONSOLE ? MIXED : /* Already MIXED */ CONSOLE;
+        }
     }
 
-    private JPanel createHeaderPanel() {
+    private final JLabel scoresButton;
+    private final JLabel consoleButton;
+    private static PaneState currentState = PaneState.SCORES;
+
+    private static final String LEFTWARD = "<";
+    private static final String RIGHTWARD = ">";
+
+    private void expandConsole() {
+        currentState = currentState.goConsole();
+        consoleButton.setText(currentState==PaneState.MIXED?LEFTWARD:RIGHTWARD);
+        splitPane.setDividerLocation(currentState.dividerLocation);
+    }
+
+    private void expandScores() {
+        currentState = currentState.goScores();
+        splitPane.getRightComponent().setVisible(true);
+        scoresButton.setText(currentState==PaneState.MIXED?RIGHTWARD:LEFTWARD);
+        splitPane.setDividerLocation(currentState.dividerLocation);
+    }
+
+    private void setDefaultState() {
+        currentState = PaneState.SCORES;
+        scoresButton.setText(LEFTWARD);
+        splitPane.setDividerLocation(currentState.dividerLocation);
+        splitPane.setResizeWeight(currentState.dividerLocation);
+        // If not set then component is partially visible at the start
+        splitPane.getRightComponent().setVisible(false);
+    }
+
+    public MutationControlPanel() {
+
+        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+
+        scoresButton = DisplayUtils.createHoverLabel(LEFTWARD, this::expandScores);
+        consoleButton = DisplayUtils.createHoverLabel(LEFTWARD, this::expandConsole);
+
+        JPanel scoresPanel = new JPanel(new BorderLayout());
+        scoresPanel.add(new JScrollPane(tree), BorderLayout.CENTER);
+        scoresPanel.add(createScoresHeaderPanel(), BorderLayout.NORTH);
+
+        rightScrollPane = new JBScrollPane();
+
+        splitPane.setLeftComponent(scoresPanel);
+        splitPane.setRightComponent(createConsolePane(rightScrollPane));
+
+        setDefaultState();
+    }
+
+    public void setRightPaneContent(JComponent component) {
+        rightScrollPane.setViewportView(component);
+    }
+
+    private JPanel createConsolePane(JScrollPane scrollPane) {
+        JPanel fullPanel = new JPanel(new BorderLayout());
+
         JPanel header = new JPanel(new BorderLayout());
-        header.add(createRemoveButton(), BorderLayout.EAST);
+        header.add(consoleButton, BorderLayout.WEST);
+        fullPanel.add(header, BorderLayout.NORTH);
+
+        fullPanel.add(new JScrollPane(scrollPane), BorderLayout.CENTER);
+
+        return fullPanel;
+    }
+
+    private JPanel createScoresHeaderPanel() {
+        JPanel header = new JPanel(new BorderLayout());
+
+        JPanel actionButtonPanel = new JPanel(new FlowLayout());
+        actionButtonPanel.add(createRemoveButton());
+        actionButtonPanel.add(scoresButton, BorderLayout.EAST);
+
         header.add(createOptionsPanel(), BorderLayout.WEST);
+        header.add(actionButtonPanel, BorderLayout.EAST);
         return header;
     }
 
@@ -111,8 +195,8 @@ public class MutationControlPanel {
         dirSelector.setSelected(dirChoice);
     }
 
-    public JPanel getPanel() {
-        return panel;
+    public JComponent getContentPanel() {
+        return splitPane;
     }
 
     public void clear() {
