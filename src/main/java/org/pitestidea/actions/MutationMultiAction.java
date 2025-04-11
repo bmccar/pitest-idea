@@ -2,6 +2,8 @@ package org.pitestidea.actions;
 
 import com.intellij.ide.projectView.ProjectViewNode;
 import com.intellij.openapi.actionSystem.*;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
@@ -29,6 +31,9 @@ public class MutationMultiAction extends AnAction {
             return;
         }
 
+        Module[] modules = ModuleManager.getInstance(project).getModules();
+        if (modules.length == 0) return;
+
         Object @Nullable [] selectedNodes = event.getData(PlatformCoreDataKeys.SELECTED_ITEMS);
         if (selectedNodes != null) {
             List<VirtualFile> virtualFiles = Arrays.stream(selectedNodes).map(n -> {
@@ -41,8 +46,7 @@ public class MutationMultiAction extends AnAction {
             PITestRunProfile runProfile = new PITestRunProfile(project);
             PackageWalker.read(project, virtualFiles, runProfile);
 
-            ExecutionUtils.execute(project, runProfile);
-
+            ExecutionUtils.execute(project, modules[0], runProfile);
         }
     }
 

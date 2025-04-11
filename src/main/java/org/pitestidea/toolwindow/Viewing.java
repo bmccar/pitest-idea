@@ -4,7 +4,7 @@ public class Viewing {
     public enum PackageChoice {
         PACKAGE("All"),
         CODE("Coded"),
-        NONE("None");
+        NONE("Files only");
         final String displayName;
 
         PackageChoice(String displayName) {

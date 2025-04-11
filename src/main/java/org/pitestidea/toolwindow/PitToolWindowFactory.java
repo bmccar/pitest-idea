@@ -10,6 +10,7 @@ import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.pitestidea.model.FileMutations;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.model.PitExecutionRecorder;
@@ -29,6 +30,15 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         reshow(project, recorder, false);
     }
 
+    public static void showPitExecutionOutputOnly(Project project) {
+        mutationControlPanel.clear();
+        mutationControlPanel.setFullConsole();
+        ToolWindow tw = getToolWindow(project);
+        if (tw != null) {
+            tw.activate(()->{});
+        }
+    }
+
     private static void reshow(Project project, PitExecutionRecorder recorder, boolean resort) {
         System.out.println("reshowing " + resort);
         if (resort) {
@@ -36,8 +46,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
         mutationControlPanel.clear();
 
-        String id = "PITest tool window";
-        ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(id);
+        ToolWindow tw = getToolWindow(project);
         if (tw != null) {
             if (tw.isActive()) {
                 addAll(project, recorder);
@@ -45,6 +54,12 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
                 tw.activate(() -> addAll(project, recorder));
             }
         }
+    }
+
+    private static @Nullable ToolWindow getToolWindow(Project project) {
+        String id = "PITest tool window";
+        ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(id);
+        return tw;
     }
 
     /**

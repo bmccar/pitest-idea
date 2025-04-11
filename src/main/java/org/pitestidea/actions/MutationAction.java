@@ -34,7 +34,7 @@ public class MutationAction extends AnAction {
         runProfile.acceptCodeClass(qn,null);
         runProfile.acceptTestClass(qn + "Test");
 
-        ExecutionUtils.execute(project, runProfile);
+        ExecutionUtils.execute(project, modules[0], runProfile);
     }
 
 }

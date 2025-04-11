@@ -25,14 +25,26 @@ public class MutationControlPanel {
     private EnumRadio<Sorting.Direction> dirSelector;
 
     enum PaneState {
-        SCORES(1),  // Scores is maximized
-        MIXED(0.5), // Split between scores and console
-        CONSOLE(0); // Console is maximized
+        SCORES(1, "<", null),  // Scores is maximized
+        MIXED(0.5, ">", "<"), // Split between scores and console
+        CONSOLE(0, null, ">"); // Console is maximized
 
         private final double dividerLocation;
+        private final String inScores;
+        private final String inConsole;
 
-        PaneState(double dividerLocation) {
+        PaneState(double dividerLocation, String inScores, String inConsole) {
             this.dividerLocation = dividerLocation;
+            this.inScores = inScores;
+            this.inConsole = inConsole;
+        }
+
+        String getScoresText() {
+            return inScores;
+        }
+
+        String getConsoleText() {
+            return inConsole;
         }
 
         PaneState goScores() {
@@ -42,43 +54,39 @@ public class MutationControlPanel {
         PaneState goConsole() {
             return this==CONSOLE ? MIXED : /* Already MIXED */ CONSOLE;
         }
+
+        public boolean isVisibleInState(PaneState state) {
+            return this==MIXED || this == state;
+        }
     }
 
     private final JLabel scoresButton;
     private final JLabel consoleButton;
     private static PaneState currentState = PaneState.SCORES;
 
+    // TODO
     private static final String LEFTWARD = "<";
     private static final String RIGHTWARD = ">";
 
-    private void expandConsole() {
-        currentState = currentState.goConsole();
-        consoleButton.setText(currentState==PaneState.MIXED?LEFTWARD:RIGHTWARD);
-        splitPane.setDividerLocation(currentState.dividerLocation);
+    public void setFullConsole() {
+        setState(PaneState.CONSOLE);
     }
 
-    private void expandScores() {
-        currentState = currentState.goScores();
-        splitPane.getRightComponent().setVisible(true);
-        scoresButton.setText(currentState==PaneState.MIXED?RIGHTWARD:LEFTWARD);
-        splitPane.setDividerLocation(currentState.dividerLocation);
-    }
-
-    private void setDefaultState() {
-        currentState = PaneState.SCORES;
-        scoresButton.setText(LEFTWARD);
+    void setState(PaneState state) {
+        currentState = state;
+        scoresButton.setText(currentState.getScoresText());
+        consoleButton.setText(currentState.getConsoleText());
         splitPane.setDividerLocation(currentState.dividerLocation);
         splitPane.setResizeWeight(currentState.dividerLocation);
-        // If not set then component is partially visible at the start
-        splitPane.getRightComponent().setVisible(false);
+        splitPane.getRightComponent().setVisible(currentState.isVisibleInState(currentState));
     }
 
     public MutationControlPanel() {
 
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
-        scoresButton = DisplayUtils.createHoverLabel(LEFTWARD, this::expandScores);
-        consoleButton = DisplayUtils.createHoverLabel(LEFTWARD, this::expandConsole);
+        scoresButton = DisplayUtils.createHoverLabel(LEFTWARD, ()->setState(currentState.goScores()));
+        consoleButton = DisplayUtils.createHoverLabel(LEFTWARD, ()->setState(currentState.goConsole()));
 
         JPanel scoresPanel = new JPanel(new BorderLayout());
         scoresPanel.add(new JScrollPane(tree), BorderLayout.CENTER);
@@ -89,7 +97,7 @@ public class MutationControlPanel {
         splitPane.setLeftComponent(scoresPanel);
         splitPane.setRightComponent(createConsolePane(rightScrollPane));
 
-        setDefaultState();
+        setState(PaneState.SCORES);
     }
 
     public void setRightPaneContent(JComponent component) {
@@ -136,7 +144,7 @@ public class MutationControlPanel {
 
     private JPanel createPackagePanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Display"));
+        panel.setBorder(BorderFactory.createTitledBorder("Packages"));
         packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(),
                 Viewing.PackageChoice::getDisplayName,
                 type -> optionsChangeFn.accept(false));

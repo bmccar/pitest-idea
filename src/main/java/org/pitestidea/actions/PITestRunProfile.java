@@ -15,6 +15,9 @@ import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.ProjectRootManager;
+import com.intellij.openapi.ui.MessageDialogBuilder;
+import com.intellij.openapi.ui.Messages;
+import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.PathsList;
 import org.jetbrains.annotations.NotNull;
@@ -26,11 +29,13 @@ import org.pitestidea.render.CoverageGutterRenderer;
 import org.pitestidea.render.ICoverageRenderer;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
+import javax.swing.*;
 import java.io.File;
 import java.nio.file.FileSystems;
 
 class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private static final String PIT_MAIN_CLASS = "org.pitest.mutationtest.commandline.MutationCoverageReport";
+    private static final Icon PLUGIN_ICON = IconLoader.getIcon("/icons/pitest.svg", CoverageGutterRenderer.class);
 
     private final Project project;
     private final com.intellij.openapi.module.Module module;
@@ -136,6 +141,29 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                     public void processTerminated(@NotNull ProcessEvent event) {
                         String fn = IdeaDiscovery.getReportDir() + "/mutations.xml";
                         File file = new File(fn);
+                        int code = event.getExitCode();
+                        if (code==0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
+                            updateFrom(file);
+                        } else {
+                            react("PIT execution error", "View output", () -> {
+                                PitToolWindowFactory.showPitExecutionOutputOnly(project);
+                            });
+                        }
+                    }
+
+                    private void react(String msg, String yesText, Runnable yesFn) {
+                        ApplicationManager.getApplication().invokeLater(() -> {
+                            if (MessageDialogBuilder.okCancel("PIT Execution Completed", msg)
+                                    .yesText(yesText)
+                                    .noText("Ignore")
+                                    .icon(PLUGIN_ICON)
+                                    .ask(project)) {
+                                yesFn.run();
+                            }
+                        });
+                    }
+
+                    private void updateFrom(File file) {
                         PitExecutionRecorder recorder = new PitExecutionRecorder();
                         ICoverageRenderer renderer = new CoverageGutterRenderer();
                         Application app = ApplicationManager.getApplication();
@@ -143,7 +171,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                             app.runReadAction(() -> {
                                 MutationsFileReader.read(project, file, recorder);
                             });
-                            ApplicationManager.getApplication().invokeLater(() -> {
+                            react("PIT execution completed", "Show Report", () -> {
                                 renderer.render(project, recorder);
                                 PitToolWindowFactory.show(project, recorder, includesPackages);
                             });
