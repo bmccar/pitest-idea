@@ -1,8 +1,11 @@
 package org.pitestidea.model;
 
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.reader.IMutationsRecorder;
+import org.pitestidea.render.ICoverageRenderer;
+import org.pitestidea.render.IMutationsFileHandler;
 import org.pitestidea.toolwindow.Sorting;
 
 import java.util.*;
@@ -13,6 +16,7 @@ import java.util.*;
  */
 public class PitExecutionRecorder implements IMutationsRecorder {
     public static final String ROOT_PACKAGE_NAME = "Results";
+    private final Map<VirtualFile, FileGroup> fileCache = new HashMap<>();
     private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME,null);
     {
         rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
@@ -145,7 +149,11 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         }
         last.hasCodeFileChildren = true;
         final PkgGroup parent = last;
-        FileGroup dir = (FileGroup)last.children.computeIfAbsent(file.getName(), _k -> new FileGroup(file, pkg, parent));
+        FileGroup dir = (FileGroup)last.children.computeIfAbsent(file.getName(), _k -> {
+            FileGroup fileGroup = new FileGroup(file, pkg, parent);
+            fileCache.put(file, fileGroup);
+            return fileGroup;
+        });
         dir.fileMutations.add(lineNumber, new Mutation(impact, description));
         dir.accountFor(impact);
     }
@@ -167,5 +175,12 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     public void visit(FileVisitor visitor) {
         rootDirectory.walkInternal(visitor);
+    }
+
+    public void visit(Project project, IMutationsFileHandler visitor, VirtualFile file) {
+        FileGroup fileGroup = fileCache.get(file);
+        if (fileGroup!=null) {
+            visitor.fileOpened(project, file, fileGroup.fileMutations, fileGroup);
+        }
     }
 }

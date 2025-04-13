@@ -34,7 +34,7 @@
   <extensions defaultExtensionNs="com.intellij">
     <configurationType implementation="org.pitestidea.configuration.PitIJRunConfigurationType"/>
 
-    <toolWindow id="PITest tool window" secondary="true" icon="AllIcons.Toolwindows.WebToolWindow" anchor="bottom"
+    <toolWindow id="PITest" secondary="true" icon="/icons/pitest.svg" anchor="bottom"
                 factoryClass="org.pitestidea.toolwindow.PitToolWindowFactory"/>
   </extensions>
 
@@ -56,5 +56,11 @@
       -->
     </action>
   </actions>
+
+  <applicationListeners>
+    <listener
+            class="org.pitestidea.render.FileOpenCloseListener"
+            topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+  </applicationListeners>
 
 </idea-plugin>

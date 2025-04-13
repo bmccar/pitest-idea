@@ -10,6 +10,7 @@ import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 
 import com.intellij.openapi.editor.Document;
 import com.intellij.psi.PsiDocumentManager;
@@ -26,27 +27,29 @@ import java.util.List;
 /**
  * Visual display of mutation results.
  */
-public class CoverageGutterRenderer implements ICoverageRenderer {
+public class CoverageGutterRenderer implements IMutationsFileHandler {
 
     private static final Key<Boolean> HIGHLIGHTER_KEY = new Key<>("PitHighlighter");
     private static final TextAttributes ICON_TEXT_ATTRIBUTES = new TextAttributes();
     private static final int ICON_LAYER = HighlighterLayer.WARNING + 20;
+    private static final CoverageGutterRenderer INSTANCE = new CoverageGutterRenderer();
+
+    private CoverageGutterRenderer() {}
+
+    public static CoverageGutterRenderer getInstance() {return INSTANCE;}
 
     @Override
-    public void render(Project project, PitExecutionRecorder recorder) {
-        removeGutterIcons();
-        recorder.visit(new PitExecutionRecorder.FileVisitor() {
-            @Override
-            public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
-                fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations));
-            }
+    public void fileOpened(Project project, VirtualFile file, FileMutations fileMutations, IMutationScore score) {
+        //System.out.println("RENDERER.fileOpened " + file.getPath());
+        fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations));
+    }
 
-            @Override
-            public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
-                // No place to put icons for packages, but keep walking the tree
-                diver.apply(this);
-            }
-        });
+    @Override
+    public void fileClosed(Project project, VirtualFile file) {
+        //System.out.println("RENDERER.fileClosed " + file.getPath());
+        FileDocumentManager fileDocumentManager = FileDocumentManager.getInstance();
+        Document document = fileDocumentManager.getDocument(file);
+        removeDocumentIcons(document, project);
     }
 
     private static String locateIconFile(List<Mutation> records) {
@@ -104,7 +107,6 @@ public class CoverageGutterRenderer implements ICoverageRenderer {
         }
     }
 
-    // TODO: doesn't remove from non-open files
     public static void removeGutterIcons() {
         Project project = IdeaDiscovery.getActiveProject();
         for (Editor editor : EditorFactory.getInstance().getAllEditors()) {

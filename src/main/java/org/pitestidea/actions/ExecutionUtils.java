@@ -37,7 +37,7 @@ public class ExecutionUtils {
 
         try {
             ExecutionEnvironmentBuilder builder = ExecutionEnvironmentBuilder.create(project, executor, runProfile);
-            ProgramRunner.Callback x = new ProgramRunner.Callback() {
+            ProgramRunner.Callback callBack = new ProgramRunner.Callback() {
                 @Override
                 public void processStarted(RunContentDescriptor descriptor) {
                     descriptor.setActivateToolWindowWhenAdded(false);
@@ -45,7 +45,7 @@ public class ExecutionUtils {
                     PitToolWindowFactory.mutationControlPanel.setRightPaneContent(ec.getComponent());
                 }
             };
-            ExecutionEnvironment env = builder.build(x);
+            ExecutionEnvironment env = builder.build(callBack);
             env.getRunner().execute(env);
         } catch (ExecutionException ex) {
             ex.printStackTrace();  // TODO

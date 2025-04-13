@@ -72,7 +72,11 @@ public class IdeaDiscovery {
     }
 
     public static String getReportDir() {
-        String projectDir = IdeaDiscovery.getProjectDirectory();
+        return getReportDir(getActiveProject());
+    }
+
+    public static String getReportDir(Project project) {
+        String projectDir = project.getBasePath();
         return projectDir + "/target/report/pitestidea";
     }
 

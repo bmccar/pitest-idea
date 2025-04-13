@@ -57,7 +57,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
     }
 
     private static @Nullable ToolWindow getToolWindow(Project project) {
-        String id = "PITest tool window";
+        String id = "PITest";
         ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(id);
         return tw;
     }

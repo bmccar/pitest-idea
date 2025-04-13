@@ -16,17 +16,17 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.ui.MessageDialogBuilder;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.PathsList;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.PitExecutionRecorder;
+import org.pitestidea.model.PitRepo;
 import org.pitestidea.psi.IPackageCollector;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
-import org.pitestidea.render.ICoverageRenderer;
+import org.pitestidea.render.FileOpenCloseListener;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 import javax.swing.*;
@@ -45,7 +45,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     private boolean includesPackages = false;
 
-    public PITestRunProfile(Project project) {
+    PITestRunProfile(Project project) {
         this.project = project;
         this.module = ModuleManager.getInstance(project).getModules()[0];
     }
@@ -139,7 +139,7 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 handler.addProcessListener(new ProcessAdapter() {
                     @Override
                     public void processTerminated(@NotNull ProcessEvent event) {
-                        String fn = IdeaDiscovery.getReportDir() + "/mutations.xml";
+                        String fn = IdeaDiscovery.getReportDir(project) + "/mutations.xml";
                         File file = new File(fn);
                         int code = event.getExitCode();
                         if (code==0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
@@ -165,14 +165,14 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
                     private void updateFrom(File file) {
                         PitExecutionRecorder recorder = new PitExecutionRecorder();
-                        ICoverageRenderer renderer = new CoverageGutterRenderer();
+                        PitRepo.set(recorder);
                         Application app = ApplicationManager.getApplication();
                         app.executeOnPooledThread(() -> {
                             app.runReadAction(() -> {
                                 MutationsFileReader.read(project, file, recorder);
                             });
                             react("PIT execution completed", "Show Report", () -> {
-                                renderer.render(project, recorder);
+                                FileOpenCloseListener.replayOpenFiles(project);
                                 PitToolWindowFactory.show(project, recorder, includesPackages);
                             });
                         });
