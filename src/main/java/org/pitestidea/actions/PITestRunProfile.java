@@ -28,6 +28,7 @@ import org.pitestidea.psi.IPackageCollector;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
 import org.pitestidea.render.FileOpenCloseListener;
+import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 import javax.swing.*;
@@ -148,6 +149,9 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
             @Override
             protected @NotNull OSProcessHandler startProcess() throws ExecutionException {
+                // Avoiding leaving previous icons while executing, else users may be confused that they represent the current result
+                CoverageGutterRenderer.removeGutterIcons(project);
+
                 OSProcessHandler handler = super.startProcess();
                 handler.addProcessListener(new ProcessAdapter() {
                     @Override

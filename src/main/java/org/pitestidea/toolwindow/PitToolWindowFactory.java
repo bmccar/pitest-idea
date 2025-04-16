@@ -15,22 +15,39 @@ import org.pitestidea.model.FileMutations;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.model.PitExecutionRecorder;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware {
 
-    public static final MutationControlPanel mutationControlPanel = new MutationControlPanel();
+    public static final Map<String, MutationControlPanel> controlPanels = new HashMap<>();
+
+    public static MutationControlPanel getControlPanel(Project project) {
+        MutationControlPanel panel = controlPanels.get(project.getName());
+        if (panel == null) {
+            throw new IllegalStateException("Internal error: no control panel for project " + project.getName());
+        }
+        return panel;
+    }
+
+    public static MutationControlPanel getOrCreateControlPanel(Project project) {
+        return controlPanels.computeIfAbsent(project.getName(), k -> new MutationControlPanel());
+    }
 
     public static void show(Project project, PitExecutionRecorder recorder, boolean includesPackages) {
         Viewing.PackageChoice packageChoice = includesPackages
                 ? Viewing.PackageChoice.PACKAGE
                 : Viewing.PackageChoice.NONE;
+        MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
         mutationControlPanel.setPackageSelection(packageChoice);
         mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
         mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
-        mutationControlPanel.setOptionsChangeFn(resort -> reshow(project, recorder, resort));
-        reshow(project, recorder, false);
+        mutationControlPanel.setOptionsChangeFn(resort -> reshow(project, mutationControlPanel, recorder, resort));
+        reshow(project, mutationControlPanel, recorder, false);
     }
 
     public static void showPitExecutionOutputOnly(Project project) {
+        MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
         mutationControlPanel.clear();
         mutationControlPanel.setFullConsole();
         ToolWindow tw = getToolWindow(project);
@@ -39,7 +56,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
     }
 
-    private static void reshow(Project project, PitExecutionRecorder recorder, boolean resort) {
+    private static void reshow(Project project, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder, boolean resort) {
         System.out.println("reshowing " + resort);
         if (resort) {
             recorder.sort(mutationControlPanel.getSortSelection(),mutationControlPanel.getDirSelection());
@@ -49,9 +66,9 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         ToolWindow tw = getToolWindow(project);
         if (tw != null) {
             if (tw.isActive()) {
-                addAll(project, recorder);
+                addAll(project, mutationControlPanel, recorder);
             } else {
-                tw.activate(() -> addAll(project, recorder));
+                tw.activate(() -> addAll(project, mutationControlPanel, recorder));
             }
         }
     }
@@ -79,6 +96,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         @Override
         public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
             MutationControlPanel.Level nextLevel = level;
+            MutationControlPanel mutationControlPanel = getControlPanel(project);
             Viewing.PackageChoice pkgSelection = mutationControlPanel.getPackageSelection();
             boolean includeLine = diver.isTopLevel();
             includeLine |= pkgSelection == Viewing.PackageChoice.PACKAGE;
@@ -90,7 +108,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
     }
 
-    private static void addAll(Project project, PitExecutionRecorder recorder) {
+    private static void addAll(Project project, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder) {
         recorder.visit(new HierarchyPlanner(project, mutationControlPanel.getLevel()));
         mutationControlPanel.refresh();
     }
@@ -99,6 +117,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         System.out.println("Creating tool window content !!!");
 
+        MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
         ContentFactory contentFactory = ContentFactory.getInstance();
         Content content = contentFactory.createContent(mutationControlPanel.getContentPanel(), null, false);
         toolWindow.getContentManager().addContent(content);

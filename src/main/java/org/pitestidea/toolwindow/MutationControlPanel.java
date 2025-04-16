@@ -3,6 +3,7 @@ package org.pitestidea.toolwindow;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.components.JBScrollPane;
+import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.render.CoverageGutterRenderer;
 
@@ -130,7 +131,8 @@ public class MutationControlPanel {
 
     private static JButton createRemoveButton() {
         JButton button = new JButton("Remove PITest icons");
-        button.addActionListener(e -> CoverageGutterRenderer.removeGutterIcons());
+        Project project = IdeaDiscovery.getActiveProject();
+        button.addActionListener(e -> CoverageGutterRenderer.removeGutterIcons(project));
         return button;
     }
 

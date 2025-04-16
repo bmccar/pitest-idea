@@ -10,6 +10,7 @@ import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiJavaFile;
+import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 
@@ -33,7 +34,9 @@ public class MutationAction extends AnAction {
         String tn = IdeaDiscovery.getCurrentTestClassName();
 
         PITestRunProfile runProfile = new PITestRunProfile(project, module);
-        String qn = pkg + "." + cn;
+        String pfx = StringUtils.isEmpty(pkg) ? "" : pkg + ".";
+        String qn = pfx + cn;
+
         runProfile.acceptCodeClass(qn,null);
         runProfile.acceptTestClass(qn + "Test");
 

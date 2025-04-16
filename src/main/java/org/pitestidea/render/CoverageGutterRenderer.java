@@ -108,8 +108,7 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
         }
     }
 
-    public static void removeGutterIcons() {
-        Project project = IdeaDiscovery.getActiveProject();
+    public static void removeGutterIcons(Project project) {
         for (Editor editor : EditorFactory.getInstance().getAllEditors()) {
             Document doc2 = editor.getDocument();
             removeDocumentIcons(doc2, project);

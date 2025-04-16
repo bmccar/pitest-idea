@@ -56,7 +56,11 @@ public class MutationsFileReader {
 
             String pkg = filePath;
 
-            filePath = filePath.replace('.','/') + '/' + sourceFile;
+            String pfx = "";
+            if (filePath.indexOf('.') > 0) {
+                pfx = filePath.replace('.','/');
+            }
+            filePath = pfx + '/' + sourceFile;
 
             VirtualFile virtualFile = findFromPath(project,filePath);
             if (virtualFile == null) {
