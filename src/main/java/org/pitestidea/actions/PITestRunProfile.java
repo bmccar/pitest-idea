@@ -7,6 +7,7 @@ import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.runners.ExecutionEnvironment;
+import com.intellij.execution.util.JavaParametersUtil;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
@@ -45,9 +46,9 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     private boolean includesPackages = false;
 
-    PITestRunProfile(Project project) {
+    PITestRunProfile(Project project, Module module) {
         this.project = project;
-        this.module = ModuleManager.getInstance(project).getModules()[0];
+        this.module = module;
     }
 
     private static StringBuilder appending(StringBuilder sb) {
@@ -103,22 +104,32 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 JavaParameters javaParameters = new JavaParameters();
                 javaParameters.setJdk(ProjectRootManager.getInstance(project).getProjectSdk());
                 javaParameters.setUseClasspathJar(true);
-                String projectDir = IdeaDiscovery.getProjectDirectory();
+                String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
                 ParametersList params = javaParameters.getProgramParametersList();
-                params.add("--reportDir", IdeaDiscovery.getReportDir());
+                params.add("--reportDir", IdeaDiscovery.getReportDir(project));
                 params.add("--targetClasses", codeClasses.toString());
                 params.add("--targetTests", testClasses.toString());
                 params.add("--sourceDirs", projectDir + "/src/main/java");
                 params.add("--outputFormats", "XML,HTML");
                 params.add("--exportLineCoverage", "true");
+                //params.add("--verbose", "true");
                 javaParameters.setWorkingDirectory(project.getBasePath());
                 javaParameters.setMainClass(PIT_MAIN_CLASS);
                 PathsList classPath = javaParameters.getClassPath();
+
+                // Versions must match build.gradle.kts
                 String pitestVersion = "1.15.8";
+                String pitJunit5PluginVersion = "1.2.1";
+
+                // TODO Newer versions not working
+                // String pitestVersion = "1.18.2";
+                // String pitJunit5PluginVersion = "1.2.2";
+                // classPath.add(pluginJar("junit-platform-launcher-1.12.2"));
+
                 classPath.add(pluginJar("pitest-" + pitestVersion));
                 classPath.add(pluginJar("pitest-command-line-" + pitestVersion));
                 classPath.add(pluginJar("pitest-entry-" + pitestVersion));
-                classPath.add(pluginJar("pitest-junit5-plugin-1.2.1"));
+                classPath.add(pluginJar("pitest-junit5-plugin-"+pitJunit5PluginVersion));
                 classPath.add(pluginJar("junit-platform-launcher-1.9.2"));
                 classPath.add(pluginJar("commons-text-1.10.0"));
                 classPath.add(pluginJar("commons-lang3-3.12.0"));
@@ -126,9 +137,11 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 classPath.add(localBuildPath("classes"));
 
                 ApplicationManager.getApplication().runReadAction(() -> {
-                    //PsiJavaFile file = IdeaDiscovery.getCurrentJavaFile();
-                    //@Nullable com.intellij.openapi.module.Module m = ModuleUtil.findModuleForPsiElement(file);
-                    addDependencies(javaParameters);
+                    try {
+                        JavaParametersUtil.configureModule(PITestRunProfile.this.module, javaParameters, JavaParameters.JDK_AND_CLASSES_AND_TESTS, null);
+                    } catch (ExecutionException e) {
+                        throw new RuntimeException(e);
+                    }
                 });
                 return javaParameters;
             }
@@ -181,19 +194,6 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 return handler;
             }
         };
-    }
-
-    private void addDependencies(JavaParameters params) {
-        VirtualFile[] roots = ModuleRootManager.getInstance(module).orderEntries().classes().getRoots();
-        PathsList classPath = params.getClassPath();
-        for (VirtualFile vf : roots) {
-            String url = vf.getUrl();
-            String pfx = "jar://";
-            if (url.startsWith(pfx)) {
-                url = url.substring(pfx.length(), url.indexOf('!'));
-                classPath.add(url);
-            }
-        }
     }
 
     @Override

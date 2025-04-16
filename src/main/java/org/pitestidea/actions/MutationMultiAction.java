@@ -4,6 +4,7 @@ import com.intellij.ide.projectView.ProjectViewNode;
 import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
+import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
@@ -43,12 +44,25 @@ public class MutationMultiAction extends AnAction {
                 return null;
             }).filter(Objects::nonNull).toList();
 
-            PITestRunProfile runProfile = new PITestRunProfile(project);
+            Module module = getModuleForVirtualFile(project,virtualFiles.get(0));
+
+            PITestRunProfile runProfile = new PITestRunProfile(project, module);
             PackageWalker.read(project, virtualFiles, runProfile);
 
-            ExecutionUtils.execute(project, modules[0], runProfile);
+            ExecutionUtils.execute(project, module, runProfile);
         }
     }
+
+    public static Module getModuleForVirtualFile(Project project, VirtualFile file) {
+        if (project == null || file == null) {
+            return null; // Make sure project and file are not null
+        }
+
+        // Use ModuleUtilCore to find the module
+        return ModuleUtilCore.findModuleForFile(file, project);
+    }
+
+
 
     @Override
     public void update(@NotNull AnActionEvent e) {

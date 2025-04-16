@@ -6,7 +6,10 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
+import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.PsiJavaFile;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 
@@ -22,20 +25,19 @@ public class MutationAction extends AnAction {
         Project project = e.getProject();
         if (project == null) return;
 
-        Module[] modules = ModuleManager.getInstance(project).getModules();
-        if (modules.length == 0) return;
+        PsiJavaFile javaFile = IdeaDiscovery.getCurrentJavaFile();
+        Module module = ModuleUtilCore.findModuleForPsiElement(javaFile);
 
         String pkg = IdeaDiscovery.getCurrentPackageName();
         String cn = IdeaDiscovery.getCurrentClassName();
         String tn = IdeaDiscovery.getCurrentTestClassName();
 
-        PITestRunProfile runProfile = new PITestRunProfile(project);
+        PITestRunProfile runProfile = new PITestRunProfile(project, module);
         String qn = pkg + "." + cn;
         runProfile.acceptCodeClass(qn,null);
         runProfile.acceptTestClass(qn + "Test");
 
-        ExecutionUtils.execute(project, modules[0], runProfile);
+        ExecutionUtils.execute(project, module, runProfile);
     }
-
 }
 

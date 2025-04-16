@@ -83,6 +83,7 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
     }
 
     private static void addGutterIcon(Project project, VirtualFile file, int lineNumber, List<Mutation> records) {
+        lineNumber -= 1; // Adjust for IJ editor positioning
         PsiManager psiManager = PsiManager.getInstance(project);
         PsiFile psiFile = psiManager.findFile(file);
         String iconFile = locateIconFile(records);

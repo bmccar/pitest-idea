@@ -6,6 +6,7 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
+import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.WindowManager;
@@ -35,6 +36,21 @@ public class IdeaDiscovery {
 
     public static Module getModuleOf(PsiJavaFile file) {
         return ModuleUtil.findModuleForPsiElement(file);
+    }
+
+    public static String getAbsolutePathOfModule(Module module) {
+        if (module == null) {
+            return null; // Safety check
+        }
+
+        // Get the content roots of the module
+        VirtualFile[] contentRoots = ModuleRootManager.getInstance(module).getContentRoots();
+
+        if (contentRoots.length > 0) {
+            // Return the absolute file system path of the first content root
+            return contentRoots[0].getPath();
+        }
+        return null; // No content root available
     }
 
     public static PsiJavaFile getCurrentJavaFile() {
