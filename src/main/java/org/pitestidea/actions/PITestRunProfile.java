@@ -12,9 +12,7 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.module.Module;
-import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.util.IconLoader;
@@ -22,18 +20,19 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.PathsList;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
+import org.pitestidea.model.ExecutionRecord;
 import org.pitestidea.model.PitExecutionRecorder;
 import org.pitestidea.model.PitRepo;
 import org.pitestidea.psi.IPackageCollector;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
 import org.pitestidea.render.FileOpenCloseListener;
-import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 import javax.swing.*;
 import java.io.File;
 import java.nio.file.FileSystems;
+import java.util.List;
 
 class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private static final String PIT_MAIN_CLASS = "org.pitest.mutationtest.commandline.MutationCoverageReport";
@@ -42,14 +41,19 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private final Project project;
     private final com.intellij.openapi.module.Module module;
 
+    private final List<VirtualFile> virtualFiles;
+    private final ExecutionRecord executionRecord;
     private final StringBuilder codeClasses = new StringBuilder();
     private final StringBuilder testClasses = new StringBuilder();
 
     private boolean includesPackages = false;
 
-    PITestRunProfile(Project project, Module module) {
+    PITestRunProfile(Project project, Module module, List<VirtualFile> virtualFiles) {
         this.project = project;
         this.module = module;
+        this.virtualFiles = virtualFiles;
+        List<String> inputs = virtualFiles.stream().map(VirtualFile::getPath).toList();
+        this.executionRecord = new ExecutionRecord(inputs);
     }
 
     private static StringBuilder appending(StringBuilder sb) {
@@ -107,7 +111,8 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 javaParameters.setUseClasspathJar(true);
                 String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
                 ParametersList params = javaParameters.getProgramParametersList();
-                params.add("--reportDir", IdeaDiscovery.getReportDir(project));
+                String reportDir = getReportDir();
+                params.add("--reportDir", reportDir);
                 params.add("--targetClasses", codeClasses.toString());
                 params.add("--targetTests", testClasses.toString());
                 params.add("--sourceDirs", projectDir + "/src/main/java");
@@ -147,6 +152,10 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 return javaParameters;
             }
 
+            private String getReportDir() {
+                return PitRepo.getReportBaseDirectory(module) + '/' + executionRecord.getReportDirectoryName();
+            }
+
             @Override
             protected @NotNull OSProcessHandler startProcess() throws ExecutionException {
                 // Avoiding leaving previous icons while executing, else users may be confused that they represent the current result
@@ -156,11 +165,11 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 handler.addProcessListener(new ProcessAdapter() {
                     @Override
                     public void processTerminated(@NotNull ProcessEvent event) {
-                        String fn = IdeaDiscovery.getReportDir(project) + "/mutations.xml";
+                        String fn = getReportDir() + "/mutations.xml";
                         File file = new File(fn);
                         int code = event.getExitCode();
                         if (code==0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
-                            updateFrom(file);
+                            onSuccess(file);
                         } else {
                             react("PIT execution error", "View output", () -> {
                                 PitToolWindowFactory.showPitExecutionOutputOnly(project);
@@ -180,9 +189,10 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         });
                     }
 
-                    private void updateFrom(File file) {
-                        PitExecutionRecorder recorder = new PitExecutionRecorder();
-                        PitRepo.set(recorder);
+                    private void onSuccess(File file) {
+                        PitExecutionRecorder recorder = new PitExecutionRecorder(module, executionRecord);
+                        PitRepo.register(recorder);
+                        recorder.getExecutionRecord().writeToDirectory(getReportDir());
                         Application app = ApplicationManager.getApplication();
                         app.executeOnPooledThread(() -> {
                             app.runReadAction(() -> {

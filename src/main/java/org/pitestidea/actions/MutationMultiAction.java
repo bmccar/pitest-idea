@@ -46,7 +46,7 @@ public class MutationMultiAction extends AnAction {
 
             Module module = getModuleForVirtualFile(project,virtualFiles.get(0));
 
-            PITestRunProfile runProfile = new PITestRunProfile(project, module);
+            PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
             PackageWalker.read(project, virtualFiles, runProfile);
 
             ExecutionUtils.execute(project, module, runProfile);

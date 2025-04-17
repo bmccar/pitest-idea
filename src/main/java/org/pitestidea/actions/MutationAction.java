@@ -13,6 +13,10 @@ import com.intellij.psi.PsiJavaFile;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
+import org.pitestidea.psi.PackageWalker;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MutationAction extends AnAction {
 
@@ -33,7 +37,9 @@ public class MutationAction extends AnAction {
         String cn = IdeaDiscovery.getCurrentClassName();
         String tn = IdeaDiscovery.getCurrentTestClassName();
 
-        PITestRunProfile runProfile = new PITestRunProfile(project, module);
+        List<VirtualFile> virtualFiles = new ArrayList<>();
+        virtualFiles.add(IdeaDiscovery.getCurrentFile());
+        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
         String pfx = StringUtils.isEmpty(pkg) ? "" : pkg + ".";
         String qn = pfx + cn;
 

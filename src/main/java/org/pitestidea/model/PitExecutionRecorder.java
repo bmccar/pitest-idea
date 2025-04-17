@@ -1,5 +1,6 @@
 package org.pitestidea.model;
 
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.VisibleForTesting;
@@ -16,21 +17,41 @@ import java.util.*;
  */
 public class PitExecutionRecorder implements IMutationsRecorder {
     public static final String ROOT_PACKAGE_NAME = "Results";
+    private final Module module;
+    private final ExecutionRecord executionRecord;
     private final Map<VirtualFile, FileGroup> fileCache = new HashMap<>();
-    private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME,null);
+    private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME, null);
+
     {
         rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
     }
 
+    public PitExecutionRecorder(Module module, ExecutionRecord executionRecord) {
+        this.module = module;
+        this.executionRecord = executionRecord;
+    }
+
+    public Module getModule() {
+        return module;
+    }
+
+    public ExecutionRecord getExecutionRecord() {
+        return executionRecord;
+    }
+
     public interface PackageDiver {
         void apply(FileVisitor visitor);
+
         boolean hasCodeFileChildren();
+
         boolean isTopLevel();
     }
 
     private interface Directory extends IMutationScore {
         void walkInternal(FileVisitor visitor);
+
         void coalesce(boolean topLevel);
+
         void sort(Sorting.By by, Sorting.Direction dir);
     }
 
@@ -41,7 +62,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         private boolean hasCodeFileChildren = false;
 
         private PkgGroup(String name, PkgGroup parent) {
-            super(parent==null ? 0 : parent.children.size());
+            super(parent == null ? 0 : parent.children.size());
             this.name = name;
         }
 
@@ -58,7 +79,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
          */
         @Override
         public void coalesce(boolean topLevel) {
-            children.values().forEach(c->c.coalesce(false));
+            children.values().forEach(c -> c.coalesce(false));
             if (children.size() == 1 && !topLevel) {
                 String key = children.keySet().stream().findFirst().get();
                 Directory dir = children.get(key);
@@ -81,17 +102,17 @@ public class PitExecutionRecorder implements IMutationsRecorder {
                 case SCORE -> fn = Comparator.comparing(Directory::getScore);
                 default -> throw new IllegalArgumentException("Unsupported sorting by: " + by);
             }
-            if (dir== Sorting.Direction.DESC) {
+            if (dir == Sorting.Direction.DESC) {
                 fn = fn.reversed();
             }
             sortedChildren = children.values().stream().sorted(fn).toList();
-            children.values().forEach(c->c.sort(by, dir));
+            children.values().forEach(c -> c.sort(by, dir));
         }
 
         @Override
         public void apply(FileVisitor visitor) {
-            Collection<Directory> subs = sortedChildren==null ? children.values() : sortedChildren;
-            subs.forEach(g->g.walkInternal(visitor));
+            Collection<Directory> subs = sortedChildren == null ? children.values() : sortedChildren;
+            subs.forEach(g -> g.walkInternal(visitor));
         }
 
         @Override
@@ -101,12 +122,12 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
         @Override
         public boolean isTopLevel() {
-            return this==rootDirectory;
+            return this == rootDirectory;
         }
 
         @Override
         public String toString() {
-            return "Pkg:"+name+'/'+children.size();
+            return "Pkg:" + name + '/' + children.size();
         }
     }
 
@@ -141,15 +162,15 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     public void record(String pkg, VirtualFile file, MutationImpact impact, int lineNumber, String description) {
         rootDirectory.accountFor(impact);
         PkgGroup last = rootDirectory;
-        for (String segment: pkg.split("\\.")) {
+        for (String segment : pkg.split("\\.")) {
             final PkgGroup parent = last;
             Directory dir = last.children.computeIfAbsent(segment, _k -> new PkgGroup(segment, parent));
             dir.accountFor(impact);
-            last = (PkgGroup)dir;
+            last = (PkgGroup) dir;
         }
         last.hasCodeFileChildren = true;
         final PkgGroup parent = last;
-        FileGroup dir = (FileGroup)last.children.computeIfAbsent(file.getName(), _k -> {
+        FileGroup dir = (FileGroup) last.children.computeIfAbsent(file.getName(), _k -> {
             FileGroup fileGroup = new FileGroup(file, pkg, parent);
             fileCache.put(file, fileGroup);
             return fileGroup;
@@ -170,6 +191,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     public interface FileVisitor {
         void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score);
+
         void visit(String pkg, PackageDiver diver, IMutationScore score);
     }
 
@@ -179,7 +201,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     public void visit(Project project, IMutationsFileHandler visitor, VirtualFile file) {
         FileGroup fileGroup = fileCache.get(file);
-        if (fileGroup!=null) {
+        if (fileGroup != null) {
             visitor.fileOpened(project, file, fileGroup.fileMutations, fileGroup);
         }
     }

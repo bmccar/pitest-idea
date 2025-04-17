@@ -61,6 +61,15 @@ public class IdeaDiscovery {
         return (PsiJavaFile) psiFile;
     }
 
+    public static VirtualFile getCurrentFile() {
+        Project project = getActiveProject();
+        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+
+        return fileEditorManager.getSelectedFiles().length > 0
+                ? fileEditorManager.getSelectedFiles()[0]
+                : null;
+    }
+
     public static PsiClass getMainClassInFile(PsiJavaFile file) {
         PsiJavaFile psiJavaFile = getCurrentJavaFile();
         PsiClass[] classes = psiJavaFile.getClasses();

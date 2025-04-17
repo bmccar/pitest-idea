@@ -4,6 +4,8 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.components.JBScrollPane;
 import org.pitestidea.configuration.IdeaDiscovery;
+import org.pitestidea.model.CachedRun;
+import org.pitestidea.model.ExecutionRecord;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.render.CoverageGutterRenderer;
 
@@ -16,105 +18,48 @@ import java.util.function.Consumer;
  */
 public class MutationControlPanel {
 
-    private final JSplitPane splitPane;
-    private final JPanel rightPaneEmpty = new JPanel();
-    private final JScrollPane rightScrollPane;
+    private final StretchPane stretchPane = new StretchPane();
+    private final JScrollPane rightScrollPane = new JBScrollPane();
     private final ClickTree tree = new ClickTree();
     private Consumer<Boolean> optionsChangeFn = null;
     private EnumRadio<Viewing.PackageChoice> packageSelector;
     private EnumRadio<Sorting.By> sortSelector;
     private EnumRadio<Sorting.Direction> dirSelector;
-
-    enum PaneState {
-        SCORES(1, "<", null),  // Scores is maximized
-        MIXED(0.5, ">", "<"), // Split between scores and console
-        CONSOLE(0, null, ">"); // Console is maximized
-
-        private final double dividerLocation;
-        private final String inScores;
-        private final String inConsole;
-
-        PaneState(double dividerLocation, String inScores, String inConsole) {
-            this.dividerLocation = dividerLocation;
-            this.inScores = inScores;
-            this.inConsole = inConsole;
-        }
-
-        String getScoresText() {
-            return inScores;
-        }
-
-        String getConsoleText() {
-            return inConsole;
-        }
-
-        PaneState goScores() {
-            return this==SCORES ? MIXED : /* Already MIXED */ SCORES;
-        }
-
-        PaneState goConsole() {
-            return this==CONSOLE ? MIXED : /* Already MIXED */ CONSOLE;
-        }
-
-        public boolean isVisibleInState(PaneState state) {
-            return this==MIXED || this == state;
-        }
-    }
-
-    private final JLabel scoresButton;
-    private final JLabel consoleButton;
-    private static PaneState currentState = PaneState.SCORES;
-
-    // TODO
-    private static final String LEFTWARD = "<";
-    private static final String RIGHTWARD = ">";
-
-    public void setFullConsole() {
-        setState(PaneState.CONSOLE);
-    }
-
-    void setState(PaneState state) {
-        currentState = state;
-        scoresButton.setText(currentState.getScoresText());
-        consoleButton.setText(currentState.getConsoleText());
-        splitPane.setDividerLocation(currentState.dividerLocation);
-        splitPane.setResizeWeight(currentState.dividerLocation);
-        splitPane.getRightComponent().setVisible(currentState.isVisibleInState(currentState));
-    }
+    private final HistoryPane historyPane = new HistoryPane();
 
     public MutationControlPanel() {
+        stretchPane.setLeft(createScoresPanel());
+        stretchPane.setRight(createConsolePane());
 
-        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-
-        scoresButton = DisplayUtils.createHoverLabel(LEFTWARD, ()->setState(currentState.goScores()));
-        consoleButton = DisplayUtils.createHoverLabel(LEFTWARD, ()->setState(currentState.goConsole()));
-
-        JPanel scoresPanel = new JPanel(new BorderLayout());
-        scoresPanel.add(new JScrollPane(tree), BorderLayout.CENTER);
-        scoresPanel.add(createScoresHeaderPanel(), BorderLayout.NORTH);
-
-        rightScrollPane = new JBScrollPane();
-
-        splitPane.setLeftComponent(scoresPanel);
-        splitPane.setRightComponent(createConsolePane(rightScrollPane));
-
-        setState(PaneState.SCORES);
+        stretchPane.setState(StretchPane.PaneState.SCORES);
     }
 
-    public void setRightPaneContent(JComponent component) {
-        rightScrollPane.setViewportView(component);
-    }
-
-    private JPanel createConsolePane(JScrollPane scrollPane) {
+    private JPanel createConsolePane() {
         JPanel fullPanel = new JPanel(new BorderLayout());
 
         JPanel header = new JPanel(new BorderLayout());
-        header.add(consoleButton, BorderLayout.WEST);
+        header.add(stretchPane.getConsoleButton(), BorderLayout.WEST);
         fullPanel.add(header, BorderLayout.NORTH);
-
-        fullPanel.add(new JScrollPane(scrollPane), BorderLayout.CENTER);
+        fullPanel.add(rightScrollPane, BorderLayout.CENTER);
 
         return fullPanel;
+    }
+
+    private JComponent createScoresPanel() {
+        JSplitPane scoresPanel = new JSplitPane();
+
+        JComponent historyPanel = historyPane.getComponent();
+        scoresPanel.setLeftComponent(historyPanel);
+
+        JPanel treePanel = new JPanel(new BorderLayout());
+        treePanel.add(createScoresHeaderPanel(), BorderLayout.NORTH);
+        treePanel.add(new JScrollPane(tree), BorderLayout.CENTER);
+        scoresPanel.setRightComponent(treePanel);
+
+        double split = 0.5;
+        scoresPanel.setDividerLocation(split);
+        scoresPanel.setResizeWeight(split);
+        return scoresPanel;
     }
 
     private JPanel createScoresHeaderPanel() {
@@ -122,7 +67,7 @@ public class MutationControlPanel {
 
         JPanel actionButtonPanel = new JPanel(new FlowLayout());
         actionButtonPanel.add(createRemoveButton());
-        actionButtonPanel.add(scoresButton, BorderLayout.EAST);
+        actionButtonPanel.add(stretchPane.getScoresButton(), BorderLayout.EAST);
 
         header.add(createOptionsPanel(), BorderLayout.WEST);
         header.add(actionButtonPanel, BorderLayout.EAST);
@@ -206,10 +151,10 @@ public class MutationControlPanel {
     }
 
     public JComponent getContentPanel() {
-        return splitPane;
+        return stretchPane.getComponent();
     }
 
-    public void clear() {
+    public void clearScores() {
         tree.clearExistingRows();
     }
 
@@ -219,6 +164,32 @@ public class MutationControlPanel {
 
     public Level getLevel() {
         return new Level(tree.getRootTreeLevel());
+    }
+
+    /**
+     * Sets the body of the right panel. This is provided because the console component is
+     * generated externally on PIT execution.
+     *
+     * @param component to set as right component (inside an already existing scroll pane)
+     */
+    public void setRightPaneContent(JComponent component) {
+        rightScrollPane.setViewportView(component);
+    }
+
+    public void setFullConsole() {
+        stretchPane.setFullConsole();
+    }
+
+    public void clearHistory() {
+        historyPane.clear();
+    }
+
+    public void addHistory(CachedRun cachedRun) {
+        ExecutionRecord record = cachedRun.getExecutionRecord();
+        System.out.println("Adding history for " + record.getReportDirectoryName());
+        JPanel row = historyPane.addRow();
+        JLabel label = new JLabel(record.getReportName());
+        row.add(label);
     }
 
     public static class Level {

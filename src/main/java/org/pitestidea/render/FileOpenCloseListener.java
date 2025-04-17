@@ -8,6 +8,7 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
 import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectLocator;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.pitestidea.model.PitExecutionRecorder;
 import org.pitestidea.model.PitRepo;
@@ -37,10 +38,13 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
     }
 
     private static void fileOpenedInternal(FileEditorManager source, VirtualFile file) {
-        PitExecutionRecorder xr = PitRepo.get();
-        CoverageGutterRenderer renderer = CoverageGutterRenderer.getInstance();
-        if (xr != null) {
-            xr.visit(source.getProject(), renderer, file);
+        Project project = ProjectLocator.getInstance().guessProjectForFile(file);
+        if (project != null) {
+            PitExecutionRecorder xr = PitRepo.get(project);
+            if (xr != null) {
+                CoverageGutterRenderer renderer = CoverageGutterRenderer.getInstance();
+                xr.visit(source.getProject(), renderer, file);
+            }
         }
     }
 

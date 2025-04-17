@@ -21,7 +21,7 @@ class PitExecutionRecorderTest {
     }
 
     private static class Tracker implements PitExecutionRecorder.FileVisitor {
-        private final PitExecutionRecorder recorder = new PitExecutionRecorder();
+        private final PitExecutionRecorder recorder = new PitExecutionRecorder(null, null);
         private final List<FileTrack> expectedTracks = new ArrayList<>();
         private final Set<String> expectedPackages = new HashSet<>();
         private final Map<String, VirtualFile> files = new HashMap<>();
