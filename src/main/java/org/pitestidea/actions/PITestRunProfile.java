@@ -20,9 +20,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.PathsList;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
-import org.pitestidea.model.ExecutionRecord;
-import org.pitestidea.model.PitExecutionRecorder;
-import org.pitestidea.model.PitRepo;
+import org.pitestidea.model.*;
 import org.pitestidea.psi.IPackageCollector;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
@@ -33,27 +31,28 @@ import javax.swing.*;
 import java.io.File;
 import java.nio.file.FileSystems;
 import java.util.List;
+import java.util.function.Consumer;
 
-class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
+public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private static final String PIT_MAIN_CLASS = "org.pitest.mutationtest.commandline.MutationCoverageReport";
     private static final Icon PLUGIN_ICON = IconLoader.getIcon("/icons/pitest.svg", CoverageGutterRenderer.class);
 
     private final Project project;
     private final com.intellij.openapi.module.Module module;
 
-    private final List<VirtualFile> virtualFiles;
-    private final ExecutionRecord executionRecord;
+    private final CachedRun cachedRun;
     private final StringBuilder codeClasses = new StringBuilder();
     private final StringBuilder testClasses = new StringBuilder();
 
     private boolean includesPackages = false;
+    private final Consumer<Boolean> onComplete;
 
-    PITestRunProfile(Project project, Module module, List<VirtualFile> virtualFiles) {
+    PITestRunProfile(Project project, Module module, List<VirtualFile> virtualFiles, Consumer<Boolean> onComplete) {
         this.project = project;
         this.module = module;
-        this.virtualFiles = virtualFiles;
         List<String> inputs = virtualFiles.stream().map(VirtualFile::getPath).toList();
-        this.executionRecord = new ExecutionRecord(inputs);
+        this.cachedRun = new CachedRun(new PitExecutionRecorder(module,new ExecutionRecord(inputs)), RunState.COMPLETED);
+        this.onComplete = onComplete;
     }
 
     private static StringBuilder appending(StringBuilder sb) {
@@ -153,7 +152,8 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
             }
 
             private String getReportDir() {
-                return PitRepo.getReportBaseDirectory(module) + '/' + executionRecord.getReportDirectoryName();
+                PitExecutionRecorder recorder = cachedRun.getRecorder();
+                return PitRepo.getReportBaseDirectory(module) + '/' + recorder.getExecutionRecord().getReportDirectoryName();
             }
 
             @Override
@@ -168,12 +168,20 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         String fn = getReportDir() + "/mutations.xml";
                         File file = new File(fn);
                         int code = event.getExitCode();
+                        boolean status;
                         if (code==0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
                             onSuccess(file);
+                            status = true;
                         } else {
                             react("PIT execution error", "View output", () -> {
                                 PitToolWindowFactory.showPitExecutionOutputOnly(project);
                             });
+                            status = false;
+                        }
+                        cachedRun.setRunState(status ? RunState.COMPLETED : RunState.FAILED);
+                        PitToolWindowFactory.getControlPanel(project).resetHistory(project);
+                        if (onComplete != null) {
+                            onComplete.accept(status);
                         }
                     }
 
@@ -190,14 +198,11 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                     }
 
                     private void onSuccess(File file) {
-                        PitExecutionRecorder recorder = new PitExecutionRecorder(module, executionRecord);
-                        PitRepo.register(recorder);
+                        PitExecutionRecorder recorder = cachedRun.getRecorder();
                         recorder.getExecutionRecord().writeToDirectory(getReportDir());
                         Application app = ApplicationManager.getApplication();
                         app.executeOnPooledThread(() -> {
-                            app.runReadAction(() -> {
-                                MutationsFileReader.read(project, file, recorder);
-                            });
+                            app.runReadAction(() -> MutationsFileReader.read(project, file, recorder));
                             react("PIT execution completed", "Show Report", () -> {
                                 FileOpenCloseListener.replayOpenFiles(project);
                                 PitToolWindowFactory.show(project, recorder, includesPackages);
@@ -208,6 +213,10 @@ class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 return handler;
             }
         };
+    }
+
+    public CachedRun getCachedRun() {
+        return cachedRun;
     }
 
     @Override

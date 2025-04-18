@@ -5,7 +5,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.reader.IMutationsRecorder;
-import org.pitestidea.render.ICoverageRenderer;
 import org.pitestidea.render.IMutationsFileHandler;
 import org.pitestidea.toolwindow.Sorting;
 

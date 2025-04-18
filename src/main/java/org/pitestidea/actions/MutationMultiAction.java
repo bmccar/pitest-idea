@@ -7,12 +7,8 @@ import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowManager;
-import com.intellij.psi.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.pitestidea.psi.PackageWalker;
 
 import java.util.Arrays;
 import java.util.List;
@@ -45,11 +41,7 @@ public class MutationMultiAction extends AnAction {
             }).filter(Objects::nonNull).toList();
 
             Module module = getModuleForVirtualFile(project,virtualFiles.get(0));
-
-            PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
-            PackageWalker.read(project, virtualFiles, runProfile);
-
-            ExecutionUtils.execute(project, module, runProfile);
+            ExecutionUtils.execute(module, virtualFiles, null);
         }
     }
 

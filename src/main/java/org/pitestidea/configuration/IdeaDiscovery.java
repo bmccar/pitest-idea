@@ -24,11 +24,17 @@ public class IdeaDiscovery {
     public static Project getActiveProject() {
         Project[] openProjects = ProjectManager.getInstance().getOpenProjects();
         Project activeProject = null;
-        for (Project project : openProjects) {
-            Window window = WindowManager.getInstance().getFrame(project);
-            if (window != null && window.isActive()) {
-                activeProject = project;
-                break;
+        if (openProjects.length == 1) {
+            // This is not just for efficiency, but at times the single window is not active,
+            // maybe only during debugging?
+            activeProject = openProjects[0];
+        } else {
+            for (Project project : openProjects) {
+                Window window = WindowManager.getInstance().getFrame(project);
+                if (window != null && window.isActive()) {
+                    activeProject = project;
+                    break;
+                }
             }
         }
         return activeProject;

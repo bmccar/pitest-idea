@@ -1,20 +1,23 @@
 package org.pitestidea.toolwindow;
 
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
+import org.pitestidea.actions.ExecutionUtils;
 import org.pitestidea.configuration.IdeaDiscovery;
-import org.pitestidea.model.CachedRun;
-import org.pitestidea.model.ExecutionRecord;
-import org.pitestidea.model.IMutationScore;
+import org.pitestidea.model.*;
 import org.pitestidea.render.CoverageGutterRenderer;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Results tool window.
+ * Results tool window. Consists of several panes with different levels of interactivity.
  */
 public class MutationControlPanel {
 
@@ -25,7 +28,9 @@ public class MutationControlPanel {
     private EnumRadio<Viewing.PackageChoice> packageSelector;
     private EnumRadio<Sorting.By> sortSelector;
     private EnumRadio<Sorting.Direction> dirSelector;
-    private final HistoryPane historyPane = new HistoryPane();
+    private final VerticalList historyList = new VerticalList();
+    JBColor runButtonColor = new JBColor(new Color(67, 117, 68), new Color(71, 145, 72));
+    JBColor cancelButtonColor = new JBColor(new Color(161, 45, 55), new Color(204, 102, 102));
 
     public MutationControlPanel() {
         stretchPane.setLeft(createScoresPanel());
@@ -48,7 +53,7 @@ public class MutationControlPanel {
     private JComponent createScoresPanel() {
         JSplitPane scoresPanel = new JSplitPane();
 
-        JComponent historyPanel = historyPane.getComponent();
+        JComponent historyPanel = historyList.getComponent();
         scoresPanel.setLeftComponent(historyPanel);
 
         JPanel treePanel = new JPanel(new BorderLayout());
@@ -181,15 +186,48 @@ public class MutationControlPanel {
     }
 
     public void clearHistory() {
-        historyPane.clear();
+        historyList.clear();
     }
 
+    public void resetHistory(Project project) {
+        // TODO reuse existing row data rather than starting from scratch each time
+        clearHistory();
+        PitRepo.apply(project, this::addHistory);
+        historyList.getComponent().updateUI();
+    }
+
+    /**
+     * Adds a row in the history pane representing the state of the supplied CachedRun.
+     * Does not check for duplicates.
+     *
+     * @param cachedRun to read from
+     */
     public void addHistory(CachedRun cachedRun) {
         ExecutionRecord record = cachedRun.getExecutionRecord();
-        System.out.println("Adding history for " + record.getReportDirectoryName());
-        JPanel row = historyPane.addRow();
+        JPanel row = historyList.addRow();
         JLabel label = new JLabel(record.getReportName());
         row.add(label);
+        TransitionButton button = new TransitionButton();
+        RunState runState = cachedRun.getRunState();
+        boolean readyToCancel = runState == RunState.RUNNING;
+        button.addState("Run", runButtonColor, !readyToCancel, () -> run(cachedRun, button));
+        button.addState("Cancel", cancelButtonColor, readyToCancel, () -> cancel(cachedRun, button));
+        row.add(button);
+    }
+
+    private boolean run(CachedRun cachedRun, TransitionButton button) {
+        Module module = cachedRun.ensureLoaded().getModule();
+        ExecutionRecord record = cachedRun.getExecutionRecord();
+        List<VirtualFile> vfs = record.getInputFiles().stream().map(file ->
+                LocalFileSystem.getInstance().findFileByPath(file)).toList();
+        ExecutionUtils.execute(module, vfs, (_success) -> {
+            button.transition();
+        });
+        return true;
+    }
+
+    private boolean cancel(CachedRun cachedRun, TransitionButton button) {
+        return true; // TODO
     }
 
     public static class Level {

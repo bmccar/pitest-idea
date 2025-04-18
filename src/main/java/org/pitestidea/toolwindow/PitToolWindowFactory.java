@@ -44,14 +44,18 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
         mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
         mutationControlPanel.setOptionsChangeFn(resort -> reshow(project, mutationControlPanel, recorder, resort));
-        resetHistory(project, mutationControlPanel);
+        //mutationControlPanel.resetHistory(project);
+        //resetHistory(project, mutationControlPanel);
         reshow(project, mutationControlPanel, recorder, false);
     }
 
+    /*
     private static void resetHistory(Project project, MutationControlPanel mutationControlPanel) {
         mutationControlPanel.clearHistory();
-        PitRepo.apply(project, recorder -> mutationControlPanel.addHistory(recorder));
+        PitRepo.apply(project, recorder -> mutationControlPanel.addHistory(recorder, true));
+        mutationControlPanel.syncHistory();
     }
+     */
 
     public static void showPitExecutionOutputOnly(Project project) {
         MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);

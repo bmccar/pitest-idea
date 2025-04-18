@@ -1,5 +1,6 @@
 package org.pitestidea.model;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -16,10 +17,9 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
 /**
- * Records information for a specific set of inputs such that can be written to
- * and read from an XML file.
+ * Records summary information for a specific for a run of PIT. Can be read/written to an XML file.
  */
-public class ExecutionRecord {
+public class ExecutionRecord implements Comparable<ExecutionRecord> {
     @VisibleForTesting
     static final int MAX_REPORT_NAME_LENGTH = 24;
     static final int MAX_PREFIX_LENGTH = 3;
@@ -144,5 +144,39 @@ public class ExecutionRecord {
 
     public String getReportDirectoryName() {
         return reportDirectoryName;
+    }
+
+    @Override
+    public String toString() {
+        return "xr(" + reportName + ")@" + hashCode();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ExecutionRecord that = (ExecutionRecord) o;
+        return Objects.equals(inputFiles, that.inputFiles);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(inputFiles);
+    }
+
+    @Override
+    public int compareTo(@NotNull ExecutionRecord that) {
+        int sz = this.inputFiles.size();
+        int sizeComparison = Integer.compare(sz, that.inputFiles.size());
+        if (sizeComparison != 0) {
+            return sizeComparison;
+        }
+        for (int i = 0; i < sz; i++) {
+            int elementComparison = this.inputFiles.get(i).compareTo(that.inputFiles.get(i));
+            if (elementComparison != 0) {
+                return elementComparison;
+            }
+        }
+        return 0;
     }
 }

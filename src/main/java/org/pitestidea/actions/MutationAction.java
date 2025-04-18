@@ -1,11 +1,9 @@
 package org.pitestidea.actions;
 
-//import com.intellij.execution.JavaCommandLineState;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.module.Module;
-import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -13,7 +11,6 @@ import com.intellij.psi.PsiJavaFile;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
-import org.pitestidea.psi.PackageWalker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +36,7 @@ public class MutationAction extends AnAction {
 
         List<VirtualFile> virtualFiles = new ArrayList<>();
         virtualFiles.add(IdeaDiscovery.getCurrentFile());
-        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
+        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles, null);
         String pfx = StringUtils.isEmpty(pkg) ? "" : pkg + ".";
         String qn = pfx + cn;
 
