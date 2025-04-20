@@ -1,4 +1,3 @@
-// Copyright 2000-2023 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.pitestidea.toolwindow;
 
 import com.intellij.openapi.project.DumbAware;
@@ -14,7 +13,6 @@ import org.jetbrains.annotations.Nullable;
 import org.pitestidea.model.FileMutations;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.model.PitExecutionRecorder;
-import org.pitestidea.model.PitRepo;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,6 +33,14 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         return controlPanels.computeIfAbsent(project.getName(), k -> new MutationControlPanel());
     }
 
+    /**
+     * Updates the scores and execution history in the toolwindow. The scores content is set to reflect the
+     * values in the provided recorder.
+     *
+     * @param project project
+     * @param recorder to update scores from
+     * @param includesPackages true if there was at least one package in the inputs selected by the user
+     */
     public static void show(Project project, PitExecutionRecorder recorder, boolean includesPackages) {
         Viewing.PackageChoice packageChoice = includesPackages
                 ? Viewing.PackageChoice.PACKAGE
@@ -44,18 +50,9 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
         mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
         mutationControlPanel.setOptionsChangeFn(resort -> reshow(project, mutationControlPanel, recorder, resort));
-        //mutationControlPanel.resetHistory(project);
-        //resetHistory(project, mutationControlPanel);
+        mutationControlPanel.resetHistory(project);
         reshow(project, mutationControlPanel, recorder, false);
     }
-
-    /*
-    private static void resetHistory(Project project, MutationControlPanel mutationControlPanel) {
-        mutationControlPanel.clearHistory();
-        PitRepo.apply(project, recorder -> mutationControlPanel.addHistory(recorder, true));
-        mutationControlPanel.syncHistory();
-    }
-     */
 
     public static void showPitExecutionOutputOnly(Project project) {
         MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
@@ -119,7 +116,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
     }
 
-    private static void addAll(Project project, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder) {
+    public static void addAll(Project project, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder) {
         recorder.visit(new HierarchyPlanner(project, mutationControlPanel.getLevel()));
         mutationControlPanel.refresh();
     }

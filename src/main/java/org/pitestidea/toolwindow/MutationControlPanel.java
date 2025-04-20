@@ -96,7 +96,7 @@ public class MutationControlPanel {
 
     private JPanel createPackagePanel() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Packages"));
+        panel.setBorder(BorderFactory.createTitledBorder("Filter"));
         packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(),
                 Viewing.PackageChoice::getDisplayName,
                 type -> optionsChangeFn.accept(false));
@@ -161,6 +161,7 @@ public class MutationControlPanel {
 
     public void clearScores() {
         tree.clearExistingRows();
+        tree.refresh();
     }
 
     public void refresh() {
@@ -202,11 +203,12 @@ public class MutationControlPanel {
      *
      * @param cachedRun to read from
      */
-    public void addHistory(CachedRun cachedRun) {
+    public void addHistory(CachedRun cachedRun, boolean highlightRow) {
         ExecutionRecord record = cachedRun.getExecutionRecord();
-        JPanel row = historyList.addRow();
-        JLabel label = new JLabel(record.getReportName());
-        row.add(label);
+        highlightRow = cachedRun.isCurrent();
+        JPanel row = historyList.addRow(record.getReportName(),highlightRow, ()->{
+            cachedRun.activate();
+        });
         TransitionButton button = new TransitionButton();
         RunState runState = cachedRun.getRunState();
         boolean readyToCancel = runState == RunState.RUNNING;
@@ -228,6 +230,10 @@ public class MutationControlPanel {
 
     private boolean cancel(CachedRun cachedRun, TransitionButton button) {
         return true; // TODO
+    }
+
+    public void markScoresInvalid() {
+        tree.resetToRootMessage("Select a run from the history list to the left.");
     }
 
     public static class Level {

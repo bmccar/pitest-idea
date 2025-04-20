@@ -33,8 +33,9 @@ class PitRepoTest {
         } catch (InterruptedException e) {
         }
         PitExecutionRecorder recorder =  new PitExecutionRecorder(commonModule, new ExecutionRecord(ab));
-        CachedRun cachedRun = new CachedRun(recorder, RunState.COMPLETED);
-        PitRepo.register(cachedRun);
+        //CachedRun cachedRun = new CachedRun(recorder, RunState.COMPLETED);
+        //PitRepo.register(cachedRun);
+        PitRepo.register(commonModule, Arrays.asList(inputs), RunState.COMPLETED);
         return recorder;
     }
 
@@ -42,7 +43,7 @@ class PitRepoTest {
         List<ExecutionRecord> gotRecords = new ArrayList<>();
         List<CachedRun> cachedRuns = new ArrayList<>();
 
-        PitRepo.apply(module.getProject(), c -> gotRecords.add(c.getExecutionRecord()));
+        PitRepo.apply(module.getProject(), (c,_h) -> gotRecords.add(c.getExecutionRecord()));
 
         List<ExecutionRecord> exp = Arrays.stream(recorders).map(PitExecutionRecorder::getExecutionRecord).toList();
 

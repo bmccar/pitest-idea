@@ -11,9 +11,18 @@ import java.io.File;
 import java.util.*;
 
 public class PitRepo {
-    private static class ProjectRunRecords {
+    public static class ProjectRunRecords {
         private final LinkedList<CachedRun> runHistory = new LinkedList<>();
         private CachedRun current;
+        void setAsCurrent(CachedRun run) {
+            this.current = run;
+        }
+        boolean isCurrent(CachedRun run) {
+            return this.current == run;
+        }
+        int getSize() {
+            return runHistory.size();
+        }
     }
     private static final Map<String, ProjectRunRecords> projectMap = new HashMap<>();
 
@@ -34,22 +43,28 @@ public class PitRepo {
         }
     }
 
-    public static void register(CachedRun cachedRun) {
-        PitExecutionRecorder recorder = cachedRun.getRecorder();
+    public static CachedRun register(Module module, List<String> inputs, RunState state) {
+        PitExecutionRecorder recorder = new PitExecutionRecorder(module,new ExecutionRecord(inputs));
         Project project = recorder.getModule().getProject();
         ProjectRunRecords runRecords = projectMap.computeIfAbsent(project.getName(), _x -> new ProjectRunRecords());
+        CachedRun cachedRun = new CachedRun(runRecords, new PitExecutionRecorder(module,new ExecutionRecord(inputs)), RunState.COMPLETED);
+        //register(cachedRun);
+        if (cachedRun.equals(runRecords.current)) {
+            // While swapping in a new CachedRun, ensure the replacement is current if the original was
+            runRecords.setAsCurrent(cachedRun);
+        }
         runRecords.runHistory.remove(cachedRun);
         runRecords.runHistory.addFirst(cachedRun);
-        runRecords.current = cachedRun;
+        return cachedRun;
     }
 
     public interface IHistory {
-        void visit(CachedRun run);
+        void visit(CachedRun run, boolean isCurrent);
     }
 
     public static void apply(Project project, IHistory history) {
         ProjectRunRecords runs = projectMap.get(project.getName());
-        runs.runHistory.forEach(history::visit);
+        runs.runHistory.forEach(r->history.visit(r,r==runs.current));
     }
 
     public static PitExecutionRecorder get(Project project) {

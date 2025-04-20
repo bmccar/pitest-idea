@@ -25,7 +25,8 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
     public ClickTree() {
         super(new GridLayout(1, 0));
 
-        root = new DefaultMutableTreeNode("Default_root"); // value overridden on 1st child add
+        // Default message will be overridden on 1st child add
+        root = new DefaultMutableTreeNode("No PIT runs yet. Please select one from a drop-down menu or the history list on the left if any are there.");
         rootTreeLevel = new TreeLevel(root) {
             @Override
             TreeLevel addPackageRow(String pkg) {
@@ -59,9 +60,13 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
 
         Object nodeInfo = node.getUserObject();
         if (nodeInfo instanceof ClickableNode clickableNode) {
-            //System.out.println("Clicked on: " + clickableNode.getClass().getSimpleName() + ", leaf=" + node.isLeaf());
             clickableNode.onClick();
         }
+    }
+
+    public void resetToRootMessage(String s) {
+        root.setUserObject(s);
+        refresh();
     }
 
     abstract static class ClickableNode {
@@ -81,7 +86,6 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
 
         @Override
         public void onClick() {
-            System.out.println("Open " + file.getCanonicalPath());
             FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
             fileEditorManager.openFile(file, true); // true to focus the file
         }
@@ -123,6 +127,7 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
 
     void clearExistingRows() {
         root.removeAllChildren();
+        root.setUserObject("Waiting for PIT to finish...");
     }
 
     TreeLevel getRootTreeLevel() {

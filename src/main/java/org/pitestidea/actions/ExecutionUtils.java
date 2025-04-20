@@ -40,9 +40,11 @@ public class ExecutionUtils {
         MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
         CachedRun cachedRun = runProfile.getCachedRun();
         cachedRun.setRunState(RunState.RUNNING);
-        PitRepo.register(cachedRun);
-        mutationControlPanel.addHistory(cachedRun);
+        mutationControlPanel.addHistory(cachedRun, false);
         mutationControlPanel.resetHistory(project);
+        if (cachedRun.isCurrent()) {
+            mutationControlPanel.clearScores();
+        }
 
         CompilerManager compilerManager = CompilerManager.getInstance(project);
         compilerManager.make(module, (aborted, errors, warnings, compileContext) -> {
