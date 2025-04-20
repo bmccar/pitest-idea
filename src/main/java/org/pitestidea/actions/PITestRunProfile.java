@@ -3,10 +3,13 @@ package org.pitestidea.actions;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.Executor;
 import com.intellij.execution.configurations.*;
+import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.runners.ExecutionEnvironment;
+import com.intellij.execution.ui.ConsoleView;
+import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.execution.util.JavaParametersUtil;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
@@ -43,16 +46,19 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private final StringBuilder codeClasses = new StringBuilder();
     private final StringBuilder testClasses = new StringBuilder();
 
-    //private boolean includesPackages = false;
     private final Consumer<Boolean> onComplete;
+    private ConsoleView consoleView;
 
     PITestRunProfile(Project project, Module module, List<VirtualFile> virtualFiles, Consumer<Boolean> onComplete) {
         this.project = project;
         this.module = module;
         List<String> inputs = virtualFiles.stream().map(VirtualFile::getPath).toList();
-        //this.cachedRun = new CachedRun(new PitExecutionRecorder(module,new ExecutionRecord(inputs)), RunState.COMPLETED);
         this.cachedRun = PitRepo.register(module,inputs, RunState.COMPLETED);
         this.onComplete = onComplete;
+    }
+
+    void setOutputConsole(ConsoleView consoleView) {
+        this.consoleView = consoleView;
     }
 
     private static StringBuilder appending(StringBuilder sb) {
@@ -96,6 +102,11 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private String localBuildPath(String fe) {
         String fs = FileSystems.getDefault().getSeparator();
         return IdeaDiscovery.getProjectDirectory() + fs + "target" + fs + fe;
+    }
+
+    private String getReportDir() {
+        PitExecutionRecorder recorder = cachedRun.getRecorder();
+        return PitRepo.getReportBaseDirectory(module) + '/' + recorder.getExecutionRecord().getReportDirectoryName();
     }
 
     @Override
@@ -151,11 +162,6 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 return javaParameters;
             }
 
-            private String getReportDir() {
-                PitExecutionRecorder recorder = cachedRun.getRecorder();
-                return PitRepo.getReportBaseDirectory(module) + '/' + recorder.getExecutionRecord().getReportDirectoryName();
-            }
-
             @Override
             protected @NotNull OSProcessHandler startProcess() throws ExecutionException {
                 // Avoiding leaving previous icons while executing, else users may be confused that they represent the current result
@@ -171,6 +177,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         boolean status;
                         if (code==0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
                             onSuccess(file);
+                            writeConsoleReportLink();
                             status = true;
                         } else {
                             react("PIT execution error", "View output", () -> {
@@ -219,6 +226,18 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 return handler;
             }
         };
+    }
+
+    private void writeConsoleReportLink() {
+        consoleView.print("\n*** Open results in browser ", ConsoleViewContentType.NORMAL_OUTPUT);
+        String url = "file://" + getReportDir() + "/index.html";
+        consoleView.printHyperlink("here", new HyperlinkInfo() {
+            @Override
+            public void navigate(@NotNull Project project) {
+                com.intellij.ide.BrowserUtil.browse(url);
+            }
+        });
+        consoleView.print("\n\n", ConsoleViewContentType.NORMAL_OUTPUT);
     }
 
     public CachedRun getCachedRun() {

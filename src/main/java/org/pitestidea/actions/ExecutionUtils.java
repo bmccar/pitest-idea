@@ -5,6 +5,7 @@ import com.intellij.execution.configurations.RunProfile;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder;
 import com.intellij.execution.runners.ProgramRunner;
+import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ExecutionConsole;
 import com.intellij.openapi.compiler.CompilerManager;
 import com.intellij.openapi.module.Module;
@@ -54,7 +55,7 @@ public class ExecutionUtils {
         });
     }
 
-    private static void executePlugin(Project project, RunProfile runProfile) {
+    private static void executePlugin(Project project, PITestRunProfile runProfile) {
         Executor executor = DefaultRunExecutor.getRunExecutorInstance();
 
         try {
@@ -63,7 +64,9 @@ public class ExecutionUtils {
                 descriptor.setActivateToolWindowWhenAdded(false);
                 ExecutionConsole ec = descriptor.getExecutionConsole();
                 MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
+
                 mutationControlPanel.setRightPaneContent(ec.getComponent());
+                runProfile.setOutputConsole((ConsoleView) ec.getComponent());
             };
             ExecutionEnvironment env = builder.build(callBack);
             env.getRunner().execute(env);
