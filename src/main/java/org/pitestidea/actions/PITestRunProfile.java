@@ -35,6 +35,10 @@ import java.nio.file.FileSystems;
 import java.util.List;
 import java.util.function.Consumer;
 
+/**
+ * Defines how the PIT process is run, in accordance with the IJ framework. This includes the steps taken when
+ * the process completes. See {@link ExecutionUtils} for how the process is initiated.
+ */
 public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private static final String PIT_MAIN_CLASS = "org.pitest.mutationtest.commandline.MutationCoverageReport";
     private static final Icon PLUGIN_ICON = IconLoader.getIcon("/icons/pitest.svg", CoverageGutterRenderer.class);
@@ -212,7 +216,8 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         Application app = ApplicationManager.getApplication();
                         app.executeOnPooledThread(() -> {
                             app.runReadAction(() -> MutationsFileReader.read(project, file, recorder));
-                            react("PIT execution completed", "Show Report", cachedRun::activate, ()->{
+                            String msg = getHtmlListOfInputs();
+                            react(msg, "Show Report", cachedRun::activate, ()->{
                                 if (cachedRun.isCurrent() || cachedRun.isAlone()) {
                                     // When user ignores the run of the currently-selected history item,
                                     // or there is no other useful information in the scores tree, provide
@@ -226,6 +231,31 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 return handler;
             }
         };
+    }
+
+    private String getHtmlListOfInputs() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("PIT execution completed for");
+        List<String> inputFiles = cachedRun.getRecorder().getExecutionRecord().getInputFiles();
+        inputFiles = inputFiles.stream().map(PITestRunProfile::simpleNameOfPath).toList();
+        if (inputFiles.size()==1) {
+            sb.append(' ');
+            sb.append(inputFiles.get(0));
+        } else {
+            sb.append(':');
+            for (String inputFile: inputFiles) {
+                sb.append("<br>&nbsp;&nbsp;");
+                sb.append(inputFile);
+            }
+        }
+        return sb.toString();
+    }
+
+    private static String simpleNameOfPath(String path) {
+        int start = path.lastIndexOf('/');
+        int end = path.lastIndexOf('.');
+        if (end < 0) end = path.length();
+        return path.substring(start+1,end);
     }
 
     private void writeConsoleReportLink() {
