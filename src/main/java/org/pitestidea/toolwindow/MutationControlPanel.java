@@ -10,6 +10,7 @@ import org.pitestidea.actions.ExecutionUtils;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
 import org.pitestidea.render.CoverageGutterRenderer;
+import org.pitestidea.render.FileOpenCloseListener;
 
 import javax.swing.*;
 import java.awt.*;
@@ -21,6 +22,7 @@ import java.util.function.Consumer;
  */
 public class MutationControlPanel {
 
+    private final VerticalList historyList = new VerticalList();
     private final StretchPane stretchPane = new StretchPane();
     private final JScrollPane rightScrollPane = new JBScrollPane();
     private final ClickTree tree = new ClickTree();
@@ -28,7 +30,7 @@ public class MutationControlPanel {
     private EnumRadio<Viewing.PackageChoice> packageSelector;
     private EnumRadio<Sorting.By> sortSelector;
     private EnumRadio<Sorting.Direction> dirSelector;
-    private final VerticalList historyList = new VerticalList();
+    private boolean isGutterIconsEnabled = true;
     JBColor runButtonColor = new JBColor(new Color(67, 117, 68), new Color(71, 145, 72));
     JBColor cancelButtonColor = new JBColor(new Color(161, 45, 55), new Color(204, 102, 102));
 
@@ -69,62 +71,64 @@ public class MutationControlPanel {
 
     private JPanel createScoresHeaderPanel() {
         JPanel header = new JPanel(new BorderLayout());
+        header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS)); // Horizontal layout
+        header.add(createPackagePanel());
+        header.add(createSortPanel());
+        header.add(createDirPanel());
 
-        JPanel actionButtonPanel = new JPanel(new FlowLayout());
-        actionButtonPanel.add(createRemoveButton());
-        actionButtonPanel.add(stretchPane.getScoresButton(), BorderLayout.EAST);
-
-        header.add(createOptionsPanel(), BorderLayout.WEST);
-        header.add(actionButtonPanel, BorderLayout.EAST);
+        header.add(Box.createHorizontalGlue());
+        header.add(createRemoveButton());
+        header.add(Box.createHorizontalGlue());
+        header.add(stretchPane.getScoresButton());
         return header;
     }
 
-    private static JButton createRemoveButton() {
-        JButton button = new JButton("Remove PITest icons");
+    private JComponent createRemoveButton() {
         Project project = IdeaDiscovery.getActiveProject();
-        button.addActionListener(e -> CoverageGutterRenderer.removeGutterIcons(project));
-        return button;
-    }
-
-    private JPanel createOptionsPanel() {
-        JPanel panel = new JPanel(new FlowLayout());
-        panel.add(createPackagePanel());
-        panel.add(createSortPanel());
-        panel.add(createDirPanel());
-        return panel;
+        JCheckBox checkBox = new JCheckBox("Show PIT icons");
+        checkBox.setHorizontalAlignment(SwingConstants.CENTER);
+        checkBox.setSelected(isGutterIconsEnabled);
+        checkBox.addActionListener(e -> {
+            isGutterIconsEnabled = checkBox.isSelected();
+            if (isGutterIconsEnabled) {
+                FileOpenCloseListener.replayOpenFiles(project);
+            } else {
+                CoverageGutterRenderer.removeGutterIcons(project);
+            }
+        });
+        return checkBox;
     }
 
     private JPanel createPackagePanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Filter"));
         packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(),
                 Viewing.PackageChoice::getDisplayName,
                 type -> optionsChangeFn.accept(false));
         packageSelector.setSelected(Viewing.PackageChoice.PACKAGE); // Default value
-        panel.add(packageSelector.getPanel(), BorderLayout.NORTH);
+        JPanel panel = packageSelector.getPanel();
+        panel.setBorder(BorderFactory.createTitledBorder("Filter"));
         return panel;
     }
 
     private JPanel createSortPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Sort"));
         sortSelector = new EnumRadio<>(Sorting.By.values(),
                 Sorting.By::getDisplayName,
                 type -> optionsChangeFn.accept(true));
         sortSelector.setSelected(Sorting.By.PROJECT); // Default value
-        panel.add(sortSelector.getPanel(), BorderLayout.NORTH);
+        JPanel panel = sortSelector.getPanel();
+        panel.setBorder(BorderFactory.createTitledBorder("Sort"));
         return panel;
     }
 
     private JPanel createDirPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createTitledBorder("Sort Direction"));
         dirSelector = new EnumRadio<>(Sorting.Direction.values(),
                 Sorting.Direction::getDisplayName,
                 type -> optionsChangeFn.accept(true));
         dirSelector.setSelected(Sorting.Direction.ASC); // Default value
-        panel.add(dirSelector.getPanel(), BorderLayout.NORTH);
+
+        JPanel panel = dirSelector.getPanel();
+        panel.setBorder(BorderFactory.createTitledBorder("Sort Direction"));
         return panel;
+
     }
 
     public void setOptionsChangeFn(Consumer<Boolean> optionsChangeFn) {
@@ -234,6 +238,10 @@ public class MutationControlPanel {
 
     public void markScoresInvalid() {
         tree.resetToRootMessage("Select a run from the history list to the left.");
+    }
+
+    public boolean isGutterIconsEnabled() {
+        return isGutterIconsEnabled;
     }
 
     public static class Level {

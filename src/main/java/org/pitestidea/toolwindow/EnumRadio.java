@@ -25,6 +25,7 @@ class EnumRadio<T extends Enum<?>> {
         this.displayFn = displayFn;
         panel.setLayout(new FlowLayout());
         ButtonGroup group = new ButtonGroup();
+        int width = 50;
         for (T value : values) {
             JRadioButton button = new JRadioButton(displayFn.apply(value));
             group.add(button);
@@ -32,8 +33,15 @@ class EnumRadio<T extends Enum<?>> {
                 selected = value;
                 consumer.accept(value);
             });
+            width += button.getPreferredSize().width;
             panel.add(button);
         }
+        // Set component size so that it does not get maximally stretched in its container.
+        Dimension d = new Dimension(width, 60);
+        panel.setMinimumSize(d);
+        panel.setMaximumSize(d);
+        panel.setPreferredSize(d);
+
         this.setSelected(values[0]); // Default is first value
     }
 

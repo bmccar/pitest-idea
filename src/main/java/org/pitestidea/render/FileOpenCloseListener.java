@@ -12,6 +12,8 @@ import com.intellij.openapi.project.ProjectLocator;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.pitestidea.model.PitExecutionRecorder;
 import org.pitestidea.model.PitRepo;
+import org.pitestidea.toolwindow.MutationControlPanel;
+import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 public class FileOpenCloseListener implements FileEditorManagerListener {
 
@@ -42,8 +44,12 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
         if (project != null) {
             PitExecutionRecorder xr = PitRepo.get(project);
             if (xr != null) {
-                CoverageGutterRenderer renderer = CoverageGutterRenderer.getInstance();
-                xr.visit(source.getProject(), renderer, file);
+                MutationControlPanel mutationControlPanel =
+                        PitToolWindowFactory.getOrCreateControlPanel(project);
+                if (mutationControlPanel.isGutterIconsEnabled()) {
+                    CoverageGutterRenderer renderer = CoverageGutterRenderer.getInstance();
+                    xr.visit(source.getProject(), renderer, file);
+                }
             }
         }
     }

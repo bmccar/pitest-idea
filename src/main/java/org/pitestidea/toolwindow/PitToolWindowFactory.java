@@ -65,7 +65,6 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
     }
 
     private static void reshow(Project project, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder, boolean resort) {
-        System.out.println("reshowing " + resort);
         if (resort) {
             recorder.sort(mutationControlPanel.getSortSelection(),mutationControlPanel.getDirSelection());
         }
