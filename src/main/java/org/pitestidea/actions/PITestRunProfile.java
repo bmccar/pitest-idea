@@ -1,12 +1,14 @@
 package org.pitestidea.actions;
 
 import com.intellij.execution.ExecutionException;
+import com.intellij.execution.ExecutionManager;
 import com.intellij.execution.Executor;
 import com.intellij.execution.configurations.*;
 import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
+import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
@@ -172,6 +174,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 CoverageGutterRenderer.removeGutterIcons(project);
 
                 OSProcessHandler handler = super.startProcess();
+                cachedRun.setProcessHandler(handler);
                 handler.addProcessListener(new ProcessAdapter() {
                     @Override
                     public void processTerminated(@NotNull ProcessEvent event) {
@@ -188,6 +191,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                                 PitToolWindowFactory.showPitExecutionOutputOnly(project);
                             }, ()->{});
                             status = false;
+                            cachedRun.setRunState(RunState.FAILED);
                         }
                         cachedRun.setRunState(status ? RunState.COMPLETED : RunState.FAILED);
                         PitToolWindowFactory.getControlPanel(project).resetHistory(project);

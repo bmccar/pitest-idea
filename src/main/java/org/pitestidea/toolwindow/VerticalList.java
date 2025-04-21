@@ -5,6 +5,8 @@ import com.intellij.ui.components.JBScrollPane;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.font.TextAttribute;
+import java.util.Map;
 import java.awt.event.MouseAdapter;
 
 /**
@@ -28,7 +30,7 @@ public class VerticalList {
         contentPanel.removeAll();
     }
 
-    public JPanel addRow(String mainText, boolean highlight, Runnable onClick) {
+    public JPanel addRow(String mainText, boolean highlight, boolean valid, Runnable onClick) {
         JPanel row = new JPanel();
         row.setLayout(new FlowLayout(FlowLayout.LEFT));
         contentPanel.add(row);
@@ -45,7 +47,22 @@ public class VerticalList {
                 onClick.run();
             }
         });
+        if (!valid) {
+            setInvalid(label);
+        }
         row.add(label);
         return row;
+    }
+
+
+    void setInvalid(JLabel label) {
+        Font font = label.getFont();
+
+        @SuppressWarnings("unchecked")
+        Map<TextAttribute, Object> attributes = (Map<TextAttribute, Object>) font.getAttributes();
+        attributes.put(TextAttribute.STRIKETHROUGH, TextAttribute.STRIKETHROUGH_ON);
+        Font strikethroughFont = new Font(attributes);
+
+        label.setFont(strikethroughFont);
     }
 }

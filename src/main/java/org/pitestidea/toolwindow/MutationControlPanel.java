@@ -100,35 +100,28 @@ public class MutationControlPanel {
     }
 
     private JPanel createPackagePanel() {
-        packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(),
+        packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(),"Filter",
                 Viewing.PackageChoice::getDisplayName,
                 type -> optionsChangeFn.accept(false));
         packageSelector.setSelected(Viewing.PackageChoice.PACKAGE); // Default value
-        JPanel panel = packageSelector.getPanel();
-        panel.setBorder(BorderFactory.createTitledBorder("Filter"));
-        return panel;
+        return packageSelector.getPanel();
     }
 
     private JPanel createSortPanel() {
-        sortSelector = new EnumRadio<>(Sorting.By.values(),
+        sortSelector = new EnumRadio<>(Sorting.By.values(),"Sort",
                 Sorting.By::getDisplayName,
                 type -> optionsChangeFn.accept(true));
         sortSelector.setSelected(Sorting.By.PROJECT); // Default value
-        JPanel panel = sortSelector.getPanel();
-        panel.setBorder(BorderFactory.createTitledBorder("Sort"));
-        return panel;
+        return sortSelector.getPanel();
     }
 
     private JPanel createDirPanel() {
-        dirSelector = new EnumRadio<>(Sorting.Direction.values(),
+        dirSelector = new EnumRadio<>(Sorting.Direction.values(),"Sort Direction",
                 Sorting.Direction::getDisplayName,
                 type -> optionsChangeFn.accept(true));
         dirSelector.setSelected(Sorting.Direction.ASC); // Default value
 
-        JPanel panel = dirSelector.getPanel();
-        panel.setBorder(BorderFactory.createTitledBorder("Sort Direction"));
-        return panel;
-
+        return dirSelector.getPanel();
     }
 
     public void setOptionsChangeFn(Consumer<Boolean> optionsChangeFn) {
@@ -197,7 +190,7 @@ public class MutationControlPanel {
     public void resetHistory(Project project) {
         // TODO reuse existing row data rather than starting from scratch each time
         clearHistory();
-        PitRepo.apply(project, this::addHistory);
+        PitRepo.apply(project, (c,_current)->addHistory(c));
         historyList.getComponent().updateUI();
     }
 
@@ -207,10 +200,11 @@ public class MutationControlPanel {
      *
      * @param cachedRun to read from
      */
-    public void addHistory(CachedRun cachedRun, boolean highlightRow) {
+    public void addHistory(CachedRun cachedRun) {
         ExecutionRecord record = cachedRun.getExecutionRecord();
-        highlightRow = cachedRun.isCurrent();
-        JPanel row = historyList.addRow(record.getReportName(),highlightRow, ()->{
+        boolean highlightRow = cachedRun.isCurrent();
+        boolean valid = cachedRun.getRunState() != RunState.FAILED;
+        JPanel row = historyList.addRow(record.getReportName(),highlightRow, valid, ()->{
             cachedRun.activate();
         });
         TransitionButton button = new TransitionButton();
@@ -233,7 +227,11 @@ public class MutationControlPanel {
     }
 
     private boolean cancel(CachedRun cachedRun, TransitionButton button) {
-        return true; // TODO
+        if (cachedRun.cancel()) {
+            button.transition();
+            return true;
+        }
+        return false;
     }
 
     public void markScoresInvalid() {

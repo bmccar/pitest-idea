@@ -1,5 +1,6 @@
 package org.pitestidea.model;
 
+import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.render.CoverageGutterRenderer;
@@ -109,5 +110,20 @@ public class CachedRun implements Comparable<CachedRun> {
 
     public boolean isAlone() {
         return runRecords.getSize()==1;
+    }
+
+    private OSProcessHandler processHandler;
+
+    public void setProcessHandler(OSProcessHandler processHandler) {
+        this.processHandler = processHandler;
+    }
+
+    public boolean cancel() {
+        if (processHandler != null) {
+            processHandler.destroyProcess();
+            this.runState = RunState.FAILED;
+            return true;
+        }
+        return false;
     }
 }

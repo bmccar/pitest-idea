@@ -4,6 +4,7 @@ import com.intellij.ui.JBColor;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -74,4 +75,5 @@ public class TransitionButton extends JLabel {
             update();
         }
     }
+
 }

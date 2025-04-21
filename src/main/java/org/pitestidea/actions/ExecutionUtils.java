@@ -41,7 +41,7 @@ public class ExecutionUtils {
         MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
         CachedRun cachedRun = runProfile.getCachedRun();
         cachedRun.setRunState(RunState.RUNNING);
-        mutationControlPanel.addHistory(cachedRun, false);
+        mutationControlPanel.addHistory(cachedRun);
         mutationControlPanel.resetHistory(project);
         if (cachedRun.isCurrent()) {
             mutationControlPanel.clearScores();

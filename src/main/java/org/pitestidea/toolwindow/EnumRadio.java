@@ -18,10 +18,11 @@ class EnumRadio<T extends Enum<?>> {
      * Creates a new radio.
      *
      * @param values all values of the enum
+     * @param borderTitle if not null then a border title with this string value will be added
      * @param displayFn what to display
      * @param consumer called when a new value is selected
      */
-    EnumRadio(T[] values, Function<T,String> displayFn, Consumer<T> consumer) {
+    EnumRadio(T[] values, String borderTitle, Function<T,String> displayFn, Consumer<T> consumer) {
         this.displayFn = displayFn;
         panel.setLayout(new FlowLayout());
         ButtonGroup group = new ButtonGroup();
@@ -41,6 +42,10 @@ class EnumRadio<T extends Enum<?>> {
         panel.setMinimumSize(d);
         panel.setMaximumSize(d);
         panel.setPreferredSize(d);
+
+        if (borderTitle != null) {
+            panel.setBorder(BorderFactory.createTitledBorder(borderTitle));
+        }
 
         this.setSelected(values[0]); // Default is first value
     }
