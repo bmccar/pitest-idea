@@ -30,6 +30,9 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         rootTreeLevel = new TreeLevel(root) {
             @Override
             TreeLevel addPackageRow(String pkg) {
+                if (pkg == null || pkg.isEmpty()) {
+                    pkg = "No package selected"; // TODO works?
+                }
                 root.setUserObject(pkg);
                 return new TreeLevel(root);
             }
@@ -44,23 +47,23 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         tree.addTreeSelectionListener(this);
 
         Dimension minimumSize = new Dimension(100, 50);
-        tree.setMinimumSize(minimumSize);
-        tree.setPreferredSize(new Dimension(500, 300));
 
         JScrollPane treeView = new JBScrollPane(tree);
+        treeView.setMinimumSize(minimumSize);
+        treeView.setPreferredSize(new Dimension(500, 300));
+
         add(treeView);
     }
 
     @Override
     public void valueChanged(TreeSelectionEvent e) {
-        DefaultMutableTreeNode node = (DefaultMutableTreeNode)
-                tree.getLastSelectedPathComponent();
-
-        if (node == null) return;
-
-        Object nodeInfo = node.getUserObject();
-        if (nodeInfo instanceof ClickableNode clickableNode) {
-            clickableNode.onClick();
+        if (e.getNewLeadSelectionPath() == null) {
+            // Handle the case where no selection exists
+            return;
+        }
+        Object selectedNode = e.getPath().getLastPathComponent();
+        if (selectedNode instanceof ClickableFileNode clickableFileNode) {
+            clickableFileNode.onClick();
         }
     }
 
@@ -98,13 +101,15 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
     }
 
     void refresh() {
-        int childCount = root.getChildCount();
+        SwingUtilities.invokeLater(() -> {
+            int childCount = root.getChildCount();
 
-        // Auto-expand the first level of the tree
-        for (int i = 0; i < childCount; i++) {
-            tree.expandRow(i);
-        }
-        tree.updateUI();
+            // Auto-expand the first level of the tree
+            for (int i = 0; i < childCount; i++) {
+                tree.expandRow(i);
+            }
+            tree.updateUI();
+        });
     }
 
     static class TreeLevel {

@@ -10,6 +10,7 @@ import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.pitestidea.model.CachedRun;
 import org.pitestidea.model.FileMutations;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.model.PitExecutionRecorder;
@@ -38,10 +39,10 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
      * values in the provided recorder.
      *
      * @param project project
-     * @param recorder to update scores from
+     * @param cachedRun to update scores from
      * @param includesPackages true if there was at least one package in the inputs selected by the user
      */
-    public static void show(Project project, PitExecutionRecorder recorder, boolean includesPackages) {
+    public static void show(Project project, CachedRun cachedRun, boolean includesPackages) {
         Viewing.PackageChoice packageChoice = includesPackages
                 ? Viewing.PackageChoice.PACKAGE
                 : Viewing.PackageChoice.NONE;
@@ -49,9 +50,9 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         mutationControlPanel.setPackageSelection(packageChoice);
         mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
         mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
-        mutationControlPanel.setOptionsChangeFn(resort -> reshow(project, mutationControlPanel, recorder, resort));
-        mutationControlPanel.resetHistory(project);
-        reshow(project, mutationControlPanel, recorder, false);
+        mutationControlPanel.setOptionsChangeFn(resort -> reshow(project, mutationControlPanel, cachedRun, resort));
+        mutationControlPanel.reloadHistory(project);
+        reshow(project, mutationControlPanel, cachedRun, false);
     }
 
     public static void showPitExecutionOutputOnly(Project project) {
@@ -64,8 +65,9 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
     }
 
-    private static void reshow(Project project, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder, boolean resort) {
+    private static void reshow(Project project, MutationControlPanel mutationControlPanel, CachedRun cachedRun, boolean resort) {
         if (resort) {
+            PitExecutionRecorder recorder = cachedRun.getRecorder();
             recorder.sort(mutationControlPanel.getSortSelection(),mutationControlPanel.getDirSelection());
         }
         mutationControlPanel.clearScores();
@@ -73,17 +75,16 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         ToolWindow tw = getToolWindow(project);
         if (tw != null) {
             if (tw.isActive()) {
-                addAll(project, mutationControlPanel, recorder);
+                mutationControlPanel.reloadScores(cachedRun);
             } else {
-                tw.activate(() -> addAll(project, mutationControlPanel, recorder));
+                tw.activate(() -> mutationControlPanel.reloadScores(cachedRun));
             }
         }
     }
 
     private static @Nullable ToolWindow getToolWindow(Project project) {
         String id = "PITest";
-        ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow(id);
-        return tw;
+        return ToolWindowManager.getInstance(project).getToolWindow(id);
     }
 
     /**
@@ -122,8 +123,6 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        System.out.println("Creating tool window content !!!");
-
         MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
         ContentFactory contentFactory = ContentFactory.getInstance();
         Content content = contentFactory.createContent(mutationControlPanel.getContentPanel(), null, false);

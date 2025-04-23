@@ -23,9 +23,9 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class ExecutionUtils {
-    public static void execute(Module module, List<VirtualFile> virtualFiles, Consumer<Boolean> onComplete) {
+    public static void execute(Module module, List<VirtualFile> virtualFiles) {
         Project project = module.getProject();
-        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles, onComplete);
+        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
         PackageWalker.read(project, virtualFiles, runProfile);
         execute(project, module, runProfile);
     }
@@ -42,7 +42,7 @@ public class ExecutionUtils {
         CachedRun cachedRun = runProfile.getCachedRun();
         cachedRun.setRunState(RunState.RUNNING);
         mutationControlPanel.addHistory(cachedRun);
-        mutationControlPanel.resetHistory(project);
+        mutationControlPanel.reloadHistory(project);
         if (cachedRun.isCurrent()) {
             mutationControlPanel.clearScores();
         }

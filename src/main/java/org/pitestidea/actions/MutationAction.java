@@ -36,7 +36,7 @@ public class MutationAction extends AnAction {
 
         List<VirtualFile> virtualFiles = new ArrayList<>();
         virtualFiles.add(IdeaDiscovery.getCurrentFile());
-        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles, null);
+        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
         String pfx = StringUtils.isEmpty(pkg) ? "" : pkg + ".";
         String qn = pfx + cn;
 

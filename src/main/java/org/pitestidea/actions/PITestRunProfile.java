@@ -1,14 +1,12 @@
 package org.pitestidea.actions;
 
 import com.intellij.execution.ExecutionException;
-import com.intellij.execution.ExecutionManager;
 import com.intellij.execution.Executor;
 import com.intellij.execution.configurations.*;
 import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
-import com.intellij.execution.process.ProcessHandler;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
@@ -52,15 +50,13 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private final StringBuilder codeClasses = new StringBuilder();
     private final StringBuilder testClasses = new StringBuilder();
 
-    private final Consumer<Boolean> onComplete;
     private ConsoleView consoleView;
 
-    PITestRunProfile(Project project, Module module, List<VirtualFile> virtualFiles, Consumer<Boolean> onComplete) {
+    PITestRunProfile(Project project, Module module, List<VirtualFile> virtualFiles) {
         this.project = project;
         this.module = module;
         List<String> inputs = virtualFiles.stream().map(VirtualFile::getPath).toList();
         this.cachedRun = PitRepo.register(module,inputs, RunState.COMPLETED);
-        this.onComplete = onComplete;
     }
 
     void setOutputConsole(ConsoleView consoleView) {
@@ -110,11 +106,6 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
         return IdeaDiscovery.getProjectDirectory() + fs + "target" + fs + fe;
     }
 
-    private String getReportDir() {
-        PitExecutionRecorder recorder = cachedRun.getRecorder();
-        return PitRepo.getReportBaseDirectory(module) + '/' + recorder.getExecutionRecord().getReportDirectoryName();
-    }
-
     @Override
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment environment) {
         //System.out.println("*** codeClasses: " + codeClasses.toString());
@@ -127,7 +118,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 javaParameters.setUseClasspathJar(true);
                 String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
                 ParametersList params = javaParameters.getProgramParametersList();
-                String reportDir = getReportDir();
+                String reportDir = cachedRun.getReportDir();
                 params.add("--reportDir", reportDir);
                 params.add("--targetClasses", codeClasses.toString());
                 params.add("--targetTests", testClasses.toString());
@@ -172,32 +163,37 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
             protected @NotNull OSProcessHandler startProcess() throws ExecutionException {
                 // Avoiding leaving previous icons while executing, else users may be confused that they represent the current result
                 CoverageGutterRenderer.removeGutterIcons(project);
+                cachedRun.prepareForRun();  // Clean house to avoid confusion in case PIT fails or is cancelled
 
                 OSProcessHandler handler = super.startProcess();
                 cachedRun.setProcessHandler(handler);
+
                 handler.addProcessListener(new ProcessAdapter() {
                     @Override
                     public void processTerminated(@NotNull ProcessEvent event) {
-                        String fn = getReportDir() + "/mutations.xml";
-                        File file = new File(fn);
-                        int code = event.getExitCode();
-                        boolean status;
-                        if (code==0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
-                            onSuccess(file);
-                            writeConsoleReportLink();
-                            status = true;
-                        } else {
-                            react("PIT execution error", "View output", () -> {
-                                PitToolWindowFactory.showPitExecutionOutputOnly(project);
-                            }, ()->{});
-                            status = false;
-                            cachedRun.setRunState(RunState.FAILED);
+                        final RunState runState = cachedRun.getRunState();
+                        RunState newRunState = runState;
+                        if (runState != RunState.CANCELLED) {
+                            String fn = cachedRun.getReportDir() + "/" + CachedRun.MUTATIONS_FILE;
+                            File file = new File(fn);
+                            int code = event.getExitCode();
+                            //boolean status;
+                            if (code == 0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
+                                onSuccess(file);
+                                writeConsoleReportLink();
+                                newRunState = RunState.COMPLETED;
+                            } else {
+                                react("PIT execution error", "View output", () -> {
+                                    PitToolWindowFactory.showPitExecutionOutputOnly(project);
+                                }, () -> {
+                                });
+                                newRunState = RunState.FAILED;
+                            }
                         }
-                        cachedRun.setRunState(status ? RunState.COMPLETED : RunState.FAILED);
-                        PitToolWindowFactory.getControlPanel(project).resetHistory(project);
-                        if (onComplete != null) {
-                            onComplete.accept(status);
+                        if (runState != newRunState) {
+                            cachedRun.setRunState(newRunState);
                         }
+                        PitToolWindowFactory.getControlPanel(project).handleCompletion(cachedRun);
                     }
 
                     private void react(String msg, String yesText, Runnable yesFn, Runnable noFn) {
@@ -216,7 +212,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
                     private void onSuccess(File file) {
                         PitExecutionRecorder recorder = cachedRun.getRecorder();
-                        recorder.getExecutionRecord().writeToDirectory(getReportDir());
+                        recorder.getExecutionRecord().writeToDirectory(cachedRun.getReportDir());
                         Application app = ApplicationManager.getApplication();
                         app.executeOnPooledThread(() -> {
                             app.runReadAction(() -> MutationsFileReader.read(project, file, recorder));
@@ -264,7 +260,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     private void writeConsoleReportLink() {
         consoleView.print("\n*** Open results in browser ", ConsoleViewContentType.NORMAL_OUTPUT);
-        String url = "file://" + getReportDir() + "/index.html";
+        String url = "file://" + cachedRun.getReportDir() + "/index.html";
         consoleView.printHyperlink("here", new HyperlinkInfo() {
             @Override
             public void navigate(@NotNull Project project) {

@@ -1,11 +1,15 @@
 package org.pitestidea.toolwindow;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.ui.MessageDialogBuilder;
+import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBScrollPane;
+import org.jetbrains.annotations.NotNull;
 import org.pitestidea.actions.ExecutionUtils;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
@@ -15,10 +19,12 @@ import org.pitestidea.render.FileOpenCloseListener;
 import javax.swing.*;
 import java.awt.*;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
- * Results tool window. Consists of several panes with different levels of interactivity.
+ * Manages execution results tool window. Consists of several panes with different levels of interactivity.
  */
 public class MutationControlPanel {
 
@@ -30,14 +36,12 @@ public class MutationControlPanel {
     private EnumRadio<Viewing.PackageChoice> packageSelector;
     private EnumRadio<Sorting.By> sortSelector;
     private EnumRadio<Sorting.Direction> dirSelector;
+    private JButton clearAllButton;
     private boolean isGutterIconsEnabled = true;
-    JBColor runButtonColor = new JBColor(new Color(67, 117, 68), new Color(71, 145, 72));
-    JBColor cancelButtonColor = new JBColor(new Color(161, 45, 55), new Color(204, 102, 102));
 
     public MutationControlPanel() {
         stretchPane.setLeft(createScoresPanel());
         stretchPane.setRight(createConsolePane());
-
         stretchPane.setState(StretchPane.PaneState.SCORES);
     }
 
@@ -55,8 +59,7 @@ public class MutationControlPanel {
     private JComponent createScoresPanel() {
         JSplitPane scoresPanel = new JSplitPane();
 
-        JComponent historyPanel = historyList.getComponent();
-        scoresPanel.setLeftComponent(historyPanel);
+        scoresPanel.setLeftComponent(createHistoryPanel());
 
         JPanel treePanel = new JPanel(new BorderLayout());
         treePanel.add(createScoresHeaderPanel(), BorderLayout.NORTH);
@@ -67,6 +70,42 @@ public class MutationControlPanel {
         scoresPanel.setDividerLocation(split);
         scoresPanel.setResizeWeight(split);
         return scoresPanel;
+    }
+
+    private JPanel createHistoryPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(createHistoryHeaderPanel(), BorderLayout.NORTH);
+        panel.add(historyList.getComponent(), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel createHistoryHeaderPanel() {
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel options = new JPanel();
+        options.setBorder(BorderFactory.createLineBorder(JBColor.BLACK));
+        clearAllButton = createClearAllButton();
+        options.add(clearAllButton);
+        header.add(options);
+        return header;
+    }
+
+    private @NotNull JButton createClearAllButton() {
+        JButton button = new JButton("Clear All");
+        Project project = IdeaDiscovery.getActiveProject();
+        button.addActionListener(e -> {
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (MessageDialogBuilder.okCancel("Really delete all PIT reports for this project?", "Cannot be undone")
+                        .yesText("Confirm")
+                        .noText("Cancel")
+                        .ask(project)) {
+                    PitRepo.deleteHistory(project);
+                    reloadReports(project);
+                }
+            });
+            clearHistory();
+        });
+        button.setEnabled(false);  // enabled on report load
+        return button;
     }
 
     private JPanel createScoresHeaderPanel() {
@@ -187,12 +226,62 @@ public class MutationControlPanel {
         historyList.clear();
     }
 
-    public void resetHistory(Project project) {
-        // TODO reuse existing row data rather than starting from scratch each time
-        clearHistory();
-        PitRepo.apply(project, (c,_current)->addHistory(c));
-        historyList.getComponent().updateUI();
+    public void reloadReports(Project project) {
+        CachedRun current = reloadHistory(project);
+        if (current==null) {
+            reloadScoresMsg(project, "No current history. Initiate PIT execution from a drop-down menu.");
+        } else {
+            reloadScores(current);
+        }
     }
+
+    public CachedRun reloadHistory(Project project) {
+        clearHistory();
+        AtomicReference<CachedRun> currentRun = new AtomicReference<>();
+        AtomicBoolean any = new AtomicBoolean(false);
+        PitRepo.apply(project, (c,current)->{
+            any.set(true);
+            if (current) {
+                currentRun.set(c);
+            }
+            addHistory(c);
+        });
+        clearAllButton.setEnabled(any.get());
+        historyList.getComponent().updateUI();
+        return currentRun.get();
+    }
+
+    private void reloadScoresMsg(Project project, String msg) {
+        CoverageGutterRenderer.removeGutterIcons(project);
+        clearScores();
+        tree.resetToRootMessage(msg);
+    }
+
+    public void reloadScores(CachedRun cachedRun) {
+        if (cachedRun.isCurrent()) {
+            RunState runState = cachedRun.getRunState();
+            switch (runState) {
+                case RUNNING:
+                    tree.resetToRootMessage("PIT execution is still running. Please wait.");
+                    return;
+                case FAILED:
+                    tree.resetToRootMessage("PIT execution failed. See console for details.");
+                    return;
+                case CANCELLED:
+                    tree.resetToRootMessage("Run was cancelled. Rerun in order to see report");
+                    return;
+            }
+            Project project = IdeaDiscovery.getActiveProject();
+            CoverageGutterRenderer.removeGutterIcons(project);
+            clearScores();
+            PitToolWindowFactory.addAll(project,this,cachedRun.getRecorder());
+        }
+    }
+
+    private static final Icon runIcon = IconLoader.getIcon("/icons/run.svg", MutationControlPanel.class);
+    private static final Icon killIcon = IconLoader.getIcon("/icons/killProcess.svg", MutationControlPanel.class);
+    private static final Icon deleteIcon = IconLoader.getIcon("/icons/delete.svg", MutationControlPanel.class);
+
 
     /**
      * Adds a row in the history pane representing the state of the supplied CachedRun.
@@ -202,17 +291,46 @@ public class MutationControlPanel {
      */
     public void addHistory(CachedRun cachedRun) {
         ExecutionRecord record = cachedRun.getExecutionRecord();
-        boolean highlightRow = cachedRun.isCurrent();
-        boolean valid = cachedRun.getRunState() != RunState.FAILED;
-        JPanel row = historyList.addRow(record.getReportName(),highlightRow, valid, ()->{
-            cachedRun.activate();
-        });
-        TransitionButton button = new TransitionButton();
+        boolean isCurrent = cachedRun.isCurrent();
         RunState runState = cachedRun.getRunState();
+        System.out.println("addHistory runState="+runState+" isCurrent="+isCurrent+" record="+record.getReportName());
+        boolean valid = runState.isValid();
+        JPanel row = historyList.addRow(record.getReportName(), isCurrent, valid, cachedRun::activate);
+        TransitionButton button = new TransitionButton();
         boolean readyToCancel = runState == RunState.RUNNING;
-        button.addState("Run", runButtonColor, !readyToCancel, () -> run(cachedRun, button));
-        button.addState("Cancel", cancelButtonColor, readyToCancel, () -> cancel(cachedRun, button));
+        TransitionButton.State running = button.addState("Run", runIcon, "Rerun this report", !readyToCancel, () -> run(cachedRun, button));
+        button.addState("Cancel", killIcon, "Cancel this report execution", readyToCancel, () -> cancel(cachedRun, button, running));
         row.add(button);
+
+        JButton trashButton = createDeleteButton(cachedRun);
+        row.add(trashButton);
+    }
+
+    private @NotNull JButton createDeleteButton(CachedRun cachedRun) {
+        JButton button = new JButton(deleteIcon);
+        button.setToolTipText("Delete this report");
+        Project project = IdeaDiscovery.getActiveProject();
+        button.addActionListener(e -> {
+            ApplicationManager.getApplication().invokeLater(() -> {
+                if (MessageDialogBuilder.okCancel("Really delete this report?", "Cannot be undone")
+                        .yesText("Confirm")
+                        .noText("Cancel")
+                        .ask(project)) {
+                    if (cachedRun.isCurrent()) {
+                        reloadScoresMsg(project, "Select a different report to the left.");
+                    }
+                    cachedRun.deleteFilesForThisRun();
+                    reloadHistory(project);
+                }
+            });
+        });
+        button.setOpaque(false); // Don't fill the button background
+        button.setContentAreaFilled(false); // Transparent content area
+        button.setBorderPainted(false); // Optionally remove border
+        button.setPreferredSize(TransitionButton.BUTTON_SIZE);
+        button.setMinimumSize(TransitionButton.BUTTON_SIZE);
+        button.setMaximumSize(TransitionButton.BUTTON_SIZE);
+        return button;
     }
 
     private boolean run(CachedRun cachedRun, TransitionButton button) {
@@ -220,15 +338,17 @@ public class MutationControlPanel {
         ExecutionRecord record = cachedRun.getExecutionRecord();
         List<VirtualFile> vfs = record.getInputFiles().stream().map(file ->
                 LocalFileSystem.getInstance().findFileByPath(file)).toList();
-        ExecutionUtils.execute(module, vfs, (_success) -> {
-            button.transition();
-        });
+        ExecutionUtils.execute(module, vfs);
         return true;
     }
 
-    private boolean cancel(CachedRun cachedRun, TransitionButton button) {
+    public void handleCompletion(CachedRun cachedRun) {
+        reloadHistory(cachedRun.getProject());
+    }
+
+    private boolean cancel(CachedRun cachedRun, TransitionButton button, TransitionButton.State state) {
         if (cachedRun.cancel()) {
-            button.transition();
+            reloadScores(cachedRun);
             return true;
         }
         return false;

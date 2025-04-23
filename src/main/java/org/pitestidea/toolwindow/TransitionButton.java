@@ -1,10 +1,12 @@
 package org.pitestidea.toolwindow;
 
 import com.intellij.ui.JBColor;
+import kotlinx.html.B;
 
 import javax.swing.*;
 import javax.swing.border.Border;
 
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -14,19 +16,27 @@ import java.util.function.Supplier;
 /**
  * A custom button that transitions between states.
  */
-public class TransitionButton extends JLabel {
+public class TransitionButton extends JButton {
 
-    private record State(String text, JBColor color, Supplier<Boolean> action) {
+    static final Dimension BUTTON_SIZE = new Dimension(20, 20);
+
+    public record State(String name, Icon icon, String tooltipText, Supplier<Boolean> action) {
+        @Override
+        public String toString() {
+            return String.format("State(%s)", name);
+        }
     }
 
     private final List<State> states = new ArrayList<>();
     private int currentStateIndex = -1;
 
     public TransitionButton() {
-        setOpaque(true);
-        Border lineBorder = BorderFactory.createLineBorder(JBColor.BLACK, 1); // Black border with 2px thickness
-        Border padding = BorderFactory.createEmptyBorder(0, 6, 0, 6);
-        setBorder(BorderFactory.createCompoundBorder(lineBorder, padding));
+        setOpaque(false); // Don't fill the button background
+        setContentAreaFilled(false); // Transparent content area
+        setBorderPainted(false); // Optionally remove border
+        setPreferredSize(BUTTON_SIZE);
+        setMinimumSize(BUTTON_SIZE);
+        setMaximumSize(BUTTON_SIZE);
 
         addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
@@ -53,27 +63,38 @@ public class TransitionButton extends JLabel {
         }
     }
 
+    void restore(State state) {
+        currentStateIndex = states.indexOf(state);
+        update();
+    }
+
+    State getState() {
+        return currentStateIndex >= 0 ? states.get(currentStateIndex) : null;
+    }
+
     private void update() {
         State state = states.get(currentStateIndex);
-        setText(state.text);
-        setBackground(state.color);
+        setIcon(state.icon);
+        setToolTipText(state.tooltipText);
     }
 
     /**
      * Add a new state that will be transitioned to from the last-added state. The default
      * appearance of the button is set by the first-added state.
      *
-     * @param text for this state
-     * @param color background for this state
+     * @param name for debugging
+     * @param icon to display
+     * @param tooltipText to display
      * @param action if not-null, called before transitioning and may prevent transition by returning false
      */
-    void addState(String text, JBColor color, boolean makeCurrent, Supplier<Boolean> action) {
-        State state = new State(text, color, action);
+    State addState(String name, Icon icon, String tooltipText, boolean makeCurrent, Supplier<Boolean> action) {
+        State state = new State(name,icon, tooltipText, action);
         states.add(state);
         if (makeCurrent || states.size() == 1) {
             currentStateIndex = states.size() - 1;
             update();
         }
+        return state;
     }
 
 }

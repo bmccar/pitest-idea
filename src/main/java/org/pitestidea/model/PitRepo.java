@@ -11,6 +11,8 @@ import java.io.File;
 import java.util.*;
 
 public class PitRepo {
+    public static final String PIT_IDEA_REPORTS_DIR = "pit-idea-reports";
+
     public static class ProjectRunRecords {
         private final LinkedList<CachedRun> runHistory = new LinkedList<>();
         private CachedRun current;
@@ -22,6 +24,12 @@ public class PitRepo {
         }
         int getSize() {
             return runHistory.size();
+        }
+        void remove(CachedRun run) {
+            runHistory.remove(run);
+            if (run == current) {
+                current = null;
+            }
         }
     }
     private static final Map<String, ProjectRunRecords> projectMap = new HashMap<>();
@@ -47,8 +55,7 @@ public class PitRepo {
         PitExecutionRecorder recorder = new PitExecutionRecorder(module,new ExecutionRecord(inputs));
         Project project = recorder.getModule().getProject();
         ProjectRunRecords runRecords = projectMap.computeIfAbsent(project.getName(), _x -> new ProjectRunRecords());
-        CachedRun cachedRun = new CachedRun(runRecords, new PitExecutionRecorder(module,new ExecutionRecord(inputs)), RunState.COMPLETED);
-        //register(cachedRun);
+        CachedRun cachedRun = new CachedRun(runRecords, recorder, RunState.COMPLETED);
         if (cachedRun.equals(runRecords.current)) {
             // While swapping in a new CachedRun, ensure the replacement is current if the original was
             runRecords.setAsCurrent(cachedRun);
@@ -65,6 +72,13 @@ public class PitRepo {
     public static void apply(Project project, IHistory history) {
         ProjectRunRecords runs = projectMap.get(project.getName());
         runs.runHistory.forEach(r->history.visit(r,r==runs.current));
+    }
+
+    public static void deleteHistory(Project project) {
+        ProjectRunRecords runs = projectMap.get(project.getName());
+        runs.runHistory.forEach(CachedRun::deleteFilesForThisRun);
+        runs.runHistory.clear();
+        runs.current = null;
     }
 
     public static PitExecutionRecorder get(Project project) {
@@ -86,6 +100,6 @@ public class PitRepo {
                 dir = dir.substring(0, ix);
             }
         }
-        return dir + "/pit-idea-reports";
+        return dir + '/' + PIT_IDEA_REPORTS_DIR;
     }
 }
