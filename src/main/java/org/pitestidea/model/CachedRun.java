@@ -21,7 +21,6 @@ public class CachedRun implements Comparable<CachedRun> {
     private final PitRepo.ProjectRunRecords runRecords;
     private final ExecutionRecord executionRecord;
     private PitExecutionRecorder recorder = null;
-    private long timestamp; // TODO move to ExecutionRecord
     private RunState runState;
     private boolean includesPackages = false;
 
@@ -42,10 +41,6 @@ public class CachedRun implements Comparable<CachedRun> {
 
     public ExecutionRecord getExecutionRecord() {
         return executionRecord;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
     }
 
     public boolean isIncludesPackages() {

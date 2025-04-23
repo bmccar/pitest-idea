@@ -172,6 +172,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                     @Override
                     public void processTerminated(@NotNull ProcessEvent event) {
                         final RunState runState = cachedRun.getRunState();
+                        cachedRun.getExecutionRecord().markFinished();
                         RunState newRunState = runState;
                         if (runState != RunState.CANCELLED) {
                             String fn = cachedRun.getReportDir() + "/" + CachedRun.MUTATIONS_FILE;
@@ -216,7 +217,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         Application app = ApplicationManager.getApplication();
                         app.executeOnPooledThread(() -> {
                             app.runReadAction(() -> MutationsFileReader.read(project, file, recorder));
-                            String msg = getHtmlListOfInputs();
+                            String msg = cachedRun.getExecutionRecord().getHtmlListOfInputs("PIT execution completed for", false);
                             react(msg, "Show Report", cachedRun::activate, ()->{
                                 if (cachedRun.isCurrent() || cachedRun.isAlone()) {
                                     // When user ignores the run of the currently-selected history item,
@@ -233,25 +234,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
         };
     }
 
-    private String getHtmlListOfInputs() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("PIT execution completed for");
-        List<String> inputFiles = cachedRun.getRecorder().getExecutionRecord().getInputFiles();
-        inputFiles = inputFiles.stream().map(PITestRunProfile::simpleNameOfPath).toList();
-        if (inputFiles.size()==1) {
-            sb.append(' ');
-            sb.append(inputFiles.get(0));
-        } else {
-            sb.append(':');
-            for (String inputFile: inputFiles) {
-                sb.append("<br>&nbsp;&nbsp;");
-                sb.append(inputFile);
-            }
-        }
-        return sb.toString();
-    }
-
-    private static String simpleNameOfPath(String path) {
+    public static String simpleNameOfPath(String path) {
         int start = path.lastIndexOf('/');
         int end = path.lastIndexOf('.');
         if (end < 0) end = path.length();

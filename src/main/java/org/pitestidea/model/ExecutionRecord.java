@@ -2,13 +2,17 @@ package org.pitestidea.model;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
+import org.pitestidea.actions.PITestRunProfile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
 import java.io.FileOutputStream;
 import java.nio.file.FileSystems;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -28,14 +32,47 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     private final static String INPUTS = "inputs";
     private final static String INPUT = "input";
 
+    private static DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+    private static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM d");
+
     final List<String> inputFiles;
     final String reportName;
     final String reportDirectoryName;
+    private long startedAt;  // TODO write (and later read)
+    private long durationMillis;
 
     public ExecutionRecord(List<String> inputFiles) {
         this.inputFiles = inputFiles;
         this.reportName = generateReportName(inputFiles);
         this.reportDirectoryName = generateReportDirectoryName(inputFiles);
+        this.startedAt = System.currentTimeMillis();
+    }
+
+    public void markFinished() {
+        this.durationMillis = System.currentTimeMillis() - startedAt;
+    }
+
+    public String getFormattedStart() {
+        ZonedDateTime runStart = Instant.ofEpochMilli(startedAt).atZone(ZoneId.systemDefault());
+        ZonedDateTime midnight = LocalDate.now().atStartOfDay().atZone(ZoneId.systemDefault());
+        if (runStart.isBefore(midnight)) {
+            return dateFormatter.format(runStart);
+        } else {
+            return timeFormatter.format(runStart);
+        }
+    }
+
+    public String getFormattedDuration() {
+        long hours = TimeUnit.MILLISECONDS.toHours(durationMillis);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis) - TimeUnit.HOURS.toMinutes(hours);
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(durationMillis) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(durationMillis));
+        if (hours > 0) {
+            return String.format("%dh:%dm:%ds", hours, minutes, seconds);
+        } else if (minutes > 0) {
+            return String.format("%dm:%ds", minutes, seconds);
+        } else {
+            return String.format("%dsec", seconds);
+        }
     }
 
     private static String generateReportName(List<String> virtualFiles) {
@@ -145,6 +182,27 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     public String getReportDirectoryName() {
         return reportDirectoryName;
     }
+
+    public String getHtmlListOfInputs(String msg, boolean forceMultiline) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(msg);
+        List<String> inputFiles = getInputFiles();
+        inputFiles = inputFiles.stream().map(PITestRunProfile::simpleNameOfPath).toList();
+        if (inputFiles.size()==1 && !forceMultiline) {
+            sb.append(' ');
+            sb.append(inputFiles.get(0));
+        } else {
+            sb.append(":<br><ul>");
+            for (String inputFile: inputFiles) {
+                sb.append("<li>");
+                sb.append(inputFile);
+                sb.append("</li>");
+            }
+            sb.append("</ul>");
+        }
+        return sb.toString();
+    }
+
 
     @Override
     public String toString() {

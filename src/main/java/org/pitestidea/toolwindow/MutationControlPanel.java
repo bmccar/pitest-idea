@@ -28,7 +28,7 @@ import java.util.function.Consumer;
  */
 public class MutationControlPanel {
 
-    private final VerticalList historyList = new VerticalList();
+    private final HistoryList historyList = new HistoryList();
     private final StretchPane stretchPane = new StretchPane();
     private final JScrollPane rightScrollPane = new JBScrollPane();
     private final ClickTree tree = new ClickTree();
@@ -295,7 +295,7 @@ public class MutationControlPanel {
         RunState runState = cachedRun.getRunState();
         System.out.println("addHistory runState="+runState+" isCurrent="+isCurrent+" record="+record.getReportName());
         boolean valid = runState.isValid();
-        JPanel row = historyList.addRow(record.getReportName(), isCurrent, valid, cachedRun::activate);
+        JPanel row = historyList.addRow(record, isCurrent, valid, cachedRun::activate);
         TransitionButton button = new TransitionButton();
         boolean readyToCancel = runState == RunState.RUNNING;
         TransitionButton.State running = button.addState("Run", runIcon, "Rerun this report", !readyToCancel, () -> run(cachedRun, button));
