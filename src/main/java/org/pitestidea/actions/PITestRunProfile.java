@@ -27,6 +27,7 @@ import org.pitestidea.model.*;
 import org.pitestidea.psi.IPackageCollector;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
+import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 import javax.swing.*;
@@ -174,19 +175,27 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         final RunState runState = cachedRun.getRunState();
                         cachedRun.getExecutionRecord().markFinished();
                         RunState newRunState = runState;
+                        final MutationControlPanel mutationControlPanel = PitToolWindowFactory.getControlPanel(project);
                         if (runState != RunState.CANCELLED) {
                             String fn = cachedRun.getReportDir() + "/" + CachedRun.MUTATIONS_FILE;
                             File file = new File(fn);
                             int code = event.getExitCode();
                             //boolean status;
                             if (code == 0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
-                                onSuccess(file);
+                                onSuccess(file, mutationControlPanel);
                                 writeConsoleReportLink();
                                 newRunState = RunState.COMPLETED;
                             } else {
                                 react("PIT execution error", "View output", () -> {
+                                    // Activate this row since console output is exposed and should be consistent
+                                    // with scores even though it's unlikely user would examine the latter
+                                    cachedRun.activate();
                                     PitToolWindowFactory.showPitExecutionOutputOnly(project);
                                 }, () -> {
+                                    if (cachedRun.isCurrent()) {
+                                        // If current then ensure scores has proper message displayed
+                                        mutationControlPanel.reloadReports(project);
+                                    }
                                 });
                                 newRunState = RunState.FAILED;
                             }
@@ -194,7 +203,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         if (runState != newRunState) {
                             cachedRun.setRunState(newRunState);
                         }
-                        PitToolWindowFactory.getControlPanel(project).handleCompletion(cachedRun);
+                        mutationControlPanel.handleCompletion(cachedRun);
                     }
 
                     private void react(String msg, String yesText, Runnable yesFn, Runnable noFn) {
@@ -211,19 +220,22 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         });
                     }
 
-                    private void onSuccess(File file) {
+                    private void onSuccess(File file, MutationControlPanel mutationControlPanel) {
                         PitExecutionRecorder recorder = cachedRun.getRecorder();
                         recorder.getExecutionRecord().writeToDirectory(cachedRun.getReportDir());
                         Application app = ApplicationManager.getApplication();
                         app.executeOnPooledThread(() -> {
                             app.runReadAction(() -> MutationsFileReader.read(project, file, recorder));
                             String msg = cachedRun.getExecutionRecord().getHtmlListOfInputs("PIT execution completed for", false);
-                            react(msg, "Show Report", cachedRun::activate, ()->{
+                            react(msg, "Show Report", () -> {
+                               cachedRun.activate();
+                               mutationControlPanel.setFullScores();
+                            }, ()->{
                                 if (cachedRun.isCurrent() || cachedRun.isAlone()) {
                                     // When user ignores the run of the currently-selected history item,
                                     // or there is no other useful information in the scores tree, provide
                                     // a reasonable text message if the toolwindow happens to be open.
-                                    PitToolWindowFactory.getControlPanel(project).markScoresInvalid();
+                                    mutationControlPanel.markScoresInvalid();
                                 }
                             });
                         });

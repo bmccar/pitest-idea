@@ -29,7 +29,8 @@ import java.util.function.Consumer;
 public class MutationControlPanel {
 
     private final HistoryList historyList = new HistoryList();
-    private final StretchPane stretchPane = new StretchPane();
+    private final StretchPane stretchPane = new StretchPane(this::handleStretchPaneChanged);
+
     private final JScrollPane rightScrollPane = new JBScrollPane();
     private final ClickTree tree = new ClickTree();
     private Consumer<Boolean> optionsChangeFn = null;
@@ -38,9 +39,10 @@ public class MutationControlPanel {
     private EnumRadio<Sorting.Direction> dirSelector;
     private JButton clearAllButton;
     private boolean isGutterIconsEnabled = true;
+    private int headerHeight;  // For aligning headers across different panes
 
     public MutationControlPanel() {
-        stretchPane.setLeft(createScoresPanel());
+        stretchPane.setLeft(createScoresPanel());  // Run 1st to set headerHeight;
         stretchPane.setRight(createConsolePane());
         stretchPane.setState(StretchPane.PaneState.SCORES);
     }
@@ -49,27 +51,51 @@ public class MutationControlPanel {
         JPanel fullPanel = new JPanel(new BorderLayout());
 
         JPanel header = new JPanel(new BorderLayout());
-        header.add(stretchPane.getConsoleButton(), BorderLayout.WEST);
+        JLabel label = stretchPane.getConsoleButton();
+        header.add(label, BorderLayout.WEST);
+        // Align header heights with small fudge factor
+        header.setPreferredSize(new Dimension(20, headerHeight+4));
         fullPanel.add(header, BorderLayout.NORTH);
         fullPanel.add(rightScrollPane, BorderLayout.CENTER);
 
         return fullPanel;
     }
 
-    private JComponent createScoresPanel() {
-        JSplitPane scoresPanel = new JSplitPane();
+    private JSplitPane scoresSplitPane;
+    private void handleStretchPaneChanged(StretchPane.PaneState s) {
+        if (s == StretchPane.PaneState.SCORES) {
+            // setting divider only works properly if visible
+            scoresSplitPane.getLeftComponent().setVisible(true);
+            setDefaultScoresSplit();
+        } else {
+            scoresSplitPane.getLeftComponent().setVisible(false);
+        }
+    }
 
-        scoresPanel.setLeftComponent(createHistoryPanel());
+    private JComponent createScoresPanel() {
+        scoresSplitPane = new JSplitPane();
+
+        scoresSplitPane.setLeftComponent(createHistoryPanel());
 
         JPanel treePanel = new JPanel(new BorderLayout());
         treePanel.add(createScoresHeaderPanel(), BorderLayout.NORTH);
-        treePanel.add(new JScrollPane(tree), BorderLayout.CENTER);
-        scoresPanel.setRightComponent(treePanel);
+        treePanel.add(tree, BorderLayout.CENTER);
+        scoresSplitPane.setRightComponent(treePanel);
+        setDefaultScoresSplit();
 
-        double split = 0.5;
-        scoresPanel.setDividerLocation(split);
-        scoresPanel.setResizeWeight(split);
-        return scoresPanel;
+        return new JBScrollPane(scoresSplitPane);
+    }
+
+    public void setDefaultScoresSplit() {
+        double split = 0.3;
+        scoresSplitPane.setDividerLocation(split);
+        scoresSplitPane.setResizeWeight(split);
+    }
+
+    public void onFirstActivation(CachedRun cachedRun) {
+        reloadScores(cachedRun);
+        // Quirk: the values in this method do not take effect until the split is visible
+        setDefaultScoresSplit();
     }
 
     private JPanel createHistoryPanel() {
@@ -119,6 +145,7 @@ public class MutationControlPanel {
         header.add(createRemoveButton());
         header.add(Box.createHorizontalGlue());
         header.add(stretchPane.getScoresButton());
+        headerHeight = header.getPreferredSize().height;
         return header;
     }
 
@@ -220,6 +247,10 @@ public class MutationControlPanel {
 
     public void setFullConsole() {
         stretchPane.setFullConsole();
+    }
+
+    public void setFullScores() {
+        stretchPane.setFullScores();
     }
 
     public void clearHistory() {

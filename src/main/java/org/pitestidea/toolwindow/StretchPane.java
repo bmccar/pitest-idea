@@ -2,15 +2,19 @@ package org.pitestidea.toolwindow;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.function.Consumer;
 
 /**
  * A horizontal two-pane panel that can be transitioned between full-views (for either side) with buttons.
  */
 public class StretchPane {
+    private static PaneState currentState = PaneState.SCORES;
+
     private final JSplitPane splitPane;
     private final JLabel scoresButton;
     private final JLabel consoleButton;
-    private static PaneState currentState = PaneState.SCORES;
+    private final Consumer<PaneState> onStateChangeFn;
+
 
     enum PaneState {
         SCORES(1, "<", null),  // Scores is maximized
@@ -48,7 +52,9 @@ public class StretchPane {
         }
     }
 
-    public StretchPane() {
+    StretchPane(Consumer<PaneState> onStateChangeFn) {
+        this.onStateChangeFn = onStateChangeFn;
+
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
         scoresButton = DisplayUtils.createHoverLabel(LEFTWARD, ()->setState(currentState.goScores()));
@@ -83,6 +89,10 @@ public class StretchPane {
         setState(PaneState.CONSOLE);
     }
 
+    public void setFullScores() {
+        setState(PaneState.SCORES);
+    }
+
     void setState(PaneState state) {
         currentState = state;
         scoresButton.setText(currentState.getScoresText());
@@ -90,5 +100,8 @@ public class StretchPane {
         splitPane.setDividerLocation(currentState.dividerLocation);
         splitPane.setResizeWeight(currentState.dividerLocation);
         splitPane.getRightComponent().setVisible(currentState.isVisibleInState(currentState));
+        if (onStateChangeFn != null) {
+            onStateChangeFn.accept(currentState);
+        }
     }
 }

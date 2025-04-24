@@ -77,7 +77,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
             if (tw.isActive()) {
                 mutationControlPanel.reloadScores(cachedRun);
             } else {
-                tw.activate(() -> mutationControlPanel.reloadScores(cachedRun));
+                tw.activate(() -> mutationControlPanel.onFirstActivation(cachedRun));
             }
         }
     }
