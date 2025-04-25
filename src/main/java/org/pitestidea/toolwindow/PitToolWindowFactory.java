@@ -1,5 +1,7 @@
 package org.pitestidea.toolwindow;
 
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -10,15 +12,16 @@ import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.pitestidea.model.CachedRun;
-import org.pitestidea.model.FileMutations;
-import org.pitestidea.model.IMutationScore;
-import org.pitestidea.model.PitExecutionRecorder;
+import org.pitestidea.model.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.intellij.openapi.diagnostic.Logger;
 
 public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware {
+
+    private static final Logger LOGGER = Logger.getInstance(PitToolWindowFactory.class);
+
 
     public static final Map<String, MutationControlPanel> controlPanels = new HashMap<>();
 
@@ -123,9 +126,23 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+        LOGGER.info("Creating tool window content for project " + project.getName());
         MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
         ContentFactory contentFactory = ContentFactory.getInstance();
         Content content = contentFactory.createContent(mutationControlPanel.getContentPanel(), null, false);
         toolWindow.getContentManager().addContent(content);
+        Application application = ApplicationManager.getApplication();
+        application.executeOnPooledThread(() -> {
+            try {
+                PitRepo.reloadReports(project);
+                mutationControlPanel.reloadReports(project);
+                // Update the UI on the Event Dispatch Thread
+                application.invokeLater(() -> {
+                    mutationControlPanel.getContentPanel().updateUI();
+                });
+            } catch (Exception e) {
+                LOGGER.error("Failed to reload reports", e);
+            }
+        });
     }
 }

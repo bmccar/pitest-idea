@@ -57,7 +57,8 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
         this.project = project;
         this.module = module;
         List<String> inputs = virtualFiles.stream().map(VirtualFile::getPath).toList();
-        this.cachedRun = PitRepo.register(module,inputs, RunState.COMPLETED);
+        ExecutionRecord record = new ExecutionRecord(inputs);
+        this.cachedRun = PitRepo.register(module, record);
     }
 
     void setOutputConsole(ConsoleView consoleView) {

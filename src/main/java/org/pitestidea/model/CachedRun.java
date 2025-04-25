@@ -4,6 +4,7 @@ import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
 import org.jetbrains.annotations.NotNull;
+import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
 import org.pitestidea.render.FileOpenCloseListener;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
@@ -70,7 +71,6 @@ public class CachedRun implements Comparable<CachedRun> {
      */
     public void activate() {
         Project project = getProject();
-        PitExecutionRecorder recorder = getRecorder();
         setAsCurrent();
         CoverageGutterRenderer.removeGutterIcons(project);
         FileOpenCloseListener.replayOpenFiles(project);
@@ -127,6 +127,13 @@ public class CachedRun implements Comparable<CachedRun> {
         }
         return false;
     }
+
+    public void reload() {
+        String fn = getReportDir() + "/" + CachedRun.MUTATIONS_FILE;
+        File file = new File(fn);
+        MutationsFileReader.read(getProject(), file, recorder);
+    }
+
 
     /**
      * Deletes all files for this run and any references to this object. This should be called based on a user

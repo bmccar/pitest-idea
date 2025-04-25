@@ -1,6 +1,7 @@
 package org.pitestidea.model;
 
 import com.intellij.openapi.compiler.CompilerPaths;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -16,15 +17,19 @@ public class PitRepo {
     public static class ProjectRunRecords {
         private final LinkedList<CachedRun> runHistory = new LinkedList<>();
         private CachedRun current;
+
         void setAsCurrent(CachedRun run) {
             this.current = run;
         }
+
         boolean isCurrent(CachedRun run) {
             return this.current == run;
         }
+
         int getSize() {
             return runHistory.size();
         }
+
         void remove(CachedRun run) {
             runHistory.remove(run);
             if (run == current) {
@@ -32,10 +37,10 @@ public class PitRepo {
             }
         }
     }
+
     private static final Map<String, ProjectRunRecords> projectMap = new HashMap<>();
 
     public static void clear(@NotNull Project project) {
-        System.out.println("Clearing PitRepo for " + project.getName());
         ProjectRunRecords runRecords = projectMap.get(project.getName());
         if (runRecords != null) {
             runRecords.runHistory.clear();
@@ -51,8 +56,8 @@ public class PitRepo {
         }
     }
 
-    public static CachedRun register(Module module, List<String> inputs, RunState state) {
-        PitExecutionRecorder recorder = new PitExecutionRecorder(module,new ExecutionRecord(inputs));
+    public static CachedRun register(Module module, ExecutionRecord record) {
+        PitExecutionRecorder recorder = new PitExecutionRecorder(module, record);
         Project project = recorder.getModule().getProject();
         ProjectRunRecords runRecords = projectMap.computeIfAbsent(project.getName(), _x -> new ProjectRunRecords());
         CachedRun cachedRun = new CachedRun(runRecords, recorder, RunState.COMPLETED);
@@ -71,7 +76,9 @@ public class PitRepo {
 
     public static void apply(Project project, IHistory history) {
         ProjectRunRecords runs = projectMap.get(project.getName());
-        runs.runHistory.forEach(r->history.visit(r,r==runs.current));
+        if (runs != null) {
+            runs.runHistory.forEach(r -> history.visit(r, r == runs.current));
+        }
     }
 
     public static void deleteHistory(Project project) {
@@ -83,7 +90,7 @@ public class PitRepo {
 
     public static PitExecutionRecorder get(Project project) {
         ProjectRunRecords runs = projectMap.get(project.getName());
-        return runs==null ? null : runs.current.ensureLoaded();
+        return (runs == null || runs.current == null) ? null : runs.current.ensureLoaded();
     }
 
     public static String getReportBaseDirectory(Module module) {
@@ -102,4 +109,27 @@ public class PitRepo {
         }
         return dir + '/' + PIT_IDEA_REPORTS_DIR;
     }
+
+    public static void reloadReports(Project project) {
+        Module[] modules = ModuleManager.getInstance(project).getModules();
+        for (Module module : modules) {
+            @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
+            if (vf != null) {
+                //System.out.println("Module: " + module.getName() + " is: " + vf.getPath());
+                VirtualFile pitIdeaDir = vf.getParent().findChild(PitRepo.PIT_IDEA_REPORTS_DIR);
+                if (pitIdeaDir != null) {
+                    System.out.println("  PitIdeaDir in module: " + module.getName() + " is: " + pitIdeaDir.getPath());
+                    VirtualFile[] reports = pitIdeaDir.getChildren();
+                    for (VirtualFile report : reports) {
+                        if (report.isDirectory()) {
+                            System.out.println("  Found report: " + report.getPath());
+                            CachedRun cachedRun = PitRepo.register(module, new ExecutionRecord(report));
+                            cachedRun.reload();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }

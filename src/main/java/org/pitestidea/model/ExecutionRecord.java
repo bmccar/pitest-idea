@@ -1,21 +1,28 @@
 package org.pitestidea.model;
 
+import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.actions.PITestRunProfile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.FileSystems;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.*;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
@@ -24,6 +31,8 @@ import javax.xml.transform.stream.StreamResult;
  * Records summary information for a specific for a run of PIT. Can be read/written to an XML file.
  */
 public class ExecutionRecord implements Comparable<ExecutionRecord> {
+    public static final String META_FILE_NAME = "run.xml";
+
     @VisibleForTesting
     static final int MAX_REPORT_NAME_LENGTH = 24;
     static final int MAX_PREFIX_LENGTH = 3;
@@ -31,6 +40,8 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     private final static String ROOT_ELEMENT = "execution-record";
     private final static String INPUTS = "inputs";
     private final static String INPUT = "input";
+    private final static String START_TIME = "start-time";
+    private final static String DURATION = "duration";
 
     private static DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
     private static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM d");
@@ -38,7 +49,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     final List<String> inputFiles;
     final String reportName;
     final String reportDirectoryName;
-    private long startedAt;  // TODO write (and later read)
+    private long startedAt;
     private long durationMillis;
 
     public ExecutionRecord(List<String> inputFiles) {
@@ -46,6 +57,22 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         this.reportName = generateReportName(inputFiles);
         this.reportDirectoryName = generateReportDirectoryName(inputFiles);
         this.startedAt = System.currentTimeMillis();
+    }
+
+    public ExecutionRecord(VirtualFile reportDir) {
+        this.inputFiles = new ArrayList<>();
+        VirtualFile metaFile = reportDir.findChild(META_FILE_NAME);
+        if (metaFile == null) {
+            throw new RuntimeException("No meta file found in " + reportDir.getPath());
+        } else {
+            try (InputStream inputStream = metaFile.getInputStream()) {
+                readFull(inputStream);
+            } catch (ParserConfigurationException | IOException | SAXException e) {
+                throw new RuntimeException(e);
+            }
+            this.reportName = generateReportName(inputFiles);
+            this.reportDirectoryName = generateReportDirectoryName(inputFiles);
+        }
     }
 
     public void markFinished() {
@@ -144,7 +171,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     }
 
     private static String metaFileInDir(String dir) {
-        return dir + "/run.xml";
+        return dir + '/' + META_FILE_NAME;
     }
 
     private void appendContent(Document doc) {
@@ -159,6 +186,14 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
             inputElement.appendChild(doc.createTextNode(input));
             inputs.appendChild(inputElement);
         }
+
+        Element startTime = doc.createElement(START_TIME);
+        startTime.setTextContent(Long.toString(startedAt));
+        rootElement.appendChild(startTime);
+
+        Element duration = doc.createElement(DURATION);
+        duration.setTextContent(Long.toString(durationMillis));
+        rootElement.appendChild(duration);
     }
 
     private void writeOutput(Document doc, String dir) throws Exception {
@@ -169,6 +204,27 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
             StreamResult result = new StreamResult(output);
             transformer.transform(source, result);
         }
+    }
+
+    private void readFull(InputStream inputStream) throws ParserConfigurationException, IOException, SAXException {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder builder = factory.newDocumentBuilder();
+
+        Document document = builder.parse(inputStream);
+
+        Element root = document.getDocumentElement(); // .normalize();
+        NodeList inputsList = root.getElementsByTagName(INPUTS);
+        for (int i = 0; i < inputsList.getLength(); i++) {
+            Element node = (Element)inputsList.item(i);
+            String input = node.getElementsByTagName(INPUT).item(0).getTextContent();
+            inputFiles.add(input);
+        }
+
+        NodeList startTime = root.getElementsByTagName(START_TIME);
+        this.startedAt = Long.parseLong(startTime.item(0).getTextContent());
+
+        NodeList duration = root.getElementsByTagName(DURATION);
+        this.durationMillis = Long.parseLong(duration.item(0).getTextContent());
     }
 
     public List<String> getInputFiles() {

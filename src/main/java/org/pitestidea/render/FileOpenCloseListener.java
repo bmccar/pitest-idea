@@ -1,5 +1,6 @@
 package org.pitestidea.render;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
@@ -10,6 +11,7 @@ import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectLocator;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.jetbrains.annotations.NotNull;
 import org.pitestidea.model.PitExecutionRecorder;
 import org.pitestidea.model.PitRepo;
 import org.pitestidea.toolwindow.MutationControlPanel;
@@ -35,12 +37,13 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
     }
 
     @Override
-    public void fileOpened(FileEditorManager source, VirtualFile file) {
-        fileOpenedInternal(source, file);
+    public void fileOpened(@NotNull FileEditorManager source, @NotNull VirtualFile file) {
+        ApplicationManager.getApplication().runReadAction(() -> fileOpenedInternal(source, file));
     }
 
     private static void fileOpenedInternal(FileEditorManager source, VirtualFile file) {
         Project project = ProjectLocator.getInstance().guessProjectForFile(file);
+        //syncModule(project, file);
         if (project != null) {
             PitExecutionRecorder xr = PitRepo.get(project);
             if (xr != null) {

@@ -35,7 +35,7 @@ public class MutationsFileReader {
         }
     }
 
-    static void readFull(Project project, File file, IMutationsRecorder recorder) throws ParserConfigurationException, IOException, SAXException {
+    private static void readFull(Project project, File file, IMutationsRecorder recorder) throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
 

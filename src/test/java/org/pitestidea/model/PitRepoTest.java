@@ -35,7 +35,8 @@ class PitRepoTest {
         PitExecutionRecorder recorder =  new PitExecutionRecorder(commonModule, new ExecutionRecord(ab));
         //CachedRun cachedRun = new CachedRun(recorder, RunState.COMPLETED);
         //PitRepo.register(cachedRun);
-        PitRepo.register(commonModule, Arrays.asList(inputs), RunState.COMPLETED);
+        ExecutionRecord record = new ExecutionRecord(Arrays.asList(inputs));
+        PitRepo.register(commonModule, record);
         return recorder;
     }
 

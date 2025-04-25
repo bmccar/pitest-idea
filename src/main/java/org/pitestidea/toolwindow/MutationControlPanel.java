@@ -259,9 +259,7 @@ public class MutationControlPanel {
 
     public void reloadReports(Project project) {
         CachedRun current = reloadHistory(project);
-        if (current==null) {
-            reloadScoresMsg(project, "No current history. Initiate PIT execution from a drop-down menu.");
-        } else {
+        if (current != null) {
             reloadScores(current);
         }
     }
@@ -278,6 +276,11 @@ public class MutationControlPanel {
             addHistory(c);
         });
         clearAllButton.setEnabled(any.get());
+        if (!any.get()) {
+            reloadScoresMsg(project, "No current history. Initiate PIT execution from a drop-down menu.");
+        } else if (currentRun.get()==null) {
+            reloadScoresMsg(project, "Choose a report from the history list to the left.");
+        }
         historyList.getComponent().updateUI();
         return currentRun.get();
     }
@@ -324,7 +327,6 @@ public class MutationControlPanel {
         ExecutionRecord record = cachedRun.getExecutionRecord();
         boolean isCurrent = cachedRun.isCurrent();
         RunState runState = cachedRun.getRunState();
-        System.out.println("addHistory runState="+runState+" isCurrent="+isCurrent+" record="+record.getReportName());
         boolean valid = runState.isValid();
         JPanel row = historyList.addRow(record, isCurrent, valid, cachedRun::activate);
         TransitionButton button = new TransitionButton();

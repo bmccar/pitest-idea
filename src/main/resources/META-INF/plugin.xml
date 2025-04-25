@@ -32,8 +32,6 @@
   <vendor email="bmccarthy@sidecourt.com">Brendan McCarthy</vendor>
 
   <extensions defaultExtensionNs="com.intellij">
-    <configurationType implementation="org.pitestidea.configuration.PitIJRunConfigurationType"/>
-
     <toolWindow id="PITest" secondary="true" icon="/icons/pitest.svg" anchor="bottom"
                 factoryClass="org.pitestidea.toolwindow.PitToolWindowFactory"/>
   </extensions>
