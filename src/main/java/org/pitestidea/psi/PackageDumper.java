@@ -11,8 +11,8 @@ public class PackageDumper implements IPackageCollector {
     }
 
     @Override
-    public void acceptCodeClass(String className, String fileName) {
-        print("codeClass: %s, file=%s%n", className, fileName);
+    public void acceptCodeClass(String qualifiedClassName, String fileName) {
+        print("codeClass: %s, file=%s%n", qualifiedClassName, fileName);
     }
 
     @Override
@@ -21,7 +21,7 @@ public class PackageDumper implements IPackageCollector {
     }
 
     @Override
-    public void acceptTestClass(String className) {
-        print("testClass: %s%n", className);
+    public void acceptTestClass(String qualifiedClassName) {
+        print("testClass: %s%n", qualifiedClassName);
     }
 }

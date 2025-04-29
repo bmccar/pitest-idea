@@ -2,6 +2,7 @@ package org.pitestidea.psi;
 
 import com.intellij.ide.highlighter.JavaFileType;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import org.jetbrains.annotations.NotNull;
@@ -16,7 +17,9 @@ public class PackageWalker {
     }
 
     private static void read(Project project, VirtualFile file, IPackageCollector collector) {
-        //System.out.format("READ %s, name=%s, type=%s, isDir=%b%n", file,file.getName(),file.getFileType(),file.isDirectory());
+        ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
+        final boolean isInSrc = fileIndex.isInSourceContent(file);
+        final boolean isInTest = fileIndex.isInTestSourceContent(file);
 
         if (file.isDirectory()) {
             PsiDirectory directory = PsiManager.getInstance(project).findDirectory(file);
@@ -30,8 +33,12 @@ public class PackageWalker {
             }
 
             String pkg = psiPackage.getQualifiedName();
-            collector.acceptCodePackage(pkg);
-            collector.acceptTestPackage(pkg);
+            if (isInSrc && !isInTest) {
+                collector.acceptCodePackage(pkg);
+                collector.acceptTestPackage(pkg);
+            } else if (isInTest) {
+                collector.acceptTestPackage(pkg);
+            }
 
         } else if (file.getFileType() == JavaFileType.INSTANCE) {
             PsiJavaFile psiFile = (PsiJavaFile) PsiManager.getInstance(project).findFile(file);
@@ -40,35 +47,14 @@ public class PackageWalker {
                 if (classes.length > 0) {
                     PsiClass psiClass = classes[0];
                     String qn = psiFile.getPackageName() + '.' + psiClass.getName();
-                    collector.acceptCodeClass(qn, psiFile.getName());
-
-                    // TODO robustify
-                    collector.acceptTestClass(qn + "Test");
+                    if (isInTest) {
+                        collector.acceptTestClass(qn);
+                    } else if (isInSrc){
+                        collector.acceptCodeClass(qn, psiFile.getName());
+                        collector.acceptTestClass(qn + "Test");
+                    }
                 }
             }
         }
-
-        /*
-            // Get sub-packages, e.g. "foozle.doozle"
-            PsiPackage[] subPackages = psiPackage.getSubPackages();
-            //System.out.println("Sub-packages in " + psiPackage.getQualifiedName() + ":");
-            for (PsiPackage subPackage : subPackages) {
-                String pkg = subPackage.getQualifiedName();
-                collector.acceptCodePackage(pkg);
-                collector.acceptTestPackage(pkg);
-                //subPackage.getContainingFile().getVirtualFile();
-                //System.out.println("- " + subPackage.getQualifiedName());
-            }
-        // Get files in the package, e.g. "Foo.java", "FooTest.java"
-        PsiDirectory[] directories = psiPackage.getDirectories();
-        //System.out.println("Files in " + psiPackage.getQualifiedName() + ":");
-        for (PsiDirectory dir : directories) {
-            for (PsiFile psiFile : dir.getFiles()) {
-                psifile.get
-                collector.accept(psiPackage, psiFile);
-                //System.out.println("- " + psiFile.getName());
-            }
-        }
-         */
     }
 }

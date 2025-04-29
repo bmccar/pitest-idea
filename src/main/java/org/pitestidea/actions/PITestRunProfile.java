@@ -81,8 +81,8 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     }
 
     @Override
-    public void acceptCodeClass(String className, String fileName) {
-        appending(codeClasses).append(className);
+    public void acceptCodeClass(String qualifiedClassName, String fileName) {
+        appending(codeClasses).append(qualifiedClassName);
     }
 
     @Override
@@ -93,8 +93,8 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     }
 
     @Override
-    public void acceptTestClass(String className) {
-        appending(testClasses).append(className);
+    public void acceptTestClass(String qualifiedClassName) {
+        appending(testClasses).append(qualifiedClassName);
     }
 
     private String pluginJar(String fe) {
