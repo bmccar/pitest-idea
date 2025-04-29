@@ -1,8 +1,13 @@
 package org.pitestidea.model;
 
+import com.intellij.openapi.compiler.CompilerPaths;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.vfs.VirtualFile;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import com.intellij.openapi.module.Module;
@@ -17,67 +22,74 @@ import static org.mockito.Mockito.when;
 class PitRepoTest {
 
     private Module commonModule;
+    private MockedStatic<CompilerPaths> compilerPaths;
 
     @BeforeEach
     void setUp() {
         Project project = Mockito.mock(Project.class);
         commonModule = Mockito.mock(Module.class);
         when(commonModule.getProject()).thenReturn(project);
+
+        VirtualFile vf = Mockito.mock(VirtualFile.class);
+        when(vf.getPath()).thenReturn("someFile");
+
+        compilerPaths = Mockito.mockStatic(CompilerPaths.class);
+        compilerPaths.when(() -> CompilerPaths.getModuleOutputDirectory(commonModule, false)).thenReturn(vf);
+
         PitRepo.clear(commonModule.getProject());
     }
 
-    private PitExecutionRecorder genRecorder(String... inputs) {
-        List<String> ab = Arrays.asList(inputs);
+    @AfterEach
+    void tearDown() {
+        compilerPaths.close();
+    }
+
+    private @NotNull CachedRun genRecorder(String... inputs) {
         try {
             Thread.sleep(5);  // So the timestamps are different
         } catch (InterruptedException e) {
         }
-        PitExecutionRecorder recorder =  new PitExecutionRecorder(commonModule, new ExecutionRecord(ab));
-        //CachedRun cachedRun = new CachedRun(recorder, RunState.COMPLETED);
-        //PitRepo.register(cachedRun);
         ExecutionRecord record = new ExecutionRecord(Arrays.asList(inputs));
-        PitRepo.register(commonModule, record);
-        return recorder;
+        return PitRepo.register(commonModule, record);
     }
 
-    private void verify(Module module, PitExecutionRecorder... recorders) {
+    private void verify(Module module, CachedRun... recorders) {
         List<ExecutionRecord> gotRecords = new ArrayList<>();
-        List<CachedRun> cachedRuns = new ArrayList<>();
 
         PitRepo.apply(module.getProject(), (c,_h) -> gotRecords.add(c.getExecutionRecord()));
 
-        List<ExecutionRecord> exp = Arrays.stream(recorders).map(PitExecutionRecorder::getExecutionRecord).toList();
+        List<ExecutionRecord> exp = Arrays.stream(recorders).map(CachedRun::getExecutionRecord).toList();
 
         assertEquals(exp, gotRecords);
     }
 
     @Test
     void twoRecords() {
-        PitExecutionRecorder ab = genRecorder("a", "b");
-        verify(ab.getModule(), ab);
+        CachedRun ab = genRecorder("a", "b");
+        verify(ab.getRecorder().getModule(), ab);
 
-        PitExecutionRecorder cd = genRecorder("c", "d");
-        verify(cd.getModule(), cd, ab);
+        CachedRun cd = genRecorder("c", "d");
+        verify(cd.getRecorder().getModule(), cd, ab);
     }
 
     @Test
     void overwriteOne() {
-        PitExecutionRecorder ab1 = genRecorder("a", "b");
-        verify(ab1.getModule(), ab1);
+        CachedRun ab1 = genRecorder("a", "b");
+        verify(ab1.getRecorder().getModule(), ab1);
 
-        PitExecutionRecorder ab2 = genRecorder("a", "b");
-        verify(ab2.getModule(), ab2);
+        CachedRun ab2 = genRecorder("a", "b");
+        verify(ab2.getRecorder().getModule(), ab2);
     }
 
     @Test
     void sequence() {
-        PitExecutionRecorder ab = genRecorder("a", "b");
-        verify(ab.getModule(), ab);
+        CachedRun ab = genRecorder("a", "b");
+        verify(ab.getRecorder().getModule(), ab);
 
-        PitExecutionRecorder cd = genRecorder("c", "d");
-        verify(cd.getModule(), cd, ab);
+        CachedRun cd = genRecorder("c", "d");
+        verify(cd.getRecorder().getModule(), cd, ab);
 
         ab = genRecorder("a", "b");
-        verify(ab.getModule(), ab, cd);
+        verify(ab.getRecorder().getModule(), ab, cd);
     }
 }

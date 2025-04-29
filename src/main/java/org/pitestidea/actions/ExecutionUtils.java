@@ -1,13 +1,16 @@
 package org.pitestidea.actions;
 
 import com.intellij.execution.ExecutionException;
-import com.intellij.execution.configurations.RunProfile;
 import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.runners.ExecutionEnvironmentBuilder;
 import com.intellij.execution.runners.ProgramRunner;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ExecutionConsole;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.compiler.CompilerManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 
@@ -20,13 +23,16 @@ import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 public class ExecutionUtils {
+    private static final Logger LOGGER = Logger.getInstance(ExecutionUtils.class);
+
     public static void execute(Module module, List<VirtualFile> virtualFiles) {
         Project project = module.getProject();
         PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
-        PackageWalker.read(project, virtualFiles, runProfile);
+        ReadAction.run(()-> {
+                    PackageWalker.read(project, virtualFiles, runProfile);
+                });
         execute(project, module, runProfile);
     }
 
@@ -41,17 +47,25 @@ public class ExecutionUtils {
         MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
         CachedRun cachedRun = runProfile.getCachedRun();
         cachedRun.setRunState(RunState.RUNNING);
-        mutationControlPanel.addHistory(cachedRun);
         mutationControlPanel.reloadHistory(project);
         if (cachedRun.isCurrent()) {
-            mutationControlPanel.clearScores();
+            mutationControlPanel.clearScores(cachedRun);
         }
 
         CompilerManager compilerManager = CompilerManager.getInstance(project);
-        compilerManager.make(module, (aborted, errors, warnings, compileContext) -> {
-            if (!aborted) {
-                executePlugin(project, runProfile);
-            }
+        ApplicationManager.getApplication().invokeLater(() -> {
+            WriteAction.run(() -> {
+                compilerManager.make(module, (aborted, errors, warnings, compileContext) -> {
+                    if (!aborted) {
+                        try {
+                            executePlugin(project, runProfile);
+                        } catch (RuntimeException e) {
+                            LOGGER.error("Failed to execute PIT", e);
+                            throw new RuntimeException(e);
+                        }
+                    }
+                });
+            });
         });
     }
 
@@ -74,5 +88,15 @@ public class ExecutionUtils {
             // TODO restore state
             throw new RuntimeException(ex);
         }
+    }
+
+    public static void dumpThreads(String msg) {
+        System.out.printf("%s thread: %s dispatch=%b, read=%b, write=%b%n",
+                msg,
+                Thread.currentThread(),
+                ApplicationManager.getApplication().isDispatchThread(),
+                ApplicationManager.getApplication().isReadAccessAllowed(),
+                ApplicationManager.getApplication().isWriteAccessAllowed());
+
     }
 }

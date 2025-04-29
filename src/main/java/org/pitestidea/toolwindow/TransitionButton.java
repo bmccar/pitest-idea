@@ -1,7 +1,9 @@
 package org.pitestidea.toolwindow;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.ui.JBColor;
 import kotlinx.html.B;
+import org.pitestidea.actions.ExecutionUtils;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -40,9 +42,17 @@ public class TransitionButton extends JButton {
 
         addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
+                ExecutionUtils.dumpThreads("MouseClicked");
                 transition();
             }
         });
+    }
+
+    @Override
+    public void setEnabled(boolean enabled) {
+        System.out.println("TransitionButton.setEnabled(" + enabled + ")");
+        super.setEnabled(enabled);
+        setForeground(enabled ? JBColor.BLACK : JBColor.GRAY);
     }
 
     /**

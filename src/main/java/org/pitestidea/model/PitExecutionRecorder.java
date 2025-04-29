@@ -6,7 +6,9 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.reader.IMutationsRecorder;
 import org.pitestidea.render.IMutationsFileHandler;
+import org.pitestidea.toolwindow.DisplayChoices;
 import org.pitestidea.toolwindow.Sorting;
+import org.pitestidea.toolwindow.Viewing;
 
 import java.util.*;
 
@@ -17,25 +19,20 @@ import java.util.*;
 public class PitExecutionRecorder implements IMutationsRecorder {
     public static final String ROOT_PACKAGE_NAME = "Results";
     private final Module module;
-    private final ExecutionRecord executionRecord;
     private final Map<VirtualFile, FileGroup> fileCache = new HashMap<>();
+    private final List<FileGroup> sortedFiles = new ArrayList<>();
     private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME, null);
 
     {
         rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
     }
 
-    public PitExecutionRecorder(Module module, ExecutionRecord executionRecord) {
+    public PitExecutionRecorder(Module module) {
         this.module = module;
-        this.executionRecord = executionRecord;
     }
 
     public Module getModule() {
         return module;
-    }
-
-    public ExecutionRecord getExecutionRecord() {
-        return executionRecord;
     }
 
     public interface PackageDiver {
@@ -51,7 +48,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
         void coalesce(boolean topLevel);
 
-        void sort(Sorting.By by, Sorting.Direction dir);
+        void sort(DisplayChoices choices);
     }
 
     private class PkgGroup extends BaseMutationsScore implements Directory, PackageDiver {
@@ -94,18 +91,18 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         }
 
         @Override
-        public void sort(Sorting.By by, Sorting.Direction dir) {
+        public void sort(DisplayChoices choices) {
             Comparator<Directory> fn;
-            switch (by) {
+            switch (choices.sortBy()) {
                 case PROJECT -> fn = Comparator.comparing(Directory::getOrder);
                 case SCORE -> fn = Comparator.comparing(Directory::getScore);
-                default -> throw new IllegalArgumentException("Unsupported sorting by: " + by);
+                default -> throw new IllegalArgumentException("Unsupported sorting by: " + choices.sortBy());
             }
-            if (dir == Sorting.Direction.DESC) {
+            if (choices.sortDirection() == Sorting.Direction.DESC) {
                 fn = fn.reversed();
             }
             sortedChildren = children.values().stream().sorted(fn).toList();
-            children.values().forEach(c -> c.sort(by, dir));
+            children.values().forEach(c -> c.sort(choices));
         }
 
         @Override
@@ -152,7 +149,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         }
 
         @Override
-        public void sort(Sorting.By by, Sorting.Direction dir) {
+        public void sort(DisplayChoices _choices) {
             // Nothing to do
         }
     }
@@ -172,6 +169,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         FileGroup dir = (FileGroup) last.children.computeIfAbsent(file.getName(), _k -> {
             FileGroup fileGroup = new FileGroup(file, pkg, parent);
             fileCache.put(file, fileGroup);
+            sortedFiles.add(fileGroup);
             return fileGroup;
         });
         dir.fileMutations.add(lineNumber, new Mutation(impact, description));
@@ -183,9 +181,17 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         rootDirectory.coalesce(true);
     }
 
+    private DisplayChoices displayChoices;
+
     @Override
-    public void sort(Sorting.By by, Sorting.Direction dir) {
-        rootDirectory.sort(by, dir);
+    public void sort(DisplayChoices choices) {
+        this.displayChoices = choices;
+        rootDirectory.sort(choices);
+        Comparator<FileGroup> cmp = Comparator.comparing(FileGroup::getScore);
+        if (choices.sortDirection() == Sorting.Direction.DESC) {
+            cmp = cmp.reversed();
+        }
+        sortedFiles.sort(cmp);
     }
 
     public interface FileVisitor {
@@ -195,7 +201,11 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     }
 
     public void visit(FileVisitor visitor) {
-        rootDirectory.walkInternal(visitor);
+        if (displayChoices != null && displayChoices.packageChoice() == Viewing.PackageChoice.NONE) {
+            sortedFiles.forEach(g -> g.walkInternal(visitor));
+        } else {
+            rootDirectory.walkInternal(visitor);
+        }
     }
 
     public void visit(Project project, IMutationsFileHandler visitor, VirtualFile file) {

@@ -33,7 +33,9 @@ public class HistoryList {
         contentPanel.removeAll();
     }
 
-    public JPanel addRow(ExecutionRecord record, boolean highlight, boolean valid, Runnable onClick) {
+    public record Sizing(int startWidth, int durationWidth) {}
+
+    public JPanel addRow(ExecutionRecord record, boolean highlight, boolean valid, Sizing sizing, Runnable onClick) {
         JPanel row = new JPanel();
         row.setLayout(new FlowLayout(FlowLayout.LEFT));
         contentPanel.add(row);
@@ -44,8 +46,8 @@ public class HistoryList {
             row.setBorder(BorderFactory.createLineBorder(JBColor.BLACK));
         }
         JPanel left = new JPanel(new FlowLayout());
-        left.add(pfx(record.getFormattedStart()));
-        left.add(pfx(record.getFormattedDuration()));
+        left.add(pfx(sizing.startWidth(), record.getFormattedStart()));
+        left.add(pfx(sizing.durationWidth(), record.getFormattedDuration()));
 
         JLabel label = new JLabel(record.getReportName());
         left.addMouseListener(new MouseAdapter() {
@@ -65,14 +67,26 @@ public class HistoryList {
 
     private String formatToolTip(ExecutionRecord record) {
         StringBuilder sb = new StringBuilder();
-        sb.append("PIT Execution run<br>&nbsp;&nbsp;Started at ");
-        sb.append(record.getFormattedStart()).append("<br>&nbsp;&nbsp;Duration: ");
-        sb.append(record.getFormattedDuration());
-        sb.append(record.getHtmlListOfInputs("<br><br>Inputs for this run", true));
+        if (record.isRunnable()) {
+            sb.append("PIT Execution run<br>&nbsp;&nbsp;Started at ");
+            sb.append(record.getFormattedStart()).append("<br>&nbsp;&nbsp;Duration: ");
+            sb.append(record.getFormattedDuration());
+            sb.append(record.getHtmlListOfInputs("<br><br>Inputs for this run", true));
+        } else {
+            sb.append("PIT Command-line run<br>&nbsp;&nbsp;<i>Ended</i> at ");
+            sb.append(record.getFormattedStart());
+            sb.append("<br>&nbsp;&nbsp;Duration unknown<br><br>&nbsp;&nbsp;Inputs unknown");
+        }
         return sb.toString();
     }
 
-    private JComponent pfx(String s) {
+    private JComponent pfx(int width, String s) {
+        if (s.isEmpty()) {
+            s = ".".repeat(width);
+        } else {
+            int padding = width - s.length();
+            s = " ".repeat(padding) + s;
+        }
         JLabel label = new JLabel(s);
         label.setFont(font);
         return label;

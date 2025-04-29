@@ -82,6 +82,4 @@ public class MutationsFileReader {
         }
         return null;
     }
-
-
 }

@@ -1,5 +1,6 @@
 package org.pitestidea.configuration;
 
+import com.intellij.openapi.compiler.CompilerPaths;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
@@ -14,8 +15,11 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiJavaFile;
+import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
+import java.io.File;
+import java.nio.file.FileSystems;
 
 /**
  * Various utilities for accessing elements of the opened project and files in Intellij.
@@ -102,13 +106,30 @@ public class IdeaDiscovery {
         return activeProject.getBasePath();
     }
 
-    public static String getReportDir() {
-        return getReportDir(getActiveProject());
+    public static String getAbsoluteOutputPath(Module module, String...subs) {
+        @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
+        if (vf == null) {
+            throw new RuntimeException("No output directory for module " + module.getName());
+        }
+        StringBuilder sb = new StringBuilder(vf.getPath());
+        for (String sub : subs) {
+            sb.append(FileSystems.getDefault().getSeparator());
+            sb.append(sub);
+        }
+        return sb.toString();
     }
 
-    public static String getReportDir(Project project) {
-        String projectDir = project.getBasePath();
-        return projectDir + "/target/report/pitestidea";
+    public static File getAbsoluteOutputDir(Module module, String...subs) {
+        @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
+        if (vf == null) {
+            return null;
+            //throw new RuntimeException("No output directory for module " + module.getName());
+        }
+        File file = new File(vf.getPath());
+        for (String sub : subs) {
+            file = new File(file,sub);
+        }
+        return file;
     }
 
     /**

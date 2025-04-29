@@ -53,14 +53,15 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         mutationControlPanel.setPackageSelection(packageChoice);
         mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
         mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
-        mutationControlPanel.setOptionsChangeFn(resort -> reshow(project, mutationControlPanel, cachedRun, resort));
+
+        mutationControlPanel.setOptionsChangeFn(choices -> reshow(project, mutationControlPanel, PitRepo.getCurrent(project), choices));
         mutationControlPanel.reloadHistory(project);
-        reshow(project, mutationControlPanel, cachedRun, false);
+        reshow(project, mutationControlPanel, cachedRun, null);
     }
 
     public static void showPitExecutionOutputOnly(Project project) {
         MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
-        mutationControlPanel.clearScores();
+        mutationControlPanel.clearScores(project);
         mutationControlPanel.setFullConsole();
         ToolWindow tw = getToolWindow(project);
         if (tw != null) {
@@ -68,12 +69,12 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
     }
 
-    private static void reshow(Project project, MutationControlPanel mutationControlPanel, CachedRun cachedRun, boolean resort) {
-        if (resort) {
+    private static void reshow(Project project, MutationControlPanel mutationControlPanel, CachedRun cachedRun, DisplayChoices choices) {
+        if (choices != null) {
             PitExecutionRecorder recorder = cachedRun.getRecorder();
-            recorder.sort(mutationControlPanel.getSortSelection(),mutationControlPanel.getDirSelection());
+            recorder.sort(choices);
         }
-        mutationControlPanel.clearScores();
+        mutationControlPanel.clearScores(cachedRun);
 
         ToolWindow tw = getToolWindow(project);
         if (tw != null) {
@@ -135,7 +136,6 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         application.executeOnPooledThread(() -> {
             try {
                 PitRepo.reloadReports(project);
-                mutationControlPanel.reloadReports(project);
                 // Update the UI on the Event Dispatch Thread
                 application.invokeLater(() -> {
                     mutationControlPanel.getContentPanel().updateUI();

@@ -2,6 +2,7 @@ package org.pitestidea.reader;
 
 import com.intellij.openapi.vfs.VirtualFile;
 import org.pitestidea.model.MutationImpact;
+import org.pitestidea.toolwindow.DisplayChoices;
 import org.pitestidea.toolwindow.Sorting;
 
 public interface IMutationsRecorder {
@@ -24,8 +25,7 @@ public interface IMutationsRecorder {
     /**
      * Changes the sorting order.
      *
-     * @param by what field
-     * @param dir asc/desc
+     * @param choices how results should be returned
      */
-    void sort(Sorting.By by, Sorting.Direction dir);
+    void sort(DisplayChoices choices);
 }

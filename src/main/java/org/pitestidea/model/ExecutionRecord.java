@@ -1,21 +1,20 @@
 package org.pitestidea.model;
 
-import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
+import org.pitestidea.actions.ExecutionUtils;
 import org.pitestidea.actions.PITestRunProfile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.FileSystems;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -43,14 +42,23 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     private final static String START_TIME = "start-time";
     private final static String DURATION = "duration";
 
-    private static DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-    private static DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM d");
+    private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM d");
 
     final List<String> inputFiles;
     final String reportName;
     final String reportDirectoryName;
     private long startedAt;
     private long durationMillis;
+
+    public static class InvalidFile extends RuntimeException {};
+
+    public ExecutionRecord(long startedAt) {
+        inputFiles = Collections.emptyList();
+        reportName = "pit command line";
+        reportDirectoryName = null;
+        this.startedAt = startedAt;
+    }
 
     public ExecutionRecord(List<String> inputFiles) {
         this.inputFiles = inputFiles;
@@ -59,13 +67,18 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         this.startedAt = System.currentTimeMillis();
     }
 
-    public ExecutionRecord(VirtualFile reportDir) {
+    public ExecutionRecord(File reportDir) {
         this.inputFiles = new ArrayList<>();
-        VirtualFile metaFile = reportDir.findChild(META_FILE_NAME);
-        if (metaFile == null) {
-            throw new RuntimeException("No meta file found in " + reportDir.getPath());
+        File[] metaFiles = reportDir.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+                return META_FILE_NAME.equals(name);
+            }
+        });
+        if (metaFiles == null || metaFiles.length == 0) {
+            throw new InvalidFile();
         } else {
-            try (InputStream inputStream = metaFile.getInputStream()) {
+            try (InputStream inputStream = new FileInputStream(metaFiles[0])) {
                 readFull(inputStream);
             } catch (ParserConfigurationException | IOException | SAXException e) {
                 throw new RuntimeException(e);
@@ -79,26 +92,47 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         this.durationMillis = System.currentTimeMillis() - startedAt;
     }
 
+    /**
+     * Can only initiate a PIT run if the input files are known.
+     *
+     * @return true iff this record can be run
+     */
+    public boolean isRunnable() {
+        return !inputFiles.isEmpty();
+    }
+
+    public long getStartedAt() {
+        return startedAt;
+    }
+
     public String getFormattedStart() {
-        ZonedDateTime runStart = Instant.ofEpochMilli(startedAt).atZone(ZoneId.systemDefault());
-        ZonedDateTime midnight = LocalDate.now().atStartOfDay().atZone(ZoneId.systemDefault());
-        if (runStart.isBefore(midnight)) {
-            return dateFormatter.format(runStart);
+        if (startedAt == 0) {
+            return "";
         } else {
-            return timeFormatter.format(runStart);
+            ZonedDateTime runStart = Instant.ofEpochMilli(startedAt).atZone(ZoneId.systemDefault());
+            ZonedDateTime midnight = LocalDate.now().atStartOfDay().atZone(ZoneId.systemDefault());
+            if (runStart.isBefore(midnight)) {
+                return dateFormatter.format(runStart);
+            } else {
+                return timeFormatter.format(runStart);
+            }
         }
     }
 
     public String getFormattedDuration() {
-        long hours = TimeUnit.MILLISECONDS.toHours(durationMillis);
-        long minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis) - TimeUnit.HOURS.toMinutes(hours);
-        long seconds = TimeUnit.MILLISECONDS.toSeconds(durationMillis) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(durationMillis));
-        if (hours > 0) {
-            return String.format("%dh:%dm:%ds", hours, minutes, seconds);
-        } else if (minutes > 0) {
-            return String.format("%dm:%ds", minutes, seconds);
+        if (durationMillis == 0) {
+            return "";
         } else {
-            return String.format("%dsec", seconds);
+            long hours = TimeUnit.MILLISECONDS.toHours(durationMillis);
+            long minutes = TimeUnit.MILLISECONDS.toMinutes(durationMillis) - TimeUnit.HOURS.toMinutes(hours);
+            long seconds = TimeUnit.MILLISECONDS.toSeconds(durationMillis) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(durationMillis));
+            if (hours > 0) {
+                return String.format("%dh:%dm:%ds", hours, minutes, seconds);
+            } else if (minutes > 0) {
+                return String.format("%dm:%ds", minutes, seconds);
+            } else {
+                return String.format("%dsec", seconds);
+            }
         }
     }
 
@@ -154,24 +188,21 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     /**
      * Writes this class as an XML file so it can later be read if needed.
      *
-     * @param dir fully-qualified path unique to this instance
+     * @param reportDir fully-qualified path unique to this instance
      */
-    public void writeToDirectory(String dir) {
-        System.out.println("Writing report to " + dir);
+    public void writeToDirectory(File reportDir) {
+        ExecutionUtils.dumpThreads("ExecutionRecord.writeToDirectory START");
 
         try {
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
             Document doc = docBuilder.newDocument();
             appendContent(doc);
-            writeOutput(doc, metaFileInDir(dir));
+            writeOutput(doc, new File(reportDir,META_FILE_NAME));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private static String metaFileInDir(String dir) {
-        return dir + '/' + META_FILE_NAME;
+        ExecutionUtils.dumpThreads("ExecutionRecord.writeToDirectory END");
     }
 
     private void appendContent(Document doc) {
@@ -196,8 +227,8 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         rootElement.appendChild(duration);
     }
 
-    private void writeOutput(Document doc, String dir) throws Exception {
-        try (FileOutputStream output = new FileOutputStream(dir)) {
+    private void writeOutput(Document doc, File reportDir) throws Exception {
+        try (@NotNull OutputStream output = new FileOutputStream(reportDir)) {
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
             DOMSource source = new DOMSource(doc);
@@ -240,6 +271,9 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     }
 
     public String getHtmlListOfInputs(String msg, boolean forceMultiline) {
+        if (inputFiles.isEmpty()) {
+            return reportName;
+        }
         StringBuilder sb = new StringBuilder();
         sb.append(msg);
         List<String> inputFiles = getInputFiles();

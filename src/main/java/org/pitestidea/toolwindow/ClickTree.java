@@ -62,8 +62,11 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
             return;
         }
         Object selectedNode = e.getPath().getLastPathComponent();
-        if (selectedNode instanceof ClickableFileNode clickableFileNode) {
-            clickableFileNode.onClick();
+        if (selectedNode instanceof DefaultMutableTreeNode defaultMutableTreeNode) {
+            Object userObject = defaultMutableTreeNode.getUserObject();
+            if (userObject instanceof ClickableNode clickableNode) {
+                clickableNode.onClick();
+            }
         }
     }
 
@@ -124,6 +127,7 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
         }
 
         TreeLevel addPackageRow(String pkg) {
+            System.out.println("addPackageRow: " + pkg);
             DefaultMutableTreeNode child = new DefaultMutableTreeNode(pkg);
             this.node.add(child);
             return new TreeLevel(child);
@@ -132,7 +136,6 @@ public class ClickTree extends JPanel implements TreeSelectionListener {
 
     void clearExistingRows() {
         root.removeAllChildren();
-        root.setUserObject("Waiting for PIT to finish...");
     }
 
     TreeLevel getRootTreeLevel() {

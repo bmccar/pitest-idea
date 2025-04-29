@@ -9,9 +9,9 @@ import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.FileEditorManagerEvent;
 import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.project.ProjectLocator;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
+import org.pitestidea.actions.ExecutionUtils;
 import org.pitestidea.model.PitExecutionRecorder;
 import org.pitestidea.model.PitRepo;
 import org.pitestidea.toolwindow.MutationControlPanel;
@@ -25,6 +25,7 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
      * @param project to check for open files
      */
     public static void replayOpenFiles(Project project) {
+        System.out.println("Replaying open files for project: " + project.getName());
         for (Editor editor : EditorFactory.getInstance().getAllEditors()) {
             if (project == editor.getProject()) {
                 Document document = editor.getDocument();
@@ -38,21 +39,20 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
 
     @Override
     public void fileOpened(@NotNull FileEditorManager source, @NotNull VirtualFile file) {
+        ExecutionUtils.dumpThreads("FileOpenedClosedListener.fileOpened");
         ApplicationManager.getApplication().runReadAction(() -> fileOpenedInternal(source, file));
     }
 
     private static void fileOpenedInternal(FileEditorManager source, VirtualFile file) {
-        Project project = ProjectLocator.getInstance().guessProjectForFile(file);
-        //syncModule(project, file);
-        if (project != null) {
-            PitExecutionRecorder xr = PitRepo.get(project);
-            if (xr != null) {
-                MutationControlPanel mutationControlPanel =
-                        PitToolWindowFactory.getOrCreateControlPanel(project);
-                if (mutationControlPanel.isGutterIconsEnabled()) {
-                    CoverageGutterRenderer renderer = CoverageGutterRenderer.getInstance();
-                    xr.visit(source.getProject(), renderer, file);
-                }
+        Project project = source.getProject();
+        PitExecutionRecorder xr = PitRepo.get(project);
+        if (xr != null) {
+            MutationControlPanel mutationControlPanel =
+                    PitToolWindowFactory.getOrCreateControlPanel(project);
+            System.out.println("FileOpenedInternal: " + file.getName() + ", gutter icons enabled:" + mutationControlPanel.isGutterIconsEnabled());
+            if (mutationControlPanel.isGutterIconsEnabled()) {
+                CoverageGutterRenderer renderer = CoverageGutterRenderer.getInstance();
+                xr.visit(project, renderer, file);
             }
         }
     }

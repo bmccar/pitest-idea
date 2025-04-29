@@ -1,5 +1,7 @@
 package org.pitestidea.render;
 
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.impl.DocumentMarkupModel;
@@ -41,7 +43,12 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
     @Override
     public void fileOpened(Project project, VirtualFile file, FileMutations fileMutations, IMutationScore score) {
         //System.out.println("RENDERER.fileOpened " + file.getPath());
-        fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations));
+        Application app = ApplicationManager.getApplication();
+        app.executeOnPooledThread(()-> {
+            app.runReadAction(()-> {
+                fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations));
+            });
+        });
     }
 
     @Override

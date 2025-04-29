@@ -34,7 +34,6 @@ import javax.swing.*;
 import java.io.File;
 import java.nio.file.FileSystems;
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Defines how the PIT process is run, in accordance with the IJ framework. This includes the steps taken when
@@ -58,6 +57,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
         this.module = module;
         List<String> inputs = virtualFiles.stream().map(VirtualFile::getPath).toList();
         ExecutionRecord record = new ExecutionRecord(inputs);
+        //VirtualFile vf = getVirtualFile(module, virtualFiles, record);
         this.cachedRun = PitRepo.register(module, record);
     }
 
@@ -120,8 +120,8 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 javaParameters.setUseClasspathJar(true);
                 String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
                 ParametersList params = javaParameters.getProgramParametersList();
-                String reportDir = cachedRun.getReportDir();
-                params.add("--reportDir", reportDir);
+                File reportDir = cachedRun.getReportFileDir();
+                params.add("--reportDir", reportDir.getPath());
                 params.add("--targetClasses", codeClasses.toString());
                 params.add("--targetTests", testClasses.toString());
                 params.add("--sourceDirs", projectDir + "/src/main/java");
@@ -164,7 +164,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
             @Override
             protected @NotNull OSProcessHandler startProcess() throws ExecutionException {
                 // Avoiding leaving previous icons while executing, else users may be confused that they represent the current result
-                CoverageGutterRenderer.removeGutterIcons(project);
+                //CoverageGutterRenderer.removeGutterIcons(project);
                 cachedRun.prepareForRun();  // Clean house to avoid confusion in case PIT fails or is cancelled
 
                 OSProcessHandler handler = super.startProcess();
@@ -178,12 +178,11 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         RunState newRunState = runState;
                         final MutationControlPanel mutationControlPanel = PitToolWindowFactory.getControlPanel(project);
                         if (runState != RunState.CANCELLED) {
-                            String fn = cachedRun.getReportDir() + "/" + CachedRun.MUTATIONS_FILE;
-                            File file = new File(fn);
+                            File reportDirectory = cachedRun.getReportFileDir();
                             int code = event.getExitCode();
                             //boolean status;
-                            if (code == 0 && file.exists() && file.isFile() && file.canRead() && file.length() > 0L) {
-                                onSuccess(file, mutationControlPanel);
+                            if (code == 0 && reportDirectory.exists() && reportDirectory.isDirectory()) {
+                                onSuccess(cachedRun, mutationControlPanel);
                                 writeConsoleReportLink();
                                 newRunState = RunState.COMPLETED;
                             } else {
@@ -221,23 +220,30 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         });
                     }
 
-                    private void onSuccess(File file, MutationControlPanel mutationControlPanel) {
+                    private void onSuccess(CachedRun cachedRun, MutationControlPanel mutationControlPanel) {
                         PitExecutionRecorder recorder = cachedRun.getRecorder();
-                        recorder.getExecutionRecord().writeToDirectory(cachedRun.getReportDir());
                         Application app = ApplicationManager.getApplication();
+                        ExecutionUtils.dumpThreads("onSuccess OUTER");
                         app.executeOnPooledThread(() -> {
-                            app.runReadAction(() -> MutationsFileReader.read(project, file, recorder));
+                            ExecutionUtils.dumpThreads("onSuccess MIDDLE");
+                            app.invokeLater(() -> {
+                                ExecutionUtils.dumpThreads("onSuccess INNER");
+                                app.runWriteAction(() -> cachedRun.getExecutionRecord().writeToDirectory(cachedRun.getReportFileDir()));
+                            });
+                            File src = cachedRun.getMutationsFile();
+                            app.runReadAction(() -> MutationsFileReader.read(project, src, recorder));
+
                             String msg = cachedRun.getExecutionRecord().getHtmlListOfInputs("PIT execution completed for", false);
-                            react(msg, "Show Report", () -> {
-                               cachedRun.activate();
-                               mutationControlPanel.setFullScores();
-                            }, ()->{
-                                if (cachedRun.isCurrent() || cachedRun.isAlone()) {
-                                    // When user ignores the run of the currently-selected history item,
-                                    // or there is no other useful information in the scores tree, provide
-                                    // a reasonable text message if the toolwindow happens to be open.
-                                    mutationControlPanel.markScoresInvalid();
-                                }
+
+                            app.invokeLater(() -> {
+                                react(msg, "Show Report", () -> {
+                                    cachedRun.activate();
+                                    mutationControlPanel.setFullScores();
+                                }, () -> {
+                                    if (cachedRun.isCurrent()) {
+                                        mutationControlPanel.markScoresInvalid();
+                                    }
+                                });
                             });
                         });
                     }

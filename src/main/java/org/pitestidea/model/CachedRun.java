@@ -1,51 +1,83 @@
 package org.pitestidea.model;
 
 import com.intellij.execution.process.OSProcessHandler;
+import com.intellij.openapi.application.Application;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.module.Module;
+import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VirtualFile;
+import org.eclipse.jgit.annotations.NonNull;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.reader.MutationsFileReader;
-import org.pitestidea.render.CoverageGutterRenderer;
-import org.pitestidea.render.FileOpenCloseListener;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.concurrent.Future;
+import java.util.function.BiConsumer;
 
 /**
  * Pairs an ExecutionRecord with a PitExecutionRecorder, with the ability to lazy
- * load the latter (which can grow large) or drop it save space.
+ * load the latter (which can grow large) or drop it save space. An instance of this
+ * class is created for every PIT output directory in the project.
  */
 public class CachedRun implements Comparable<CachedRun> {
-    public static String MUTATIONS_FILE = "mutations.xml";
+    private static final String MUTATIONS_FILE = "mutations.xml";
 
+    // Back ptr to owner of this object
     private final PitRepo.ProjectRunRecords runRecords;
+
+    // Meta information about this run
     private final ExecutionRecord executionRecord;
+
+    // Loaded from mutations.xml -- may be unloaded as well to reduce space usage
     private PitExecutionRecorder recorder = null;
-    private RunState runState;
+
+    // State of the run that produced this object
+    private RunState runState = RunState.COMPLETED;
+
+    // Optional callback for when runState changes
+    private BiConsumer<RunState, RunState> runStateChangedListener;
+
+    // Is at least one package included in output
     private boolean includesPackages = false;
 
-    public CachedRun(PitRepo.ProjectRunRecords runRecords, PitExecutionRecorder recorder, RunState runState) {
+    // Directory may or may not exist -- store String path rather than File to avoid race-deletion headaches
+    private final @NonNull String reportDirectory;
+
+    public CachedRun(PitRepo.ProjectRunRecords runRecords, ExecutionRecord record, PitExecutionRecorder recorder, String reportDirectory) {
         this.runRecords = runRecords;
-        this.runState = runState;
         this.recorder = recorder;
-        this.executionRecord = recorder.getExecutionRecord();
+        this.executionRecord = record;
+        this.reportDirectory = reportDirectory;
     }
 
     public RunState getRunState() {
         return runState;
     }
 
-    public void setRunState(RunState runState) {
-        this.runState = runState;
+    public synchronized void setRunState(RunState newRunState) {
+        System.out.println("setRunState(" + newRunState+ ") current: " + this.runState + "listener="+(runStateChangedListener!=null));
+        if (this.runState != newRunState) {
+            RunState oldState = this.runState;
+            this.runState = newRunState;
+            if (runStateChangedListener != null) {
+                runStateChangedListener.accept(oldState, newRunState);
+            }
+        }
+    }
+
+    public BiConsumer<RunState, RunState> getRunStateChangedListener() {
+        return runStateChangedListener;
+    }
+
+    public void setRunStateChangedListener(BiConsumer<RunState, RunState> runStateChangedListener) {
+        this.runStateChangedListener = runStateChangedListener;
     }
 
     public ExecutionRecord getExecutionRecord() {
         return executionRecord;
-    }
-
-    public boolean isIncludesPackages() {
-        return includesPackages;
     }
 
     public void setIncludesPackages() {
@@ -72,8 +104,6 @@ public class CachedRun implements Comparable<CachedRun> {
     public void activate() {
         Project project = getProject();
         setAsCurrent();
-        CoverageGutterRenderer.removeGutterIcons(project);
-        FileOpenCloseListener.replayOpenFiles(project);
         PitToolWindowFactory.show(project, this, includesPackages);
     }
 
@@ -96,16 +126,20 @@ public class CachedRun implements Comparable<CachedRun> {
         return executionRecord.hashCode();
     }
 
+    /**
+     * Makes this CachedRun the current one, taking the place of an existing current if there is one.
+     */
     public void setAsCurrent() {
         runRecords.setAsCurrent(this);
     }
 
+    /**
+     * At most one CachedRun is 'current' with respect to a project. This is for display purposes.
+     *
+     * @return true iff this CachedRun is the current one inside its project
+     */
     public boolean isCurrent() {
         return runRecords.isCurrent(this);
-    }
-
-    public boolean isAlone() {
-        return runRecords.getSize()==1;
     }
 
     private OSProcessHandler processHandler;
@@ -115,23 +149,34 @@ public class CachedRun implements Comparable<CachedRun> {
     }
 
     public String getReportDir() {
-        Module module = recorder.getModule();
-        return PitRepo.getReportBaseDirectory(module) + '/' + executionRecord.getReportDirectoryName();
+        return reportDirectory;
+    }
+
+    public VirtualFile getReportVirtualDir() {
+        String path = reportDirectory.replace('\\', '/');
+        return LocalFileSystem.getInstance().findFileByPath(path);
+    }
+
+    public File getReportFileDir() {
+        String path = reportDirectory.replace('\\', '/');
+        return new File(path);
+    }
+
+    public File getMutationsFile() {
+        return new File(getReportFileDir(), MUTATIONS_FILE);
     }
 
     public boolean cancel() {
         if (this.runState == RunState.RUNNING && processHandler != null) {
             processHandler.destroyProcess();
-            this.runState = RunState.CANCELLED;
+            setRunState(RunState.CANCELLED);
             return true;
         }
         return false;
     }
 
     public void reload() {
-        String fn = getReportDir() + "/" + CachedRun.MUTATIONS_FILE;
-        File file = new File(fn);
-        MutationsFileReader.read(getProject(), file, recorder);
+        MutationsFileReader.read(getProject(), getMutationsFile(), recorder);
     }
 
 
@@ -147,17 +192,39 @@ public class CachedRun implements Comparable<CachedRun> {
 
     /**
      * Deletes all files that PIT generated for this run. For safety, extra checks are made to ensure that the right
-     * thing is being deleted.
+     * thing is being deleted. This does *not* delete any PIT files not generated within this plugin, e.g. those created
+     * by command-line PIT runs.
      */
     public void prepareForRun() {
-        String reportDirectory = getReportDir();
-        File dir = new File(reportDirectory);
+
+        File dir = getReportFileDir();
         if (dir.exists() && dir.isDirectory()) {
-            File[] files = dir.listFiles();
-            if (files != null && Arrays.stream(files).anyMatch(f->f.getName().equals(MUTATIONS_FILE))) {
-                deleteFilesInDir(dir);
+            Future<File[]> future = collectValidReportDirectories(dir);
+            try {
+                File[] files = future.get();
+                if (files != null) {
+                    Arrays.stream(future.get()).forEach(virtualFile -> {
+                        deleteFilesInDir(dir);
+                    });
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
         }
+    }
+
+    private static @NotNull Future<File[]> collectValidReportDirectories(File dir) {
+        final Application app = ApplicationManager.getApplication();
+        @NotNull Future<File[]> future = app.executeOnPooledThread(() -> {
+            return app.runReadAction((Computable<File[]>) () -> {
+                File[] files =  dir.listFiles();
+                if (files != null && Arrays.stream(files).anyMatch(f->f.getName().equals(MUTATIONS_FILE))) {
+                    return files;
+                }
+                return null;
+            });
+        });
+        return future;
     }
 
     private void deleteFilesInDir(File dir) {
