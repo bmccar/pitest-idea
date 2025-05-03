@@ -3,6 +3,7 @@ package org.pitestidea.model;
 public interface IMutationScore {
     void accountFor(MutationImpact impact);
     float getScore();
+    String getScoreDescription();
     int getSurvived();
     int getKilled();
     int getNoCoverage();

@@ -74,7 +74,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     @Override
     public void acceptCodePackage(String pkg) {
-        cachedRun.setIncludesPackages();
+        //System.out.println("*** acceptCodePackage: " + pkg + " " + cachedRun.hashCode());
         StringBuilder sb = appending(codeClasses);
         sb.append(pkg);
         sb.append(".*");
@@ -223,11 +223,8 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                     private void onSuccess(CachedRun cachedRun, MutationControlPanel mutationControlPanel) {
                         PitExecutionRecorder recorder = cachedRun.getRecorder();
                         Application app = ApplicationManager.getApplication();
-                        ExecutionUtils.dumpThreads("onSuccess OUTER");
                         app.executeOnPooledThread(() -> {
-                            ExecutionUtils.dumpThreads("onSuccess MIDDLE");
                             app.invokeLater(() -> {
-                                ExecutionUtils.dumpThreads("onSuccess INNER");
                                 app.runWriteAction(() -> cachedRun.getExecutionRecord().writeToDirectory(cachedRun.getReportFileDir()));
                             });
                             File src = cachedRun.getMutationsFile();

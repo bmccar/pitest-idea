@@ -123,8 +123,8 @@ public class IdeaDiscovery {
         @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
         if (vf == null) {
             return null;
-            //throw new RuntimeException("No output directory for module " + module.getName());
         }
+        vf = vf.getParent();
         File file = new File(vf.getPath());
         for (String sub : subs) {
             file = new File(file,sub);

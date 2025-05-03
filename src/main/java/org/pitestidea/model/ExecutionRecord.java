@@ -2,7 +2,6 @@ package org.pitestidea.model;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
-import org.pitestidea.actions.ExecutionUtils;
 import org.pitestidea.actions.PITestRunProfile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -191,8 +190,6 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
      * @param reportDir fully-qualified path unique to this instance
      */
     public void writeToDirectory(File reportDir) {
-        ExecutionUtils.dumpThreads("ExecutionRecord.writeToDirectory START");
-
         try {
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
@@ -202,7 +199,6 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        ExecutionUtils.dumpThreads("ExecutionRecord.writeToDirectory END");
     }
 
     private void appendContent(Document doc) {

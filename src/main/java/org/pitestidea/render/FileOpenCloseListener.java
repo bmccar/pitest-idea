@@ -39,7 +39,6 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
 
     @Override
     public void fileOpened(@NotNull FileEditorManager source, @NotNull VirtualFile file) {
-        ExecutionUtils.dumpThreads("FileOpenedClosedListener.fileOpened");
         ApplicationManager.getApplication().runReadAction(() -> fileOpenedInternal(source, file));
     }
 
@@ -49,7 +48,6 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
         if (xr != null) {
             MutationControlPanel mutationControlPanel =
                     PitToolWindowFactory.getOrCreateControlPanel(project);
-            System.out.println("FileOpenedInternal: " + file.getName() + ", gutter icons enabled:" + mutationControlPanel.isGutterIconsEnabled());
             if (mutationControlPanel.isGutterIconsEnabled()) {
                 CoverageGutterRenderer renderer = CoverageGutterRenderer.getInstance();
                 xr.visit(project, renderer, file);

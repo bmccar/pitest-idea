@@ -60,4 +60,36 @@ public abstract class BaseMutationsScore implements IMutationScore {
         return 100*(float)killed/(float)getMutationsTotal();
     }
 
+    @Override
+    public String getScoreDescription() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("This score (");
+        sb.append(String.format("%.2f",getScore()));
+        sb.append(") is the ratio of:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;(");
+        sb.append(killed);
+        sb.append(" killed) over (");
+        sb.append(getMutationsTotal());
+        sb.append(" total mutations).<br><br>That total is the sum of:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;");
+        sb.append(killed);
+        sb.append(" killed +<br>&nbsp;&nbsp;&nbsp;&nbsp;");
+        sb.append(survived);
+        sb.append(" survived +<br>&nbsp;&nbsp;&nbsp;&nbsp;");
+        sb.append(noCoverage);
+        sb.append(" no coverage +<br>&nbsp;&nbsp;&nbsp;&nbsp;");
+        sb.append(timedOut);
+        sb.append(" time outs");
+        /*
+        if (noCoverage > 0) {
+            sb.append(" + ");
+            sb.append(noCoverage);
+            sb.append(" no-coverage");
+        }
+        if (timedOut > 0) {
+            sb.append(" + ");
+            sb.append(timedOut);
+            sb.append(" timed-out");
+        }
+         */
+        return sb.toString();
+    }
 }

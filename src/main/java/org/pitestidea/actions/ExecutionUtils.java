@@ -89,14 +89,4 @@ public class ExecutionUtils {
             throw new RuntimeException(ex);
         }
     }
-
-    public static void dumpThreads(String msg) {
-        System.out.printf("%s thread: %s dispatch=%b, read=%b, write=%b%n",
-                msg,
-                Thread.currentThread(),
-                ApplicationManager.getApplication().isDispatchThread(),
-                ApplicationManager.getApplication().isReadAccessAllowed(),
-                ApplicationManager.getApplication().isWriteAccessAllowed());
-
-    }
 }

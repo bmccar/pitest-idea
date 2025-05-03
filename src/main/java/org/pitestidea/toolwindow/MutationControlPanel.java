@@ -2,14 +2,19 @@ package org.pitestidea.toolwindow;
 
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.ui.MessageDialogBuilder;
+import com.intellij.openapi.ui.MessageType;
+import com.intellij.openapi.ui.popup.Balloon;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vfs.InvalidVirtualFileAccessException;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
+import com.intellij.ui.awt.RelativePoint;
 import com.intellij.ui.components.JBScrollPane;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,6 +30,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+
+import static com.intellij.openapi.ui.Messages.showInfoMessage;
 
 /**
  * Manages execution results tool window. Consists of several panes with different levels of interactivity.
@@ -84,7 +91,7 @@ public class MutationControlPanel {
 
         JPanel treePanel = new JPanel(new BorderLayout());
         treePanel.add(createScoresHeaderPanel(), BorderLayout.NORTH);
-        treePanel.add(tree, BorderLayout.CENTER);
+        treePanel.add(tree.getComponent(), BorderLayout.CENTER);
         scoresSplitPane.setRightComponent(treePanel);
         setDefaultScoresSplit();
 
@@ -97,7 +104,7 @@ public class MutationControlPanel {
         scoresSplitPane.setResizeWeight(split);
     }
 
-    public void onFirstActivation(CachedRun cachedRun) {
+    public void onFirstActivation(CachedRun cachedRun, boolean hasMultiplePackages) {
         reloadScores(cachedRun);
         // Quirk: the values in this method do not take effect until the split is visible
         setDefaultScoresSplit();
@@ -212,10 +219,6 @@ public class MutationControlPanel {
         return packageSelector.getSelected();
     }
 
-    public void setPackageSelection(Viewing.PackageChoice packageChoice) {
-        packageSelector.setSelected(packageChoice);
-    }
-
     public void setSortSelection(Sorting.By sortChoice) {
         sortSelector.setSelected(sortChoice);
     }
@@ -235,15 +238,11 @@ public class MutationControlPanel {
     public void clearScores(CachedRun cachedRun) {
         tree.clearExistingRows();
         syncScoresMsg(cachedRun);
-        tree.refresh();
+        tree.refresh(cachedRun == null || cachedRun.getRecorder().hasMultiplePackages());
     }
 
-    public void refresh() {
-        tree.refresh();
-    }
-
-    public Level getLevel() {
-        return new Level(tree.getRootTreeLevel());
+    public void refresh(boolean hasMultiplePackages) {
+        tree.refresh(!hasMultiplePackages);
     }
 
     /**
@@ -316,7 +315,7 @@ public class MutationControlPanel {
         System.out.println("Reloading scoresMsg for " + project.getName() + ": " + msg);
         CoverageGutterRenderer.removeGutterIcons(project);
         clearScores(project);
-        tree.resetToRootMessage(msg);
+        resetToRootMessage(msg);
     }
 
     public void reloadScores(CachedRun cachedRun) {
@@ -351,7 +350,7 @@ public class MutationControlPanel {
                 case CANCELLED:
                     msg = "Run was cancelled. Rerun in order to see report.";
             }
-            tree.resetToRootMessage(msg);
+            resetToRootMessage(msg);
         }
     }
 
@@ -379,7 +378,6 @@ public class MutationControlPanel {
         boolean readyToCancel = runState == RunState.RUNNING;
 
         if (record.isRunnable()) {
-            ExecutionUtils.dumpThreads("MutationControlPanel.addHistory");
             TransitionButton.State running = button.addState("Run", runIcon, "Rerun this report", !readyToCancel, () -> run(cachedRun, button));
             button.addState("Cancel", killIcon, "Cancel this report execution", readyToCancel, () -> cancel(cachedRun, button, running));
         } else {
@@ -428,7 +426,6 @@ public class MutationControlPanel {
             final boolean newRowState;
             final Boolean newClearAllState;
             if (oldState == RunState.RUNNING) {  // A run has ended
-                System.out.println("Handle runState changed from RUNNING to " + newState);
                 newRowState = true;
                 if (activeRuns.decrementAndGet() == 0) {
                     AtomicBoolean anyGenerated = new AtomicBoolean(false);
@@ -442,11 +439,9 @@ public class MutationControlPanel {
                     newClearAllState = null;
                 }
             } else if (newState == RunState.RUNNING) {  // A run has started
-                System.out.println("Handle runState changed from " + oldState + " to RUNNING");
                 newRowState = false;
                 newClearAllState = activeRuns.incrementAndGet() == 1;
             } else {
-                System.out.println("Nuthin");
                 return;
             }
             ApplicationManager.getApplication().invokeLater(() -> {
@@ -459,32 +454,14 @@ public class MutationControlPanel {
 
     }
 
-    /*
     private boolean run(CachedRun cachedRun, TransitionButton button) {
-        Module module = cachedRun.ensureLoaded().getModule();
-        ExecutionRecord record = cachedRun.getExecutionRecord();
-        List<VirtualFile> vfs = record.getInputFiles().stream().map(file ->
-                LocalFileSystem.getInstance().findFileByPath(file)).toList();
-        ApplicationManager.getApplication().invokeLater(() -> {
-            ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                ExecutionUtils.execute(module, vfs);
-            });
-        });
-        return true;
-    }
-     */
-
-    private boolean run(CachedRun cachedRun, TransitionButton button) {
-        ExecutionUtils.dumpThreads("MutationControlPanel.run START");
         try {
             Module module = cachedRun.ensureLoaded().getModule();
             ExecutionRecord record = cachedRun.getExecutionRecord();
             List<VirtualFile> vfs = record.getInputFiles().stream()
                     .map(LocalFileSystem.getInstance()::findFileByPath)
                     .toList();
-            ExecutionUtils.dumpThreads("MutationControlPanel.run OUTER");
             ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                ExecutionUtils.dumpThreads("MutationControlPanel.run INNER");
                 ExecutionUtils.execute(module, vfs);
             });
             return true;
@@ -526,33 +503,68 @@ public class MutationControlPanel {
     }
 
     public void markScoresInvalid() {
-        tree.resetToRootMessage("Select a run from the history list to the left.");
+        resetToRootMessage("Select a run from the history list to the left.");
+    }
+
+    public void resetToRootMessage(String text) {
+        tree.addRootRow().addSegment(text);
     }
 
     public boolean isGutterIconsEnabled() {
         return isGutterIconsEnabled;
     }
 
-    public static class Level {
-        private final ClickTree.TreeLevel treeLevel;
+    public Level getLevel() {
+        tree.clearExistingRows();
+        return new Level(tree.addRootRow(), true);
+    }
 
-        Level(ClickTree.TreeLevel treeLevel) {
-            this.treeLevel = treeLevel;
+    public static class Level {
+        private final ClickTree.TreeRow treeRow;
+        private boolean isTop;
+
+        Level(ClickTree.TreeRow treeRow, boolean isTop) {
+            this.treeRow = treeRow;
+            this.isTop = isTop;
         }
 
         public void setLine(Project project, VirtualFile file, String fileName, IMutationScore score) {
-            treeLevel.addClickableFileRow(project, file, createLine(fileName, score.getScore()));
+            ClickTree.TreeRow targetRow = isTop ? this.treeRow : this.treeRow.addChildRow();
+            isTop = false;
+            targetRow
+                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component,point) -> {
+                        showScoreDetailPopup(component,point,score.getScoreDescription());
+                    })
+                    .addSegment(fileName, ClickTree.Hover.NONE, (_c,_p) -> {
+                        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+                        fileEditorManager.openFile(file, true); // true to focus the file
+                    });
         }
 
-        public Level setLine(Project project, String pkgName, IMutationScore score) {
-            return new Level(treeLevel.addPackageRow(createLine(pkgName, score.getScore())));
-
+        public Level setLine(Project _project, String pkgName, IMutationScore score) {
+            Level level = isTop ? this : new Level(treeRow.addChildRow(), false);
+            ClickTree.Hover hoverRight = PitExecutionRecorder.ROOT_PACKAGE_NAME.equals(pkgName) ? ClickTree.Hover.ITALICS : ClickTree.Hover.NONE;
+            isTop = false;
+            level.treeRow
+                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component,point) -> {
+                        showScoreDetailPopup(component, point, score.getScoreDescription());
+                    })
+                    .addSegment(pkgName, hoverRight, (_c,_p) -> {});
+            return level;
         }
-    }
 
-    private static String createLine(String text, float score) {
-        String space = score == 100 ? "" : score > 10 ? "&nbsp;" : "&nbsp;&nbsp;";
-        return String.format("<html>%d%%%s&nbsp;%s</html>", (int) score, space, text);
+        private String formatScore(IMutationScore score) {
+            return String.format("%.0f%%", score.getScore());
+        }
+
+        public void showScoreDetailPopup(Component component, Point point, String message) {
+            //showInfoMessage(message, "PIT Mutation Score");
+            JBPopupFactory.getInstance()
+                    .createHtmlTextBalloonBuilder(message, MessageType.INFO, null)
+                    //.setFadeoutTime(3000)
+                    .createBalloon()
+                    .show(new RelativePoint(component, point), Balloon.Position.above);
+        }
     }
 }
 

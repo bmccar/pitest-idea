@@ -43,20 +43,17 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
      *
      * @param project project
      * @param cachedRun to update scores from
-     * @param includesPackages true if there was at least one package in the inputs selected by the user
+     * @param hasMultiplePackages true if the input has more than a single package
      */
-    public static void show(Project project, CachedRun cachedRun, boolean includesPackages) {
-        Viewing.PackageChoice packageChoice = includesPackages
-                ? Viewing.PackageChoice.PACKAGE
-                : Viewing.PackageChoice.NONE;
+    public static void show(Project project, CachedRun cachedRun, boolean hasMultiplePackages) {
         MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
-        mutationControlPanel.setPackageSelection(packageChoice);
+
         mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
         mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
 
-        mutationControlPanel.setOptionsChangeFn(choices -> reshow(project, mutationControlPanel, PitRepo.getCurrent(project), choices));
+        mutationControlPanel.setOptionsChangeFn(_choices -> reshow(project, mutationControlPanel, PitRepo.getCurrent(project), hasMultiplePackages));
         mutationControlPanel.reloadHistory(project);
-        reshow(project, mutationControlPanel, cachedRun, null);
+        reshow(project, mutationControlPanel, cachedRun, hasMultiplePackages);
     }
 
     public static void showPitExecutionOutputOnly(Project project) {
@@ -69,19 +66,19 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
     }
 
-    private static void reshow(Project project, MutationControlPanel mutationControlPanel, CachedRun cachedRun, DisplayChoices choices) {
-        if (choices != null) {
-            PitExecutionRecorder recorder = cachedRun.getRecorder();
-            recorder.sort(choices);
-        }
+    private static void reshow(Project project, MutationControlPanel mutationControlPanel, CachedRun cachedRun, boolean hasMultiplePackages) {
+        PitExecutionRecorder recorder = cachedRun.getRecorder();
+        recorder.sort(mutationControlPanel.getDisplayChoices());
+
         mutationControlPanel.clearScores(cachedRun);
 
         ToolWindow tw = getToolWindow(project);
+        System.out.println("RESHOW: " + hasMultiplePackages);
         if (tw != null) {
             if (tw.isActive()) {
                 mutationControlPanel.reloadScores(cachedRun);
             } else {
-                tw.activate(() -> mutationControlPanel.onFirstActivation(cachedRun));
+                tw.activate(() -> mutationControlPanel.onFirstActivation(cachedRun, hasMultiplePackages));
             }
         }
     }
@@ -121,8 +118,9 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
     }
 
     public static void addAll(Project project, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder) {
-        recorder.visit(new HierarchyPlanner(project, mutationControlPanel.getLevel()));
-        mutationControlPanel.refresh();
+        MutationControlPanel.Level level = mutationControlPanel.getLevel();
+        recorder.visit(new HierarchyPlanner(project,level));
+        mutationControlPanel.refresh(recorder.hasMultiplePackages());
     }
 
     @Override

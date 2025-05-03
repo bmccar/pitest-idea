@@ -17,11 +17,12 @@ import java.util.*;
  * a hierarchical directory/file structure.
  */
 public class PitExecutionRecorder implements IMutationsRecorder {
-    public static final String ROOT_PACKAGE_NAME = "Results";
+    public static final String ROOT_PACKAGE_NAME = "Aggregated Results";
     private final Module module;
     private final Map<VirtualFile, FileGroup> fileCache = new HashMap<>();
     private final List<FileGroup> sortedFiles = new ArrayList<>();
     private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME, null);
+    private boolean hasMultiplePackages = false;
 
     {
         rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
@@ -161,6 +162,9 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         for (String segment : pkg.split("\\.")) {
             final PkgGroup parent = last;
             Directory dir = last.children.computeIfAbsent(segment, _k -> new PkgGroup(segment, parent));
+            if (last.children.size() > 1) {
+                hasMultiplePackages = true;
+            }
             dir.accountFor(impact);
             last = (PkgGroup) dir;
         }
@@ -179,6 +183,10 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     @Override
     public void postProcess() {
         rootDirectory.coalesce(true);
+    }
+
+    public boolean hasMultiplePackages() {
+        return hasMultiplePackages;
     }
 
     private DisplayChoices displayChoices;
@@ -200,11 +208,33 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         void visit(String pkg, PackageDiver diver, IMutationScore score);
     }
 
+    private static PackageDiver EMPTY_PACKAGE_DIVER = new PackageDiver() {
+        @Override
+        public void apply(FileVisitor visitor) {
+
+        }
+
+        @Override
+        public boolean hasCodeFileChildren() {
+            return false;
+        }
+
+        @Override
+        public boolean isTopLevel() {
+            return true;
+        }
+    };
+
     public void visit(FileVisitor visitor) {
         if (displayChoices != null && displayChoices.packageChoice() == Viewing.PackageChoice.NONE) {
+            if (sortedFiles.size() > 1) {
+                visitor.visit(rootDirectory.name, EMPTY_PACKAGE_DIVER, rootDirectory);
+            }
             sortedFiles.forEach(g -> g.walkInternal(visitor));
         } else {
-            rootDirectory.walkInternal(visitor);
+            Map<String, Directory> subs = rootDirectory.children;
+            Directory toWalk = subs.size() == 1 ? subs.values().stream().toList().get(0) : rootDirectory;
+            toWalk.walkInternal(visitor);
         }
     }
 

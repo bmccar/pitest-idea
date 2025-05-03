@@ -40,9 +40,6 @@ public class CachedRun implements Comparable<CachedRun> {
     // Optional callback for when runState changes
     private BiConsumer<RunState, RunState> runStateChangedListener;
 
-    // Is at least one package included in output
-    private boolean includesPackages = false;
-
     // Directory may or may not exist -- store String path rather than File to avoid race-deletion headaches
     private final @NonNull String reportDirectory;
 
@@ -58,7 +55,6 @@ public class CachedRun implements Comparable<CachedRun> {
     }
 
     public synchronized void setRunState(RunState newRunState) {
-        System.out.println("setRunState(" + newRunState+ ") current: " + this.runState + "listener="+(runStateChangedListener!=null));
         if (this.runState != newRunState) {
             RunState oldState = this.runState;
             this.runState = newRunState;
@@ -78,10 +74,6 @@ public class CachedRun implements Comparable<CachedRun> {
 
     public ExecutionRecord getExecutionRecord() {
         return executionRecord;
-    }
-
-    public void setIncludesPackages() {
-        this.includesPackages = true;
     }
 
     public PitExecutionRecorder getRecorder() {
@@ -104,7 +96,8 @@ public class CachedRun implements Comparable<CachedRun> {
     public void activate() {
         Project project = getProject();
         setAsCurrent();
-        PitToolWindowFactory.show(project, this, includesPackages);
+        System.out.println("CachedRun.activate: " + recorder.hasMultiplePackages() + " " + recorder.hashCode());
+        PitToolWindowFactory.show(project, this, recorder.hasMultiplePackages());
     }
 
 

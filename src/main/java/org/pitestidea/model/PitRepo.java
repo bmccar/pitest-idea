@@ -72,7 +72,7 @@ public class PitRepo {
      * @return a new CachedRun
      */
     public static @NotNull CachedRun register(@NotNull Module module, @NotNull ExecutionRecord record) {
-        /*
+        /* TODO rm comment
         AtomicReference<VirtualFile> ref = new AtomicReference<>();
         ExecutionUtils.dumpThreads("PitRepo.register OUTER");
         ApplicationManager.getApplication().invokeAndWait(() -> {

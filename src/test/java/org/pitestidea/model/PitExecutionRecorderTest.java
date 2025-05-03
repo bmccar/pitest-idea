@@ -27,9 +27,13 @@ class PitExecutionRecorderTest {
         private final PitExecutionRecorder recorder = new PitExecutionRecorder(null);
         private final Map<String, VirtualFile> fileMap = new HashMap<>();
 
-        // These are filled with expected values, and lines are removed one-by-one on each callback from recorder
-        private final List<ExpectedFileLine> expectedFileLines = new ArrayList<>();
+        // Track Top-level packages so we can know if a top-level aggregated results row should be expected
+        private final Set<String> expectedTopLevelPackages = new HashSet<>();
+
+        // Expected elements are removed one-by-one on each callback from recorder
         private final Set<String> expectedPackages = new HashSet<>();
+        private final List<ExpectedFileLine> expectedFileLines = new ArrayList<>();
+
 
         Tracker() {
             expectedPackages.add(PitExecutionRecorder.ROOT_PACKAGE_NAME);
@@ -41,7 +45,9 @@ class PitExecutionRecorderTest {
             when(vf.getName()).thenReturn(file);
             ExpectedFileLine track = new ExpectedFileLine(pkg, vf, impact, lineNumber, description);
             expectedFileLines.add(track);
-            expectedPackages.remove(pkg);
+            String[] ps = pkg.split("\\.");
+            expectedTopLevelPackages.add(ps[0]);
+            expectedPackages.addAll(Arrays.asList(ps));
             recorder.record(pkg, vf, impact, lineNumber, description);
         }
 
@@ -50,7 +56,8 @@ class PitExecutionRecorderTest {
 
             // Expect that the collective calls to visit() below would have removed all of these entries
             assertTrue(expectedFileLines.isEmpty(), "Missed files");
-            assertTrue(expectedPackages.isEmpty(), "Missed packages");
+            int expSize = expectedTopLevelPackages.size()==1 ? 1 : 0;  // Account for ROOT_PACKAGE_NAME
+            assertEquals(expSize, expectedPackages.size(), "Missed packages: " + expectedPackages);
         }
 
         @Override
@@ -72,6 +79,9 @@ class PitExecutionRecorderTest {
         @Override
         public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
             System.out.println("[TEST] Visiting package " + pkg);
+            if (pkg.equals(PitExecutionRecorder.ROOT_PACKAGE_NAME)) {
+                assertTrue(expectedTopLevelPackages.size() > 1, "Unexpected package: " + pkg);
+            }
             expectedPackages.remove(pkg);
             diver.apply(this);
         }
@@ -140,7 +150,16 @@ class PitExecutionRecorderTest {
     }
 
     @Test
-    void sortByFile() {
+    void sortWithOneFile() {
+        Tracker tracker = new Tracker();
+
+        tracker.expect("aaa", "f1.java", MutationImpact.SURVIVED, 5);
+
+        verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.ASC,"f1.java");
+    }
+
+    @Test
+    void sortByFiles() {
         Tracker tracker = new Tracker();
 
         tracker.expect("aaa", "f1.java", MutationImpact.SURVIVED, 5);
@@ -180,10 +199,15 @@ class PitExecutionRecorderTest {
 
             @Override
             public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
-                fail("Unexpected package" + pkg);
+                assertTrue(expectedFileNames.length >1, "Unexpected package: " + pkg);
             }
         });
 
         assertEquals(Arrays.asList(expectedFileNames), gotFileNames);
+    }
+
+    @Test
+    void sortByPackage() {
+        Tracker tracker = new Tracker();
     }
 }

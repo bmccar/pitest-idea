@@ -6,6 +6,9 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ContentEntry;
+import com.intellij.openapi.roots.ModuleRootManager;
+import com.intellij.openapi.roots.SourceFolder;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -47,30 +50,41 @@ public class MutationMultiAction extends AnAction {
 
     public static Module getModuleForVirtualFile(Project project, VirtualFile file) {
         if (project == null || file == null) {
-            return null; // Make sure project and file are not null
+            return null;
         }
 
-        // Use ModuleUtilCore to find the module
         return ModuleUtilCore.findModuleForFile(file, project);
     }
 
-
-
     @Override
     public void update(@NotNull AnActionEvent e) {
-        /*
-        // Enable only when clicking on a package node
+        e.getPresentation().setEnabledAndVisible(isInCodeBase(e));
+    }
+
+    private static boolean isInCodeBase(@NotNull AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) {
-            e.getPresentation().setEnabledAndVisible(false);
-            return;
+            return false;
         }
 
-        ProjectViewNode<?> selectedNode = e.getData(ProjectViewNode.DATA_KEY);
-        boolean isPackage = selectedNode != null && PsiManager.getInstance(project).findDirectory(selectedNode.getVirtualFile())
-                .getPackage() != null;
+        VirtualFile selectedFile = e.getData(CommonDataKeys.VIRTUAL_FILE);
+        if (selectedFile == null) {
+            return false;
+        }
+        Module module = getModuleForVirtualFile(project,selectedFile);
+        ModuleRootManager moduleRootManager = ModuleRootManager.getInstance(module);
 
-        e.getPresentation().setEnabledAndVisible(isPackage);
-         */
+        for (ContentEntry entry : moduleRootManager.getContentEntries()) {
+            for (SourceFolder sourceFolder : entry.getSourceFolders()) {
+                VirtualFile directory = sourceFolder.getFile();
+                if (directory != null) {
+                    String path = directory.getPath();
+                    if (selectedFile.getPath().startsWith(path)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 }
