@@ -1,6 +1,7 @@
 package org.pitestidea.model;
 
 public interface IMutationScore {
+    String getName();
     void accountFor(MutationImpact impact);
     float getScore();
     String getScoreDescription();

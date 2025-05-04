@@ -6,12 +6,10 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.roots.ContentEntry;
-import com.intellij.openapi.roots.ModuleRootManager;
-import com.intellij.openapi.roots.SourceFolder;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.pitestidea.configuration.IdeaDiscovery;
 
 import java.util.Arrays;
 import java.util.List;
@@ -71,20 +69,7 @@ public class MutationMultiAction extends AnAction {
         if (selectedFile == null) {
             return false;
         }
-        Module module = getModuleForVirtualFile(project,selectedFile);
-        ModuleRootManager moduleRootManager = ModuleRootManager.getInstance(module);
-
-        for (ContentEntry entry : moduleRootManager.getContentEntries()) {
-            for (SourceFolder sourceFolder : entry.getSourceFolders()) {
-                VirtualFile directory = sourceFolder.getFile();
-                if (directory != null) {
-                    String path = directory.getPath();
-                    if (selectedFile.getPath().startsWith(path)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
+        String loc = IdeaDiscovery.onLocationOf(project, selectedFile, "file", "test");
+        return loc != null;
     }
 }

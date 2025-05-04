@@ -64,6 +64,12 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         }
 
         @Override
+        public String getName() {
+            return name;
+        }
+
+
+        @Override
         public void walkInternal(FileVisitor visitor) {
             visitor.visit(name, this, this);
         }
@@ -95,7 +101,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         public void sort(DisplayChoices choices) {
             Comparator<Directory> fn;
             switch (choices.sortBy()) {
-                case PROJECT -> fn = Comparator.comparing(Directory::getOrder);
+                case PROJECT -> fn = Comparator.comparing(Directory::getName);
                 case SCORE -> fn = Comparator.comparing(Directory::getScore);
                 default -> throw new IllegalArgumentException("Unsupported sorting by: " + choices.sortBy());
             }
@@ -153,6 +159,11 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         public void sort(DisplayChoices _choices) {
             // Nothing to do
         }
+
+        @Override
+        public String getName() {
+            return file.getName();
+        }
     }
 
     @Override
@@ -195,7 +206,10 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     public void sort(DisplayChoices choices) {
         this.displayChoices = choices;
         rootDirectory.sort(choices);
-        Comparator<FileGroup> cmp = Comparator.comparing(FileGroup::getScore);
+        Comparator<FileGroup> cmp =
+                choices.sortBy() == Sorting.By.SCORE
+                        ? Comparator.comparing(FileGroup::getScore)
+                        : Comparator.comparing(FileGroup::getName);
         if (choices.sortDirection() == Sorting.Direction.DESC) {
             cmp = cmp.reversed();
         }

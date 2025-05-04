@@ -73,7 +73,6 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         mutationControlPanel.clearScores(cachedRun);
 
         ToolWindow tw = getToolWindow(project);
-        System.out.println("RESHOW: " + hasMultiplePackages);
         if (tw != null) {
             if (tw.isActive()) {
                 mutationControlPanel.reloadScores(cachedRun);

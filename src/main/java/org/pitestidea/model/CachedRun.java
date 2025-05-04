@@ -96,7 +96,6 @@ public class CachedRun implements Comparable<CachedRun> {
     public void activate() {
         Project project = getProject();
         setAsCurrent();
-        System.out.println("CachedRun.activate: " + recorder.hasMultiplePackages() + " " + recorder.hashCode());
         PitToolWindowFactory.show(project, this, recorder.hasMultiplePackages());
     }
 

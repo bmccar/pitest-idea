@@ -29,7 +29,7 @@ public class MutationAction extends AnAction {
         Project project = e.getProject();
         if (project == null) return;
 
-        PsiJavaFile javaFile = IdeaDiscovery.getCurrentJavaFile();
+        PsiJavaFile javaFile = IdeaDiscovery.getCurrentJavaFile(project);
         Module module = ModuleUtilCore.findModuleForPsiElement(javaFile);
 
         String pkg = IdeaDiscovery.getCurrentPackageName();
@@ -66,17 +66,14 @@ public class MutationAction extends AnAction {
         if (project == null || selectedFile == null) {
             e.getPresentation().setEnabledAndVisible(false);
         } else {
-            ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
-            final String text;
-            if (fileIndex.isInSourceContent(selectedFile)) {
-                text = "Run PITest against this file using its test";
-            } else if (fileIndex.isInTestSourceContent(selectedFile)) {
-                text = "Run PITest for this test file against its source";
-            } else {
+            String loc = IdeaDiscovery.onLocationOf(project, selectedFile,
+                    "Run PITest against this file using its test",
+                    "Run PITest for this test file against its source");
+            if (loc == null) {
                 e.getPresentation().setEnabledAndVisible(false);
                 return;
             }
-            e.getPresentation().setText(text);
+            e.getPresentation().setText(loc);
             e.getPresentation().setEnabledAndVisible(true);
         }
     }

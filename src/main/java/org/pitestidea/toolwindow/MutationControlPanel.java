@@ -31,8 +31,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import static com.intellij.openapi.ui.Messages.showInfoMessage;
-
 /**
  * Manages execution results tool window. Consists of several panes with different levels of interactivity.
  */
@@ -63,10 +61,10 @@ public class MutationControlPanel {
         JPanel fullPanel = new JPanel(new BorderLayout());
 
         JPanel header = new JPanel(new BorderLayout());
-        JLabel label = stretchPane.getConsoleButton();
-        header.add(label, BorderLayout.WEST);
+        JComponent stretchButton = stretchPane.getConsoleButton();
+        header.add(stretchButton, BorderLayout.WEST);
         // Align header heights with small fudge factor
-        header.setPreferredSize(new Dimension(20, headerHeight+4));
+        header.setPreferredSize(new Dimension(20, headerHeight + 4));
         fullPanel.add(header, BorderLayout.NORTH);
         fullPanel.add(rightScrollPane, BorderLayout.CENTER);
 
@@ -74,6 +72,7 @@ public class MutationControlPanel {
     }
 
     private JSplitPane scoresSplitPane;
+
     private void handleStretchPaneChanged(StretchPane.PaneState s) {
         if (s == StretchPane.PaneState.SCORES) {
             // setting divider only works properly if visible
@@ -179,7 +178,7 @@ public class MutationControlPanel {
     }
 
     private JPanel createPackagePanel() {
-        packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(),"Filter",
+        packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(), "Filter",
                 Viewing.PackageChoice::getDisplayName,
                 type -> callOptionsChangeFn());
         packageSelector.setSelected(Viewing.PackageChoice.PACKAGE); // Default value
@@ -187,7 +186,7 @@ public class MutationControlPanel {
     }
 
     private JPanel createSortPanel() {
-        sortSelector = new EnumRadio<>(Sorting.By.values(),"Sort",
+        sortSelector = new EnumRadio<>(Sorting.By.values(), "Sort",
                 Sorting.By::getDisplayName,
                 type -> callOptionsChangeFn());
         sortSelector.setSelected(Sorting.By.PROJECT); // Default value
@@ -195,7 +194,7 @@ public class MutationControlPanel {
     }
 
     private JPanel createDirPanel() {
-        dirSelector = new EnumRadio<>(Sorting.Direction.values(),"Sort Direction",
+        dirSelector = new EnumRadio<>(Sorting.Direction.values(), "Sort Direction",
                 Sorting.Direction::getDisplayName,
                 type -> callOptionsChangeFn());
         dirSelector.setSelected(Sorting.Direction.ASC); // Default value
@@ -287,7 +286,7 @@ public class MutationControlPanel {
         }
         final CrossHistory crossHistory = new CrossHistory();
 
-        PitRepo.apply(project, (c,current)->{
+        PitRepo.apply(project, (c, current) -> {
             ExecutionRecord record = c.getExecutionRecord();
             if (record.isRunnable()) {
                 crossHistory.anyDeletable = true;
@@ -298,13 +297,13 @@ public class MutationControlPanel {
             crossHistory.maxStartWidth = Math.max(crossHistory.maxStartWidth, record.getFormattedStart().length());
             crossHistory.maxDurationWidth = Math.max(crossHistory.maxDurationWidth, record.getFormattedDuration().length());
         });
-        PitRepo.apply(project, (c,current)->{
+        PitRepo.apply(project, (c, current) -> {
             addHistory(c, new HistoryList.Sizing(crossHistory.maxStartWidth, crossHistory.maxDurationWidth));
         });
         clearAllButton.setEnabled(crossHistory.anyDeletable);
         if (!crossHistory.anyDeletable) {
             reloadScoresMsg(project, "No current history. Initiate PIT execution from a drop-down menu.");
-        } else if (crossHistory.current==null) {
+        } else if (crossHistory.current == null) {
             reloadScoresMsg(project, "Choose a report from the history list to the left.");
         }
         historyList.getComponent().updateUI();
@@ -312,7 +311,6 @@ public class MutationControlPanel {
     }
 
     private void reloadScoresMsg(Project project, String msg) {
-        System.out.println("Reloading scoresMsg for " + project.getName() + ": " + msg);
         CoverageGutterRenderer.removeGutterIcons(project);
         clearScores(project);
         resetToRootMessage(msg);
@@ -320,15 +318,14 @@ public class MutationControlPanel {
 
     public void reloadScores(CachedRun cachedRun) {
         if (cachedRun.isCurrent()) {
-            System.out.println("Reloading scores for " + cachedRun.getExecutionRecord().getReportName());
             Project project = cachedRun.getProject();
             CoverageGutterRenderer.removeGutterIcons(project);
             clearScores(cachedRun);
-            PitToolWindowFactory.addAll(project,this,cachedRun.getRecorder());
+            PitToolWindowFactory.addAll(project, this, cachedRun.getRecorder());
             // previous addAll will have update default scores message, make sure it's set properly
             // here for all the non-completion cases
             syncScoresMsg(cachedRun);
-            if (isGutterIconsEnabled && cachedRun.getRunState()==RunState.COMPLETED) {
+            if (isGutterIconsEnabled && cachedRun.getRunState() == RunState.COMPLETED) {
                 FileOpenCloseListener.replayOpenFiles(project);
             }
         }
@@ -353,7 +350,6 @@ public class MutationControlPanel {
             resetToRootMessage(msg);
         }
     }
-
 
 
     private static final Icon runIcon = IconLoader.getIcon("/icons/run.svg", MutationControlPanel.class);
@@ -461,9 +457,7 @@ public class MutationControlPanel {
             List<VirtualFile> vfs = record.getInputFiles().stream()
                     .map(LocalFileSystem.getInstance()::findFileByPath)
                     .toList();
-            ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                ExecutionUtils.execute(module, vfs);
-            });
+            ApplicationManager.getApplication().executeOnPooledThread(() -> ExecutionUtils.execute(module, vfs));
             return true;
         } catch (Exception e) {
             LOGGER.error("Execution failed: " + e.getMessage(), e);
@@ -507,7 +501,7 @@ public class MutationControlPanel {
     }
 
     public void resetToRootMessage(String text) {
-        tree.addRootRow().addSegment(text);
+        tree.addRootRow().setSingleSegment(text);
     }
 
     public boolean isGutterIconsEnabled() {
@@ -532,10 +526,8 @@ public class MutationControlPanel {
             ClickTree.TreeRow targetRow = isTop ? this.treeRow : this.treeRow.addChildRow();
             isTop = false;
             targetRow
-                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component,point) -> {
-                        showScoreDetailPopup(component,point,score.getScoreDescription());
-                    })
-                    .addSegment(fileName, ClickTree.Hover.NONE, (_c,_p) -> {
+                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component, point) -> showScoreDetailPopup(component, point, score.getScoreDescription()))
+                    .addSegment(fileName, ClickTree.Hover.NONE, (_c, _p) -> {
                         FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
                         fileEditorManager.openFile(file, true); // true to focus the file
                     });
@@ -546,10 +538,9 @@ public class MutationControlPanel {
             ClickTree.Hover hoverRight = PitExecutionRecorder.ROOT_PACKAGE_NAME.equals(pkgName) ? ClickTree.Hover.ITALICS : ClickTree.Hover.NONE;
             isTop = false;
             level.treeRow
-                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component,point) -> {
-                        showScoreDetailPopup(component, point, score.getScoreDescription());
-                    })
-                    .addSegment(pkgName, hoverRight, (_c,_p) -> {});
+                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component, point) -> showScoreDetailPopup(component, point, score.getScoreDescription()))
+                    .addSegment(pkgName, hoverRight, (_c, _p) -> {
+                    });
             return level;
         }
 
@@ -558,10 +549,8 @@ public class MutationControlPanel {
         }
 
         public void showScoreDetailPopup(Component component, Point point, String message) {
-            //showInfoMessage(message, "PIT Mutation Score");
             JBPopupFactory.getInstance()
                     .createHtmlTextBalloonBuilder(message, MessageType.INFO, null)
-                    //.setFadeoutTime(3000)
                     .createBalloon()
                     .show(new RelativePoint(component, point), Balloon.Position.above);
         }

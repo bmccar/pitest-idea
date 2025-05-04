@@ -1,6 +1,7 @@
 package org.pitestidea.model;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.actions.PITestRunProfile;
 import org.w3c.dom.Document;
@@ -44,14 +45,23 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM d");
 
-    final List<String> inputFiles;
-    final String reportName;
-    final String reportDirectoryName;
+    final @NotNull List<String> inputFiles;
+    final @NotNull String reportName;
+    final @Nullable String reportDirectoryName;
     private long startedAt;
     private long durationMillis;
 
-    public static class InvalidFile extends RuntimeException {};
+    public static class InvalidFile extends RuntimeException {
+        public InvalidFile(String message) {
+            super(message);
+        }
+    }
 
+    /**
+     * Creates an ExecutionRecord for externally-generated files when the inputs are not known.
+     *
+     * @param startedAt last-modified-time from the external file
+     */
     public ExecutionRecord(long startedAt) {
         inputFiles = Collections.emptyList();
         reportName = "pit command line";
@@ -59,26 +69,33 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         this.startedAt = startedAt;
     }
 
-    public ExecutionRecord(List<String> inputFiles) {
+    /**
+     * Creates an ExecutionRecord for the provided input set.
+     *
+     * @param inputFiles that should already have been set in a consistent order
+     */
+    public ExecutionRecord(@NotNull List<String> inputFiles) {
         this.inputFiles = inputFiles;
         this.reportName = generateReportName(inputFiles);
         this.reportDirectoryName = generateReportDirectoryName(inputFiles);
         this.startedAt = System.currentTimeMillis();
     }
 
+    /**
+     * Creates an ExecutionRecord from a report previously generated from this plugin, so that
+     * report directory is expected to have a {@link #META_FILE_NAME} file written from the
+     * methods in this file.
+     *
+     * @param reportDir previously generated directory
+     */
     public ExecutionRecord(File reportDir) {
         this.inputFiles = new ArrayList<>();
-        File[] metaFiles = reportDir.listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String name) {
-                return META_FILE_NAME.equals(name);
-            }
-        });
+        File[] metaFiles = reportDir.listFiles((dir, name) -> META_FILE_NAME.equals(name));
         if (metaFiles == null || metaFiles.length == 0) {
-            throw new InvalidFile();
+            throw new InvalidFile("No meta file present");
         } else {
             try (InputStream inputStream = new FileInputStream(metaFiles[0])) {
-                readFull(inputStream);
+                readFull(inputStream, reportDir);
             } catch (ParserConfigurationException | IOException | SAXException e) {
                 throw new RuntimeException(e);
             }
@@ -233,17 +250,21 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         }
     }
 
-    private void readFull(InputStream inputStream) throws ParserConfigurationException, IOException, SAXException {
+    private void readFull(InputStream inputStream, File dirName) throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
 
         Document document = builder.parse(inputStream);
 
-        Element root = document.getDocumentElement(); // .normalize();
-        NodeList inputsList = root.getElementsByTagName(INPUTS);
+        Element root = document.getDocumentElement();
+        NodeList allInputs = root.getElementsByTagName(INPUTS);
+        if (allInputs.getLength() == 0) {
+            throw new InvalidFile("PIT-idea meta-file corrupted and should be removed: " + dirName.getAbsolutePath());
+        }
+        NodeList inputsList = allInputs.item(0).getChildNodes();
         for (int i = 0; i < inputsList.getLength(); i++) {
             Element node = (Element)inputsList.item(i);
-            String input = node.getElementsByTagName(INPUT).item(0).getTextContent();
+            String input = node.getTextContent();
             inputFiles.add(input);
         }
 
@@ -254,15 +275,15 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         this.durationMillis = Long.parseLong(duration.item(0).getTextContent());
     }
 
-    public List<String> getInputFiles() {
+    public @NotNull List<String> getInputFiles() {
         return inputFiles;
     }
 
-    public String getReportName() {
+    public @NotNull String getReportName() {
         return reportName;
     }
 
-    public String getReportDirectoryName() {
+    public @Nullable String getReportDirectoryName() {
         return reportDirectoryName;
     }
 
@@ -300,6 +321,8 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ExecutionRecord that = (ExecutionRecord) o;
+        // Only consider input files so that new ExecutionRecords can match and replace old ones
+        // when based on the same set of input records.
         return Objects.equals(inputFiles, that.inputFiles);
     }
 

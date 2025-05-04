@@ -16,31 +16,36 @@ import com.intellij.openapi.project.Project;
 
 import com.intellij.execution.Executor;
 import com.intellij.execution.executors.DefaultRunExecutor;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.pitestidea.model.*;
 import org.pitestidea.psi.PackageWalker;
 import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
+import java.util.Comparator;
 import java.util.List;
 
 public class ExecutionUtils {
     private static final Logger LOGGER = Logger.getInstance(ExecutionUtils.class);
 
-    public static void execute(Module module, List<VirtualFile> virtualFiles) {
+    public static void execute(Module module, List<VirtualFile> unsortedFiles) {
+        // Sort so that there is a consistently ordered list of files no matter what order they came in from the menu selection
+        final List<VirtualFile> sortedFiles = unsortedFiles.stream().sorted(Comparator.comparing(VirtualFile::getPath)).toList();
+
         Project project = module.getProject();
-        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
-        ReadAction.run(()-> {
-                    PackageWalker.read(project, virtualFiles, runProfile);
-                });
+        PITestRunProfile runProfile = new PITestRunProfile(project, module, sortedFiles);
+        ReadAction.run(() -> {
+            PackageWalker.read(project, sortedFiles, runProfile);
+        });
         execute(project, module, runProfile);
     }
 
     /**
      * Compiles the given module and if successful initiates external execution of the given runProfile.
      *
-     * @param project owning module
-     * @param module to compile
+     * @param project    owning module
+     * @param module     to compile
      * @param runProfile to run
      */
     public static void execute(Project project, Module module, PITestRunProfile runProfile) {
@@ -56,10 +61,18 @@ public class ExecutionUtils {
         ApplicationManager.getApplication().invokeLater(() -> {
             WriteAction.run(() -> {
                 compilerManager.make(module, (aborted, errors, warnings, compileContext) -> {
-                    if (!aborted) {
+                    if (aborted || errors > 0) {
+                        LOGGER.error(String.format("Pre-PIT compilation aborted, errors=%d, warnings=%d", errors, warnings));
+                        cachedRun.setRunState(RunState.FAILED);
+                        mutationControlPanel.reloadHistory(project);
+                        ApplicationManager.getApplication().invokeLater(() -> {
+                            String msg = errors > 0 ? "There are compilation errors, please fix these before running PIT" : "Compilation aborted";
+                            Messages.showErrorDialog(project, msg, "Pre-PIT Compilation");
+                        });
+                    } else {
                         try {
                             executePlugin(project, runProfile);
-                        } catch (RuntimeException e) {
+                        } catch (RuntimeException | ExecutionException e) {
                             LOGGER.error("Failed to execute PIT", e);
                             throw new RuntimeException(e);
                         }
@@ -69,24 +82,19 @@ public class ExecutionUtils {
         });
     }
 
-    private static void executePlugin(Project project, PITestRunProfile runProfile) {
+    private static void executePlugin(Project project, PITestRunProfile runProfile) throws ExecutionException {
         Executor executor = DefaultRunExecutor.getRunExecutorInstance();
 
-        try {
-            ExecutionEnvironmentBuilder builder = ExecutionEnvironmentBuilder.create(project, executor, runProfile);
-            ProgramRunner.Callback callBack = descriptor -> {
-                descriptor.setActivateToolWindowWhenAdded(false);
-                ExecutionConsole ec = descriptor.getExecutionConsole();
-                MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
+        ExecutionEnvironmentBuilder builder = ExecutionEnvironmentBuilder.create(project, executor, runProfile);
+        ProgramRunner.Callback callBack = descriptor -> {
+            descriptor.setActivateToolWindowWhenAdded(false);
+            ExecutionConsole ec = descriptor.getExecutionConsole();
+            MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
 
-                mutationControlPanel.setRightPaneContent(ec.getComponent());
-                runProfile.setOutputConsole((ConsoleView) ec.getComponent());
-            };
-            ExecutionEnvironment env = builder.build(callBack);
-            env.getRunner().execute(env);
-        } catch (ExecutionException ex) {
-            // TODO restore state
-            throw new RuntimeException(ex);
-        }
+            mutationControlPanel.setRightPaneContent(ec.getComponent());
+            runProfile.setOutputConsole((ConsoleView) ec.getComponent());
+        };
+        ExecutionEnvironment env = builder.build(callBack);
+        env.getRunner().execute(env);
     }
 }

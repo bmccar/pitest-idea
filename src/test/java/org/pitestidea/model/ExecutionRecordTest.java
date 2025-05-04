@@ -1,9 +1,14 @@
 package org.pitestidea.model;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -80,5 +85,32 @@ class ExecutionRecordTest {
         ExecutionRecord record = record("a/foozle", "/b/c/doozle","Bingo.x", "/c/d/e/zebra","abcdefghijklm.n");
         String exp = "foozle,doozle,Bingo,zebra,abcdefghijklm".substring(0, MAX+1) + ",...";
         assertEquals(exp,record.getReportName());
+    }
+
+    @Test
+    void missingMetaFile(@TempDir Path tempDir) throws IOException {
+        File file = tempDir.toFile();
+        ExecutionRecord record = record("a","b","c");
+        Files.write(tempDir.resolve("junk"), List.of("<a>b</a>"));
+        assertThrows(ExecutionRecord.InvalidFile.class, () -> new ExecutionRecord(file) );
+    }
+
+    @Test
+    void readCorrupted(@TempDir Path tempDir) throws IOException {
+        File file = tempDir.toFile();
+        ExecutionRecord record = record("a","b","c");
+        Files.write(tempDir.resolve(ExecutionRecord.META_FILE_NAME), List.of("<a>b</a>"));
+        assertThrows(ExecutionRecord.InvalidFile.class, () -> new ExecutionRecord(file) );
+    }
+
+    @Test
+    void writeRead(@TempDir Path tempDir) {
+        File file = tempDir.toFile();
+        ExecutionRecord record = record("a","b","c");
+        record.writeToDirectory(file);
+        ExecutionRecord read = new ExecutionRecord(file);
+        assertEquals(record,read);
+        assertEquals(record.getStartedAt(),read.getStartedAt());
+        assertEquals(record.getFormattedDuration(),read.getFormattedDuration());
     }
 }

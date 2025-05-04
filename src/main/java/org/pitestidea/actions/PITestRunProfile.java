@@ -105,7 +105,7 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     private String localBuildPath(String fe) {
         String fs = FileSystems.getDefault().getSeparator();
-        return IdeaDiscovery.getProjectDirectory() + fs + "target" + fs + fe;
+        return project.getBasePath() + fs + "target" + fs + fe;
     }
 
     @Override
@@ -180,7 +180,6 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                         if (runState != RunState.CANCELLED) {
                             File reportDirectory = cachedRun.getReportFileDir();
                             int code = event.getExitCode();
-                            //boolean status;
                             if (code == 0 && reportDirectory.exists() && reportDirectory.isDirectory()) {
                                 onSuccess(cachedRun, mutationControlPanel);
                                 writeConsoleReportLink();

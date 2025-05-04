@@ -156,6 +156,11 @@ public class ClickTree {
             return addRowTo(this);
         }
 
+        public TreeRow setSingleSegment(@NotNull String text) {
+            rowSegments.clear();
+            return addSegment(text);
+        }
+
         public TreeRow addSegment(@NotNull String text) {
             return addSegment(text, Hover.NONE, null);
         }

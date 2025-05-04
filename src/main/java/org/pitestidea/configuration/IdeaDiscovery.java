@@ -8,6 +8,7 @@ import com.intellij.openapi.module.ModuleUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.roots.ModuleRootManager;
+import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.WindowManager;
@@ -16,6 +17,7 @@ import com.intellij.psi.PsiDocumentManager;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiJavaFile;
 import org.jetbrains.annotations.Nullable;
+import org.pitestidea.actions.PITestRunProfile;
 
 import java.awt.*;
 import java.io.File;
@@ -64,9 +66,12 @@ public class IdeaDiscovery {
     }
 
     public static PsiJavaFile getCurrentJavaFile() {
-        Project activeProject = getActiveProject();
-        Document currentDoc = FileEditorManager.getInstance(activeProject).getSelectedTextEditor().getDocument();
-        PsiDocumentManager documentManager = PsiDocumentManager.getInstance(activeProject);
+        return getCurrentJavaFile(getActiveProject());
+    }
+
+    public static PsiJavaFile getCurrentJavaFile(Project project) {
+        Document currentDoc = FileEditorManager.getInstance(project).getSelectedTextEditor().getDocument();
+        PsiDocumentManager documentManager = PsiDocumentManager.getInstance(project);
         PsiFile psiFile = documentManager.getPsiFile(currentDoc);
         return (PsiJavaFile) psiFile;
     }
@@ -101,16 +106,12 @@ public class IdeaDiscovery {
         return getCurrentClassName() + "Test"; // TODO (a) verify exists, (b) check Test file is current
     }
 
-    public static String getProjectDirectory() {
-        Project activeProject = getActiveProject();
-        return activeProject.getBasePath();
-    }
-
     public static String getAbsoluteOutputPath(Module module, String...subs) {
         @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
         if (vf == null) {
             throw new RuntimeException("No output directory for module " + module.getName());
         }
+        vf = vf.getParent();
         StringBuilder sb = new StringBuilder(vf.getPath());
         for (String sub : subs) {
             sb.append(FileSystems.getDefault().getSeparator());
@@ -130,6 +131,18 @@ public class IdeaDiscovery {
             file = new File(file,sub);
         }
         return file;
+    }
+
+    public static <T> T onLocationOf(Project project, VirtualFile selectedFile, T code, T test) {
+        ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
+        final String text;
+        if (fileIndex.isInSourceContent(selectedFile)) {
+            return code;
+        } else if (fileIndex.isInTestSourceContent(selectedFile)) {
+            return test;
+        } else {
+            return null;
+        }
     }
 
     /**

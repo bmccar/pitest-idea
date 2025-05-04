@@ -1,8 +1,5 @@
 package org.pitestidea.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public abstract class BaseMutationsScore implements IMutationScore {
     protected int survived = 0;
     protected int killed = 0;
@@ -57,15 +54,16 @@ public abstract class BaseMutationsScore implements IMutationScore {
 
     @Override
     public float getScore() {
-        return 100*(float)killed/(float)getMutationsTotal();
+        int total = getMutationsTotal();
+        return total==0 ? 0 : (100*(float)killed/(float)total);
     }
 
     @Override
     public String getScoreDescription() {
         StringBuilder sb = new StringBuilder();
-        sb.append("This score (");
-        sb.append(String.format("%.2f",getScore()));
-        sb.append(") is the ratio of:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;(");
+        sb.append("How this score is calculated:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;");
+        sb.append(String.format("%.2f%%",getScore()));
+        sb.append(" = (");
         sb.append(killed);
         sb.append(" killed) over (");
         sb.append(getMutationsTotal());
@@ -78,18 +76,6 @@ public abstract class BaseMutationsScore implements IMutationScore {
         sb.append(" no coverage +<br>&nbsp;&nbsp;&nbsp;&nbsp;");
         sb.append(timedOut);
         sb.append(" time outs");
-        /*
-        if (noCoverage > 0) {
-            sb.append(" + ");
-            sb.append(noCoverage);
-            sb.append(" no-coverage");
-        }
-        if (timedOut > 0) {
-            sb.append(" + ");
-            sb.append(timedOut);
-            sb.append(" timed-out");
-        }
-         */
         return sb.toString();
     }
 }

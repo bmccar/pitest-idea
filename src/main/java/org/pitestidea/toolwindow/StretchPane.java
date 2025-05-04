@@ -1,5 +1,7 @@
 package org.pitestidea.toolwindow;
 
+import com.intellij.openapi.util.IconLoader;
+
 import javax.swing.*;
 import java.awt.*;
 import java.util.function.Consumer;
@@ -8,34 +10,37 @@ import java.util.function.Consumer;
  * A horizontal two-pane panel that can be transitioned between full-views (for either side) with buttons.
  */
 public class StretchPane {
+    private static final Icon stretchLeft = IconLoader.getIcon("/icons/playBack.svg", StretchPane.class);
+    private static final Icon stretchRight = IconLoader.getIcon("/icons/playForward.svg", StretchPane.class);
+
     private static PaneState currentState = PaneState.SCORES;
 
     private final JSplitPane splitPane;
-    private final JLabel scoresButton;
-    private final JLabel consoleButton;
+    private final JButton scoresButton;
+    private final JButton consoleButton;
     private final Consumer<PaneState> onStateChangeFn;
 
 
     enum PaneState {
-        SCORES(1, "<", null),  // Scores is maximized
-        MIXED(0.5, ">", "<"), // Split between scores and console
-        CONSOLE(0, null, ">"); // Console is maximized
+        SCORES(1, stretchLeft, null),  // Scores is maximized
+        MIXED(0.5, stretchRight, stretchLeft), // Split between scores and console
+        CONSOLE(0, null, stretchRight); // Console is maximized
 
         private final double dividerLocation;
-        private final String inScores;
-        private final String inConsole;
+        private final Icon inScores;
+        private final Icon inConsole;
 
-        PaneState(double dividerLocation, String inScores, String inConsole) {
+        PaneState(double dividerLocation, Icon inScores, Icon inConsole) {
             this.dividerLocation = dividerLocation;
             this.inScores = inScores;
             this.inConsole = inConsole;
         }
 
-        String getScoresText() {
+        Icon getScoresIcon() {
             return inScores;
         }
 
-        String getConsoleText() {
+        Icon getConsoleIcon() {
             return inConsole;
         }
 
@@ -48,7 +53,7 @@ public class StretchPane {
         }
 
         public boolean isVisibleInState(PaneState state) {
-            return this==MIXED || this == state;
+            return currentState==MIXED || this == state;
         }
     }
 
@@ -56,9 +61,24 @@ public class StretchPane {
         this.onStateChangeFn = onStateChangeFn;
 
         splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        scoresButton = createIconButton(stretchLeft,"Stretch left", ()->setState(currentState.goScores()));
+        consoleButton = createIconButton(stretchRight,"Stretch right", ()->setState(currentState.goConsole()));
+    }
 
-        scoresButton = DisplayUtils.createHoverLabel(LEFTWARD, ()->setState(currentState.goScores()));
-        consoleButton = DisplayUtils.createHoverLabel(LEFTWARD, ()->setState(currentState.goConsole()));
+    private JButton createIconButton(Icon icon, String tooltip, Runnable onClick) {
+        JButton button = new JButton(icon);
+        Dimension d = new Dimension(30,30);
+        button.setPreferredSize(d);
+        button.setMinimumSize(d);
+        button.setMaximumSize(d);
+        button.setBorderPainted(false);
+        button.setContentAreaFilled(false);
+        button.setFocusPainted(false);
+        button.setToolTipText(tooltip);
+        button.addActionListener(e -> {
+            onClick.run();
+        });
+        return button;
     }
 
     void setLeft(Component component) {
@@ -73,17 +93,13 @@ public class StretchPane {
         return splitPane;
     }
 
-    public JLabel getScoresButton() {
+    public JComponent getScoresButton() {
         return scoresButton;
     }
 
-    public JLabel getConsoleButton() {
+    public JComponent getConsoleButton() {
         return consoleButton;
     }
-
-    // TODO
-    private static final String LEFTWARD = "<";
-    private static final String RIGHTWARD = ">";
 
     public void setFullConsole() {
         setState(PaneState.CONSOLE);
@@ -95,11 +111,12 @@ public class StretchPane {
 
     void setState(PaneState state) {
         currentState = state;
-        scoresButton.setText(currentState.getScoresText());
-        consoleButton.setText(currentState.getConsoleText());
+        scoresButton.setIcon(currentState.getScoresIcon());
+        consoleButton.setIcon(currentState.getConsoleIcon());
         splitPane.setDividerLocation(currentState.dividerLocation);
         splitPane.setResizeWeight(currentState.dividerLocation);
-        splitPane.getRightComponent().setVisible(currentState.isVisibleInState(currentState));
+        splitPane.getLeftComponent().setVisible(PaneState.SCORES.isVisibleInState(currentState));
+        splitPane.getRightComponent().setVisible(PaneState.CONSOLE.isVisibleInState(currentState));
         if (onStateChangeFn != null) {
             onStateChangeFn.accept(currentState);
         }
