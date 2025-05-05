@@ -164,6 +164,7 @@ public class MutationControlPanel {
     private JComponent createRemoveButton() {
         Project project = IdeaDiscovery.getActiveProject();
         JCheckBox checkBox = new JCheckBox("Show PIT icons");
+        checkBox.setToolTipText("Show/hide PIT icons in editor windows");
         checkBox.setHorizontalAlignment(SwingConstants.CENTER);
         checkBox.setSelected(isGutterIconsEnabled);
         checkBox.addActionListener(e -> {
@@ -179,7 +180,6 @@ public class MutationControlPanel {
 
     private JPanel createPackagePanel() {
         packageSelector = new EnumRadio<>(Viewing.PackageChoice.values(), "Filter",
-                Viewing.PackageChoice::getDisplayName,
                 type -> callOptionsChangeFn());
         packageSelector.setSelected(Viewing.PackageChoice.PACKAGE); // Default value
         return packageSelector.getPanel();
@@ -187,7 +187,6 @@ public class MutationControlPanel {
 
     private JPanel createSortPanel() {
         sortSelector = new EnumRadio<>(Sorting.By.values(), "Sort",
-                Sorting.By::getDisplayName,
                 type -> callOptionsChangeFn());
         sortSelector.setSelected(Sorting.By.PROJECT); // Default value
         return sortSelector.getPanel();
@@ -195,7 +194,6 @@ public class MutationControlPanel {
 
     private JPanel createDirPanel() {
         dirSelector = new EnumRadio<>(Sorting.Direction.values(), "Sort Direction",
-                Sorting.Direction::getDisplayName,
                 type -> callOptionsChangeFn());
         dirSelector.setSelected(Sorting.Direction.ASC); // Default value
 
