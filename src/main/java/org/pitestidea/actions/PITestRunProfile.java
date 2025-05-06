@@ -258,11 +258,11 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     private void writeConsoleReportLink() {
         consoleView.print("\n*** Open results in browser ", ConsoleViewContentType.NORMAL_OUTPUT);
-        String url = "file://" + cachedRun.getReportDir() + "/index.html";
         consoleView.printHyperlink("here", new HyperlinkInfo() {
             @Override
-            public void navigate(@NotNull Project project) {
-                com.intellij.ide.BrowserUtil.browse(url);
+            public void navigate(@NotNull Project project)
+            {
+                IdeaDiscovery.openBrowserTo(IdeaDiscovery.getUrl(cachedRun));
             }
         });
         consoleView.print("\n\n", ConsoleViewContentType.NORMAL_OUTPUT);

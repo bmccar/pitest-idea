@@ -103,7 +103,7 @@ public class MutationControlPanel {
         scoresSplitPane.setResizeWeight(split);
     }
 
-    public void onFirstActivation(CachedRun cachedRun, boolean hasMultiplePackages) {
+    public void onFirstActivation(CachedRun cachedRun, boolean _hasMultiplePackages) {
         reloadScores(cachedRun);
         // Quirk: the values in this method do not take effect until the split is visible
         setDefaultScoresSplit();
@@ -319,7 +319,7 @@ public class MutationControlPanel {
             Project project = cachedRun.getProject();
             CoverageGutterRenderer.removeGutterIcons(project);
             clearScores(cachedRun);
-            PitToolWindowFactory.addAll(project, this, cachedRun.getRecorder());
+            PitToolWindowFactory.addAll(cachedRun, this, cachedRun.getRecorder());
             // previous addAll will have update default scores message, make sure it's set properly
             // here for all the non-completion cases
             syncScoresMsg(cachedRun);
@@ -520,25 +520,41 @@ public class MutationControlPanel {
             this.isTop = isTop;
         }
 
-        public void setLine(Project project, VirtualFile file, String fileName, IMutationScore score) {
+        public void setLine(CachedRun cachedRun, VirtualFile file, String fileName, IMutationScore score) {
             ClickTree.TreeRow targetRow = isTop ? this.treeRow : this.treeRow.addChildRow();
             isTop = false;
             targetRow
-                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component, point) -> showScoreDetailPopup(component, point, score.getScoreDescription()))
-                    .addSegment(fileName, ClickTree.Hover.NONE, (_c, _p) -> {
-                        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
-                        fileEditorManager.openFile(file, true); // true to focus the file
-                    });
+                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component, point, _button) -> showScoreDetailPopup(component, point, score.getScoreDescription()))
+                    .addSegment(fileName, ClickTree.Hover.NONE, (_c, _p, button) -> {
+                        if (button) {
+                            IdeaDiscovery.openBrowserTo(IdeaDiscovery.getUrl(cachedRun, file));
+                        } else {
+                            FileEditorManager fileEditorManager = FileEditorManager.getInstance(cachedRun.getProject());
+                            fileEditorManager.openFile(file, true); // true to focus the file
+                        }
+                    })
+                    .addDelegatedSegment("(Click open; Ctrl-click browser)", ClickTree.Hover.FLASH);
         }
 
-        public Level setLine(Project _project, String pkgName, IMutationScore score) {
+        public Level setLine(CachedRun cachedRun, String pkgName, IMutationScore score) {
             Level level = isTop ? this : new Level(treeRow.addChildRow(), false);
-            ClickTree.Hover hoverRight = PitExecutionRecorder.ROOT_PACKAGE_NAME.equals(pkgName) ? ClickTree.Hover.ITALICS : ClickTree.Hover.NONE;
+            boolean isRoot = PitExecutionRecorder.ROOT_PACKAGE_NAME.equals(pkgName);
+            ClickTree.Hover hoverRight = isRoot ? ClickTree.Hover.ITALICS : ClickTree.Hover.NONE;
             isTop = false;
             level.treeRow
-                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component, point) -> showScoreDetailPopup(component, point, score.getScoreDescription()))
-                    .addSegment(pkgName, hoverRight, (_c, _p) -> {
-                    });
+                    .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component, point, _button) -> showScoreDetailPopup(component, point, score.getScoreDescription()))
+                    .addSegment(pkgName, hoverRight, (_c, _p, button) -> {
+                        if (button) {
+                            final String url;
+                            if (isRoot) {
+                                url = IdeaDiscovery.getUrl(cachedRun);
+                            } else {
+                                url = IdeaDiscovery.getPackageUrl(cachedRun, pkgName);
+                            }
+                            IdeaDiscovery.openBrowserTo(url);
+                        }
+                    })
+                    .addDelegatedSegment("(Ctrl-click browser)", ClickTree.Hover.FLASH);
             return level;
         }
 

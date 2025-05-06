@@ -1,6 +1,7 @@
 package org.pitestidea.toolwindow;
 
 import com.intellij.ui.treeStructure.Tree;
+import com.intellij.util.TriConsumer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -11,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.function.BiConsumer;
 
 /**
  * A JTree that allows for independently-selectable components in a row.
@@ -57,8 +57,11 @@ public class ClickTree {
         tree.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
+                int mods = e.getModifiersEx();
+                boolean button = (mods & MouseEvent.CTRL_DOWN_MASK) != 0;
+
                 if (hoverSegment != null && hoverSegment.action != null) {
-                    hoverSegment.action.accept(e.getComponent(), new Point(e.getX(), e.getY()));
+                    hoverSegment.action.accept(e.getComponent(), new Point(e.getX(), e.getY()), button);
                 }
             }
 
@@ -101,41 +104,55 @@ public class ClickTree {
     public enum Hover {
         NONE,  // Normal text, no change on hover
         UNDERLINE,   // Normal text that is underlined on hover
-        ITALICS  // Italic text whether hovering or not
+        ITALICS,  // Italic text whether hovering or not
+        FLASH  // Italic, only active on hover
     }
 
     private static class RowSegment {
-        @NotNull
-        private String text;
         @Nullable
-        private String altText;
-        @NotNull
-        private Hover hover;
-        @NotNull
-        private final Dimension dim;
+        final private String text;  // either text, altText, or both are not null
         @Nullable
-        private BiConsumer<Component,Point> action;
+        final private String altText;
+        @NotNull
+        final private Dimension dim;
+        @Nullable
+        final private TriConsumer<Component,Point,Boolean> action;
 
-        private RowSegment(@NotNull String text, @NotNull Hover hover, @Nullable BiConsumer<Component,Point> action) {
-            this.text = hover==Hover.ITALICS ? ("<html><i>" + text + "</i></html>") : text;
-            this.hover = hover;
+        // When a delegate is set, the hover behavior of this segment will activate based on whether the
+        // delegate is the current hover segment
+        @Nullable
+        private RowSegment delegate = null;
+
+        private RowSegment(@NotNull String text, @NotNull Hover hover, @Nullable TriConsumer<Component,Point,Boolean> action) {
             this.action = action;
             this.dim = new Dimension(8 * (text.length() + 1), 16);
-            if (hover == Hover.UNDERLINE) {
-                this.altText = "<html><u>" + text + "</u></html>";
+            if (hover == Hover.FLASH) {
+                this.text = null;
+                this.altText = text;
             } else {
-                this.altText = null;
+                this.text = text;
+                if (hover == Hover.ITALICS) {
+                    this.altText = "<html><i>" + text + "</i></html>";
+                } else if (hover == Hover.UNDERLINE) {
+                    this.altText = "<html><u>" + text + "</u></html>";
+                } else {
+                    this.altText = null;
+                }
             }
         }
 
         private int apply(JLabel label, boolean hoveredRow, int labelXPos, ClickTree tree) {
-            final boolean hit = hoveredRow && labelXPos >= 0 && labelXPos <= dim.width;
+            final boolean hit;
+            if (delegate==null) {
+                hit = hoveredRow && labelXPos >= 0 && labelXPos <= dim.width;
+                if (hit) {
+                    tree.hoverSegment = this;
+                }
+            } else {
+                hit = tree.hoverSegment == delegate;
+            }
 
             label.setText((hit && altText != null) ? altText : text);
-
-            if (hit) {
-                tree.hoverSegment = this;
-            }
             label.setMinimumSize(dim);
             label.setPreferredSize(dim);
             label.setSize(dim);
@@ -156,6 +173,7 @@ public class ClickTree {
             return addRowTo(this);
         }
 
+        @SuppressWarnings("UnusedReturnValue")
         public TreeRow setSingleSegment(@NotNull String text) {
             rowSegments.clear();
             return addSegment(text);
@@ -165,7 +183,7 @@ public class ClickTree {
             return addSegment(text, Hover.NONE, null);
         }
 
-        public TreeRow addSegment(@NotNull String text, @NotNull Hover hover, @Nullable BiConsumer<Component, Point> action) {
+        public TreeRow addSegment(@NotNull String text, @NotNull Hover hover, @Nullable TriConsumer<Component, Point, Boolean> action) {
             rowSegments.add(new RowSegment(text, hover, action));
             if (renderer.labels.size() < rowSegments.size()) {
                 JLabel label = new JLabel();
@@ -173,6 +191,22 @@ public class ClickTree {
                 label.setVisible(false);
                 renderer.add(label);
                 renderer.labels.add(label);
+            }
+            return this;
+        }
+
+        private static final Font FLASH_FONT = new Font("Skia", Font.ITALIC, 10);
+
+        @SuppressWarnings("UnusedReturnValue")
+        public TreeRow addDelegatedSegment(@NotNull String text, @NotNull Hover hover) {
+            if (rowSegments.isEmpty()) {
+                throw new IllegalStateException("Cannot delegate to empty row");
+            } else {
+                RowSegment target = rowSegments.get(rowSegments.size() - 1);
+                addSegment(text,hover,null);
+                RowSegment addedSegment = rowSegments.get(rowSegments.size() - 1);
+                addedSegment.delegate = target;
+                renderer.labels.get(renderer.labels.size() - 1).setFont(FLASH_FONT);
             }
             return this;
         }
@@ -213,10 +247,7 @@ public class ClickTree {
             if (value instanceof DefaultMutableTreeNode node) {
                 TreeRow treeRow = (TreeRow) node.getUserObject();
                 if (treeRow != null) {
-                    // Unfortunately there appears to be no way to get the start of the row (after drop-down markerts)
-                    // without calling a method that does not recursively call this method. So, hardwire it.
                     int boundaryXPos = treeRow.level * rowPrefixWidth;
-                    //System.out.println("Row " + row + " has " + treeRow.rowSegments.size() + " segments and " + labels.size() + " labels");
                     for (int i = 0; i < labels.size(); i++) {
                         JLabel label = labels.get(i);
                         if (i >= treeRow.rowSegments.size()) {

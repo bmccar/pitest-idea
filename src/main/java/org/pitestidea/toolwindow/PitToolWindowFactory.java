@@ -91,18 +91,19 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
      * Accepts directory/file lines and, based on user selections, filters/groups/orders them
      * into a set of lines for display.
      */
-    private record HierarchyPlanner(Project project,
+    private record HierarchyPlanner(CachedRun cachedRun,
                                     MutationControlPanel.Level level) implements PitExecutionRecorder.FileVisitor {
 
         @Override
         public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
             String filePath = file.getPath();
             String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
-            level.setLine(project, file, fileName, score);
+            level.setLine(cachedRun, file, fileName, score);
         }
 
         @Override
         public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
+            Project project = cachedRun.getProject();
             MutationControlPanel.Level nextLevel = level;
             MutationControlPanel mutationControlPanel = getControlPanel(project);
             Viewing.PackageChoice pkgSelection = mutationControlPanel.getPackageSelection();
@@ -110,15 +111,16 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
             includeLine |= pkgSelection == Viewing.PackageChoice.PACKAGE;
             includeLine |= pkgSelection == Viewing.PackageChoice.CODE && diver.hasCodeFileChildren();
             if (includeLine) {
-                nextLevel = level.setLine(project, pkg, score);
+                nextLevel = level.setLine(cachedRun, pkg, score);
             }
-            diver.apply(new HierarchyPlanner(project, nextLevel));
+            MutationControlPanel.Level finalLevel = nextLevel;
+            diver.apply(new HierarchyPlanner(cachedRun, finalLevel));
         }
     }
 
-    public static void addAll(Project project, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder) {
+    public static void addAll(CachedRun cachedRun, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder) {
         MutationControlPanel.Level level = mutationControlPanel.getLevel();
-        recorder.visit(new HierarchyPlanner(project,level));
+        recorder.visit(new HierarchyPlanner(cachedRun,level));
         mutationControlPanel.refresh(recorder.hasMultiplePackages());
     }
 

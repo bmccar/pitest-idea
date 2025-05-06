@@ -5,8 +5,6 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
-import com.intellij.openapi.vfs.LocalFileSystem;
-import com.intellij.openapi.vfs.VirtualFile;
 import org.eclipse.jgit.annotations.NonNull;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.reader.MutationsFileReader;
@@ -142,11 +140,6 @@ public class CachedRun implements Comparable<CachedRun> {
 
     public String getReportDir() {
         return reportDirectory;
-    }
-
-    public VirtualFile getReportVirtualDir() {
-        String path = reportDirectory.replace('\\', '/');
-        return LocalFileSystem.getInstance().findFileByPath(path);
     }
 
     public File getReportFileDir() {

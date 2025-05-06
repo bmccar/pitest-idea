@@ -12,12 +12,11 @@ import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.WindowManager;
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiDocumentManager;
-import com.intellij.psi.PsiFile;
-import com.intellij.psi.PsiJavaFile;
+import com.intellij.psi.*;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.pitestidea.actions.PITestRunProfile;
+import org.pitestidea.model.CachedRun;
 
 import java.awt.*;
 import java.io.File;
@@ -143,6 +142,53 @@ public class IdeaDiscovery {
         } else {
             return null;
         }
+    }
+
+    public static void openBrowserTo(String url) {
+        if (url != null) {
+            com.intellij.ide.BrowserUtil.browse(url);
+        }
+    }
+
+    public static String getUrl(CachedRun run) {
+        return "file://" + run.getReportDir() + "/index.html";
+    }
+
+    public static String getPackageUrl(CachedRun run, String packageName) {
+        return "file://" + run.getReportDir() + File.separatorChar + packageName + File.separatorChar + "index.html";
+    }
+
+    public static String getUrl(CachedRun run, VirtualFile file) {
+        String sfx = IdeaDiscovery.getPackageOf(run.getProject(), file);
+        if (sfx != null) {
+            if (file.isDirectory()) {
+                sfx += "/index.html";
+            } else {
+                sfx += File.separatorChar + file.getName() + ".html";
+            }
+            return "file://" + run.getReportDir() + File.separatorChar + sfx;
+        }
+        return null;
+    }
+
+    public static String getPackageOf(Project project, VirtualFile file) {
+        String filePath = file.getPath();
+
+        VirtualFile[] sourceRoots = ProjectRootManager.getInstance(project).getContentSourceRoots();
+
+        for (VirtualFile sourceRoot : sourceRoots) {
+            String sourcePath = sourceRoot.getPath();
+            if (filePath.startsWith(sourcePath)) {
+                String relativePath = filePath.substring(sourcePath.length() + 1);
+                relativePath = relativePath.substring(0, relativePath.lastIndexOf(File.separatorChar));
+
+                String packageName = relativePath.replace(File.separatorChar, '.');
+
+                return packageName;
+            }
+        }
+
+        return null;
     }
 
     /**
