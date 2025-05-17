@@ -1,5 +1,6 @@
 package org.pitestidea.reader;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -19,6 +20,8 @@ import java.io.IOException;
  * Reads files output from PIT and generates mutations line-by-line.
  */
 public class MutationsFileReader {
+    private static final Logger LOGGER = Logger.getInstance(MutationsFileReader.class);
+
     /**
      * Reads and parses mutation lines from the file generated from pitest, and sends each
      * line individually to a recorder.
@@ -64,7 +67,14 @@ public class MutationsFileReader {
 
             VirtualFile virtualFile = findFromPath(project,filePath);
             if (virtualFile == null) {
-                throw new RuntimeException("Unable to find file " + filePath);
+                // The file must have existed previously, but all we can do now is ignore it
+                String msg = "Ignoring PIT report for "
+                        + filePath
+                        + " that no longer exists."
+                        + " You can remove the following following (or just 'clean all' to remove all stored PIT reports):\n  "
+                        + file.getParent();
+                LOGGER.warn(msg);
+                return;
             }
 
             recorder.record(pkg, virtualFile, impact,lineNumber,description);

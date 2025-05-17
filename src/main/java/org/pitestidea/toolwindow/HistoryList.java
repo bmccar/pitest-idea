@@ -71,7 +71,8 @@ public class HistoryList {
             sb.append("PIT Execution run<br>&nbsp;&nbsp;Started at ");
             sb.append(record.getFormattedStart()).append("<br>&nbsp;&nbsp;Duration: ");
             sb.append(record.getFormattedDuration());
-            sb.append(record.getHtmlListOfInputs("<br><br>Inputs for this run", true));
+            sb.append("<br>");
+            sb.append(record.getHtmlListOfInputs(null));
         } else {
             sb.append("PIT Command-line run<br>&nbsp;&nbsp;<i>Ended</i> at ");
             sb.append(record.getFormattedStart());

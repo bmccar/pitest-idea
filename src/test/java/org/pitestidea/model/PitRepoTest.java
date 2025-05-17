@@ -31,7 +31,9 @@ class PitRepoTest {
         when(commonModule.getProject()).thenReturn(project);
 
         VirtualFile vf = Mockito.mock(VirtualFile.class);
-        when(vf.getPath()).thenReturn("someFile");
+        VirtualFile pf = Mockito.mock(VirtualFile.class);
+        when(vf.getParent()).thenReturn(pf);
+        when(pf.getPath()).thenReturn("someFile");
 
         compilerPaths = Mockito.mockStatic(CompilerPaths.class);
         compilerPaths.when(() -> CompilerPaths.getModuleOutputDirectory(commonModule, false)).thenReturn(vf);
@@ -49,8 +51,9 @@ class PitRepoTest {
             Thread.sleep(5);  // So the timestamps are different
         } catch (InterruptedException e) {
         }
-        ExecutionRecord record = new ExecutionRecord(Arrays.asList(inputs));
-        return PitRepo.register(commonModule, record);
+        InputBundle bundle = new InputBundle();
+        Arrays.stream(inputs).forEach(s->bundle.addPath(InputBundle.Category.SOURCE_PKG, s));
+        return PitRepo.register(commonModule, new ExecutionRecord(bundle));
     }
 
     private void verify(Module module, CachedRun... recorders) {

@@ -11,7 +11,6 @@ import com.intellij.openapi.ui.popup.Balloon;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.vfs.InvalidVirtualFileAccessException;
-import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.awt.RelativePoint;
@@ -26,7 +25,6 @@ import org.pitestidea.render.FileOpenCloseListener;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -138,6 +136,7 @@ public class MutationControlPanel {
                         .ask(project)) {
                     PitRepo.deleteHistory(project);
                     clearHistory();
+                    clearScores(project);
                     PitRepo.reloadReports(project);
                 }
             });
@@ -229,13 +228,20 @@ public class MutationControlPanel {
     }
 
     public void clearScores(Project project) {
-        clearScores(PitRepo.getCurrent(project));
+        clearScores(project, PitRepo.getCurrent(project));
     }
 
     public void clearScores(CachedRun cachedRun) {
+        clearScores(cachedRun.getProject(), cachedRun);
+    }
+
+    private void clearScores(Project project, CachedRun cachedRun) {
         tree.clearExistingRows();
-        syncScoresMsg(cachedRun);
-        tree.refresh(cachedRun == null || cachedRun.getRecorder().hasMultiplePackages());
+        if (project != null) {
+            CoverageGutterRenderer.removeGutterIcons(project);
+            syncScoresMsg(cachedRun);
+            tree.refresh(cachedRun == null || cachedRun.getRecorder().hasMultiplePackages());
+        }
     }
 
     public void refresh(boolean hasMultiplePackages) {
@@ -267,8 +273,8 @@ public class MutationControlPanel {
     public void reloadReports(Project project) {
         System.out.println("Reloading reports for " + project.getName());
         CachedRun current = reloadHistory(project);
-        clearScores(current);
         if (current != null) {
+            clearScores(current);
             reloadScores(current);
         }
     }
@@ -452,10 +458,7 @@ public class MutationControlPanel {
         try {
             Module module = cachedRun.ensureLoaded().getModule();
             ExecutionRecord record = cachedRun.getExecutionRecord();
-            List<VirtualFile> vfs = record.getInputFiles().stream()
-                    .map(LocalFileSystem.getInstance()::findFileByPath)
-                    .toList();
-            ApplicationManager.getApplication().executeOnPooledThread(() -> ExecutionUtils.execute(module, vfs));
+            ApplicationManager.getApplication().executeOnPooledThread(() -> ExecutionUtils.execute(module, record.getInputBundle()));
             return true;
         } catch (Exception e) {
             LOGGER.error("Execution failed: " + e.getMessage(), e);

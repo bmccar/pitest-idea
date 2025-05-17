@@ -64,8 +64,7 @@ public class PitRepo {
     }
 
     /**
-     * Creates a CachedRun with {@link #register(Module, ExecutionRecord, String)}, but first ensures
-     * that the report directory exists.
+     * Creates a CachedRun with {@link #register(Module, ExecutionRecord, String)}.
      *
      * @param module where run files exist
      * @param record inputs and such
@@ -224,7 +223,7 @@ public class PitRepo {
                 CachedRun cachedRun = PitRepo.register(module, new ExecutionRecord(report), report.getPath());
                 cachedRun.reload();
             } catch (ExecutionRecord.InvalidFile _e) {
-                // Report directories generated from a previous failed/cancelled PIT may exist but
+                // Report directories generated from a previous failed/canceled PIT may exist but
                 // easiest to just ignore them as the utility of loading them is low and they'll
                 // get removed anyway on the next project clean.
             }

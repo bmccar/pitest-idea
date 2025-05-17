@@ -191,6 +191,19 @@ public class IdeaDiscovery {
         return null;
     }
 
+    public static VirtualFile findVirtualFileByRQN(Project project, String relPath) {
+
+        // Iterate through all source roots of the project
+        for (VirtualFile sourceRoot : ProjectRootManager.getInstance(project).getContentSourceRoots()) {
+            // Find the file in this source root
+            VirtualFile file = sourceRoot.findFileByRelativePath(relPath);
+            if (file != null) {
+                return file; // Return the file if found
+            }
+        }
+        return null;
+    }
+
     /**
      * Resolves a VirtualFile from the given fully qualified name.
      *

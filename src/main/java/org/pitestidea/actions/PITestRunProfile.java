@@ -19,12 +19,11 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.util.IconLoader;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.PathsList;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
-import org.pitestidea.psi.IPackageCollector;
+import org.pitestidea.model.InputBundle;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
 import org.pitestidea.toolwindow.MutationControlPanel;
@@ -34,12 +33,14 @@ import javax.swing.*;
 import java.io.File;
 import java.nio.file.FileSystems;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Defines how the PIT process is run, in accordance with the IJ framework. This includes the steps taken when
  * the process completes. See {@link ExecutionUtils} for how the process is initiated.
  */
-public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
+public class PITestRunProfile implements ModuleRunProfile {
     private static final String PIT_MAIN_CLASS = "org.pitest.mutationtest.commandline.MutationCoverageReport";
     private static final Icon PLUGIN_ICON = IconLoader.getIcon("/icons/pitest.svg", CoverageGutterRenderer.class);
 
@@ -47,54 +48,20 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
     private final com.intellij.openapi.module.Module module;
 
     private final CachedRun cachedRun;
-    private final StringBuilder codeClasses = new StringBuilder();
-    private final StringBuilder testClasses = new StringBuilder();
+    private final InputBundle inputBundle;
 
     private ConsoleView consoleView;
 
-    PITestRunProfile(Project project, Module module, List<VirtualFile> virtualFiles) {
+    PITestRunProfile(Project project, Module module, InputBundle inputBundle) {
         this.project = project;
         this.module = module;
-        List<String> inputs = virtualFiles.stream().map(VirtualFile::getPath).toList();
-        ExecutionRecord record = new ExecutionRecord(inputs);
-        //VirtualFile vf = getVirtualFile(module, virtualFiles, record);
+        ExecutionRecord record = new ExecutionRecord(inputBundle);
         this.cachedRun = PitRepo.register(module, record);
+        this.inputBundle = inputBundle;
     }
 
     void setOutputConsole(ConsoleView consoleView) {
         this.consoleView = consoleView;
-    }
-
-    private static StringBuilder appending(StringBuilder sb) {
-        if (!sb.isEmpty()) {
-            sb.append(',');
-        }
-        return sb;
-    }
-
-    @Override
-    public void acceptCodePackage(String pkg) {
-        //System.out.println("*** acceptCodePackage: " + pkg + " " + cachedRun.hashCode());
-        StringBuilder sb = appending(codeClasses);
-        sb.append(pkg);
-        sb.append(".*");
-    }
-
-    @Override
-    public void acceptCodeClass(String qualifiedClassName, String fileName) {
-        appending(codeClasses).append(qualifiedClassName);
-    }
-
-    @Override
-    public void acceptTestPackage(String pkg) {
-        StringBuilder sb = appending(testClasses);
-        sb.append(pkg);
-        sb.append(".*");
-    }
-
-    @Override
-    public void acceptTestClass(String qualifiedClassName) {
-        appending(testClasses).append(qualifiedClassName);
     }
 
     private String pluginJar(String fe) {
@@ -110,8 +77,18 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
 
     @Override
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment environment) {
-        //System.out.println("*** codeClasses: " + codeClasses.toString());
-        //System.out.println("*** testClasses: " + testClasses.toString());
+        String codeClasses = Stream.concat(
+                inputBundle.asQn().get(c->c== InputBundle.Category.SOURCE_FILE).stream(),
+                inputBundle.asQn().transform(c->c== InputBundle.Category.SOURCE_PKG, s->s+".*").stream()
+        ).collect(Collectors.joining(","));
+
+        String testClasses = Stream.concat(
+                inputBundle.asQn().get(c->c== InputBundle.Category.TEST_FILE).stream(),
+                inputBundle.asQn().transform(c->c== InputBundle.Category.TEST_PKG, s->s+".*").stream()
+        ).collect(Collectors.joining(","));
+
+        System.out.println("*** codeClasses: " + codeClasses);
+        System.out.println("*** testClasses: " + testClasses);
         return new JavaCommandLineState(environment) {
             @Override
             protected JavaParameters createJavaParameters() {
@@ -122,8 +99,8 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                 ParametersList params = javaParameters.getProgramParametersList();
                 File reportDir = cachedRun.getReportFileDir();
                 params.add("--reportDir", reportDir.getPath());
-                params.add("--targetClasses", codeClasses.toString());
-                params.add("--targetTests", testClasses.toString());
+                params.add("--targetClasses", codeClasses);
+                params.add("--targetTests", testClasses);
                 params.add("--sourceDirs", projectDir + "/src/main/java");
                 params.add("--outputFormats", "XML,HTML");
                 params.add("--exportLineCoverage", "true");
@@ -229,7 +206,8 @@ public class PITestRunProfile implements ModuleRunProfile, IPackageCollector {
                             File src = cachedRun.getMutationsFile();
                             app.runReadAction(() -> MutationsFileReader.read(project, src, recorder));
 
-                            String msg = cachedRun.getExecutionRecord().getHtmlListOfInputs("PIT execution completed for", false);
+                            String msg = cachedRun.getExecutionRecord().getHtmlListOfInputs("PIT execution completed for");
+                            System.out.println(">> " + msg);
 
                             app.invokeLater(() -> {
                                 react(msg, "Show Report", () -> {

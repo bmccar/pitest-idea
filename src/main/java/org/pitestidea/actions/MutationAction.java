@@ -7,14 +7,11 @@ import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiJavaFile;
-import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class MutationAction extends AnAction {
@@ -32,30 +29,12 @@ public class MutationAction extends AnAction {
         PsiJavaFile javaFile = IdeaDiscovery.getCurrentJavaFile(project);
         Module module = ModuleUtilCore.findModuleForPsiElement(javaFile);
 
-        String pkg = IdeaDiscovery.getCurrentPackageName();
-        String cn = IdeaDiscovery.getCurrentClassName();
-        String tn = IdeaDiscovery.getCurrentTestClassName();
+        VirtualFile selectedFile = e.getData(CommonDataKeys.VIRTUAL_FILE);
+        VirtualFile currentFile = IdeaDiscovery.getCurrentFile();
 
-        List<VirtualFile> virtualFiles = new ArrayList<>();
-        virtualFiles.add(IdeaDiscovery.getCurrentFile());
-        PITestRunProfile runProfile = new PITestRunProfile(project, module, virtualFiles);
-        String pfx = StringUtils.isEmpty(pkg) ? "" : pkg + ".";
-        String qn = pfx + cn;
-
-        // Either the file or its test will match; sort out which is which
-        final String sfx = "Test";
-        final String testName;
-        if (qn.endsWith(sfx)) {
-            testName = qn;
-            qn = qn.substring(0, qn.length() - 4);
-        } else {
-            testName = qn + sfx;
+        if (module != null && currentFile != null) {
+            ExecutionUtils.execute(module, List.of(currentFile));
         }
-
-        runProfile.acceptCodeClass(qn, null);
-        runProfile.acceptTestClass(testName);
-
-        ExecutionUtils.execute(project, module, runProfile);
     }
 
     @Override

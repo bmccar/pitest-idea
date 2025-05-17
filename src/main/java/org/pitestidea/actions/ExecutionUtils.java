@@ -16,9 +16,12 @@ import com.intellij.openapi.project.Project;
 
 import com.intellij.execution.Executor;
 import com.intellij.execution.executors.DefaultRunExecutor;
+import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
+import org.pitestidea.model.InputBundle;
 import org.pitestidea.psi.PackageWalker;
 import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
@@ -29,15 +32,41 @@ import java.util.List;
 public class ExecutionUtils {
     private static final Logger LOGGER = Logger.getInstance(ExecutionUtils.class);
 
+    public static void execute(Module module, InputBundle bundle) {
+        Project project = module.getProject();
+        List<VirtualFile> vfs = bundle.asPath()
+                .transform(_c->true, s-> IdeaDiscovery.findVirtualFileByRQN(project,s));
+        execute(module,vfs);
+    }
+
     public static void execute(Module module, List<VirtualFile> unsortedFiles) {
         // Sort so that there is a consistently ordered list of files no matter what order they came in from the menu selection
         final List<VirtualFile> sortedFiles = unsortedFiles.stream().sorted(Comparator.comparing(VirtualFile::getPath)).toList();
 
         Project project = module.getProject();
-        PITestRunProfile runProfile = new PITestRunProfile(project, module, sortedFiles);
+
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                    ApplicationManager.getApplication().runReadAction(() -> {
+                    ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
+                    VirtualFile sourceRoot = fileIndex.getSourceRootForFile(sortedFiles.get(0));
+                    });
+                });
+
+        InputBundle inputBundle = new InputBundle();
         ReadAction.run(() -> {
-            PackageWalker.read(project, sortedFiles, runProfile);
+            PackageWalker.read(project, sortedFiles, inputBundle);
         });
+
+        if (inputBundle.isEmpty(InputBundle.Category::isSource)) {
+            Messages.showErrorDialog(project, "Unable to find any matching source files for this input request. Please multi-select with at least one source entry from Project view.", "Pointless Execution");
+            return;
+        }
+        if (inputBundle.isEmpty(InputBundle.Category::isTest)) {
+            Messages.showErrorDialog(project, "Unable to find any matching test files for this input request. Please multi-select with at least one test entry from Project view.", "Pointless Execution");
+            return;
+        }
+
+        PITestRunProfile runProfile = new PITestRunProfile(project, module, inputBundle);
         execute(project, module, runProfile);
     }
 
@@ -48,7 +77,7 @@ public class ExecutionUtils {
      * @param module     to compile
      * @param runProfile to run
      */
-    public static void execute(Project project, Module module, PITestRunProfile runProfile) {
+    private static void execute(Project project, Module module, PITestRunProfile runProfile) {
         MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
         CachedRun cachedRun = runProfile.getCachedRun();
         cachedRun.setRunState(RunState.RUNNING);

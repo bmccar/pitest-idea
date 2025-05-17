@@ -2,20 +2,14 @@ package org.pitestidea.model;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.VisibleForTesting;
-import org.pitestidea.actions.PITestRunProfile;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import java.io.*;
-import java.nio.file.FileSystems;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -32,10 +26,6 @@ import javax.xml.transform.stream.StreamResult;
 public class ExecutionRecord implements Comparable<ExecutionRecord> {
     public static final String META_FILE_NAME = "run.xml";
 
-    @VisibleForTesting
-    static final int MAX_REPORT_NAME_LENGTH = 24;
-    static final int MAX_PREFIX_LENGTH = 3;
-
     private final static String ROOT_ELEMENT = "execution-record";
     private final static String INPUTS = "inputs";
     private final static String INPUT = "input";
@@ -45,7 +35,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     private static final DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("MMM d");
 
-    final @NotNull List<String> inputFiles;
+    final @NotNull InputBundle inputBundle;
     final @NotNull String reportName;
     final @Nullable String reportDirectoryName;
     private long startedAt;
@@ -63,7 +53,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
      * @param startedAt last-modified-time from the external file
      */
     public ExecutionRecord(long startedAt) {
-        inputFiles = Collections.emptyList();
+        inputBundle = new InputBundle();
         reportName = "pit command line";
         reportDirectoryName = null;
         this.startedAt = startedAt;
@@ -72,12 +62,12 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     /**
      * Creates an ExecutionRecord for the provided input set.
      *
-     * @param inputFiles that should already have been set in a consistent order
+     * @param inputBundle that should already have been set in a consistent order
      */
-    public ExecutionRecord(@NotNull List<String> inputFiles) {
-        this.inputFiles = inputFiles;
-        this.reportName = generateReportName(inputFiles);
-        this.reportDirectoryName = generateReportDirectoryName(inputFiles);
+    public ExecutionRecord(@NotNull InputBundle inputBundle) {
+        this.inputBundle = inputBundle;
+        this.reportName = inputBundle.generateReportName();
+        this.reportDirectoryName = inputBundle.generateReportDirectoryName();
         this.startedAt = System.currentTimeMillis();
     }
 
@@ -89,7 +79,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
      * @param reportDir previously generated directory
      */
     public ExecutionRecord(File reportDir) {
-        this.inputFiles = new ArrayList<>();
+        this.inputBundle = new InputBundle();
         File[] metaFiles = reportDir.listFiles((dir, name) -> META_FILE_NAME.equals(name));
         if (metaFiles == null || metaFiles.length == 0) {
             throw new InvalidFile("No meta file present");
@@ -99,8 +89,8 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
             } catch (ParserConfigurationException | IOException | SAXException e) {
                 throw new RuntimeException(e);
             }
-            this.reportName = generateReportName(inputFiles);
-            this.reportDirectoryName = generateReportDirectoryName(inputFiles);
+            this.reportName = inputBundle.generateReportName();
+            this.reportDirectoryName = inputBundle.generateReportDirectoryName();
         }
     }
 
@@ -108,13 +98,8 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         this.durationMillis = System.currentTimeMillis() - startedAt;
     }
 
-    /**
-     * Can only initiate a PIT run if the input files are known.
-     *
-     * @return true iff this record can be run
-     */
     public boolean isRunnable() {
-        return !inputFiles.isEmpty();
+        return inputBundle.isRunnable();
     }
 
     public long getStartedAt() {
@@ -152,57 +137,8 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         }
     }
 
-    private static String generateReportName(List<String> virtualFiles) {
-        StringBuilder sb = new StringBuilder();
-        for (String file : virtualFiles) {
-            int from = file.lastIndexOf(FileSystems.getDefault().getSeparator()) + 1;
-            int to = file.lastIndexOf('.');
-            if (to < 0) {
-                to = file.length();
-            }
-            if (sb.length() + (to - from) > MAX_REPORT_NAME_LENGTH) {
-                int charsLeft = MAX_REPORT_NAME_LENGTH - sb.length();
-                int end = from + charsLeft;
-                if (to > end) {
-                    to = end;
-                    if (!sb.isEmpty()) {
-                        sb.append(',');
-                    }
-                }
-
-                if (to > from) {
-                    sb.append(file, from, to);
-                }
-                sb.append("...");
-                break;
-            } else {
-                if (!sb.isEmpty()) {
-                    sb.append(',');
-                }
-                sb.append(file, from, to);
-            }
-        }
-        return sb.toString();
-    }
-
-    private static String generateReportDirectoryName(List<String> virtualFiles) {
-        Object[] names = virtualFiles.toArray();
-        String rn = String.valueOf(Math.abs(Objects.hash(names)));
-        if (names.length > 0) {
-            String pfx = names[0].toString();
-            int ix = pfx.lastIndexOf(FileSystems.getDefault().getSeparator());
-            if (ix > 0) {
-                // Add a prefix just to ease task of looking through files if/when necessary
-                pfx = pfx.substring(ix + 1);
-            }
-            pfx = pfx.substring(0, Math.min(pfx.length(), MAX_PREFIX_LENGTH));
-            rn = pfx + rn;
-        }
-        return rn;
-    }
-
     /**
-     * Writes this class as an XML file so it can later be read if needed.
+     * Writes this class as an XML file so that it can later be read if needed.
      *
      * @param reportDir fully-qualified path unique to this instance
      */
@@ -225,10 +161,14 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         Element inputs = doc.createElement(INPUTS);
         rootElement.appendChild(inputs);
 
-        for (String input : inputFiles) {
-            Element inputElement = doc.createElement(INPUT);
-            inputElement.appendChild(doc.createTextNode(input));
-            inputs.appendChild(inputElement);
+        for (InputBundle.Category category : InputBundle.Category.values()) {
+            Element cat = doc.createElement(category.getSerializableName());
+            for (String next: inputBundle.asPath().get(c->c==category)) {
+                Element nextElement = doc.createElement(INPUT);
+                nextElement.appendChild(doc.createTextNode(next));
+                cat.appendChild(nextElement);
+            }
+            inputs.appendChild(cat);
         }
 
         Element startTime = doc.createElement(START_TIME);
@@ -261,11 +201,16 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         if (allInputs.getLength() == 0) {
             throw new InvalidFile("PIT-idea meta-file corrupted and should be removed: " + dirName.getAbsolutePath());
         }
-        NodeList inputsList = allInputs.item(0).getChildNodes();
-        for (int i = 0; i < inputsList.getLength(); i++) {
-            Element node = (Element)inputsList.item(i);
-            String input = node.getTextContent();
-            inputFiles.add(input);
+        for (InputBundle.Category category : InputBundle.Category.values()) {
+            NodeList cat = root.getElementsByTagName(category.getSerializableName());
+            for (int i = 0; i < cat.getLength(); i++) {
+                Element node = (Element)cat.item(i);
+                NodeList inputsList = node.getChildNodes();
+                for (int j = 0; j < inputsList.getLength(); j++) {
+                    Element inputNode = (Element)inputsList.item(j);
+                    inputBundle.addPath(category,inputNode.getTextContent());
+                }
+            }
         }
 
         NodeList startTime = root.getElementsByTagName(START_TIME);
@@ -275,8 +220,8 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         this.durationMillis = Long.parseLong(duration.item(0).getTextContent());
     }
 
-    public @NotNull List<String> getInputFiles() {
-        return inputFiles;
+    public @NotNull InputBundle getInputBundle() {
+        return inputBundle;
     }
 
     public @NotNull String getReportName() {
@@ -287,26 +232,9 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         return reportDirectoryName;
     }
 
-    public String getHtmlListOfInputs(String msg, boolean forceMultiline) {
-        if (inputFiles.isEmpty()) {
-            return reportName;
-        }
+    public String getHtmlListOfInputs(String msg) {
         StringBuilder sb = new StringBuilder();
-        sb.append(msg);
-        List<String> inputFiles = getInputFiles();
-        inputFiles = inputFiles.stream().map(PITestRunProfile::simpleNameOfPath).toList();
-        if (inputFiles.size()==1 && !forceMultiline) {
-            sb.append(' ');
-            sb.append(inputFiles.get(0));
-        } else {
-            sb.append(":<br><ul>");
-            for (String inputFile: inputFiles) {
-                sb.append("<li>");
-                sb.append(inputFile);
-                sb.append("</li>");
-            }
-            sb.append("</ul>");
-        }
+        inputBundle.appendHtmlListOfInputs(sb);
         return sb.toString();
     }
 
@@ -319,31 +247,21 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ExecutionRecord that = (ExecutionRecord) o;
-        // Only consider input files so that new ExecutionRecords can match and replace old ones
-        // when based on the same set of input records.
-        return Objects.equals(inputFiles, that.inputFiles);
+        if (o instanceof ExecutionRecord that) {
+            // Only consider input files so that new ExecutionRecords can match and replace old ones
+            // when based on the same set of input records.
+            return this.inputBundle.equals(that.inputBundle);
+        }
+        return false;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(inputFiles);
+        return Objects.hash(inputBundle);
     }
 
     @Override
     public int compareTo(@NotNull ExecutionRecord that) {
-        int sz = this.inputFiles.size();
-        int sizeComparison = Integer.compare(sz, that.inputFiles.size());
-        if (sizeComparison != 0) {
-            return sizeComparison;
-        }
-        for (int i = 0; i < sz; i++) {
-            int elementComparison = this.inputFiles.get(i).compareTo(that.inputFiles.get(i));
-            if (elementComparison != 0) {
-                return elementComparison;
-            }
-        }
-        return 0;
+        return inputBundle.compareTo(that.getInputBundle());
     }
 }
