@@ -11,6 +11,7 @@ import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.execution.util.JavaParametersUtil;
+import com.intellij.icons.ExpUiIcons;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
@@ -24,6 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
 import org.pitestidea.model.InputBundle;
+import org.pitestidea.reader.InvalidMutatedFileException;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
 import org.pitestidea.toolwindow.MutationControlPanel;
@@ -33,6 +35,7 @@ import javax.swing.*;
 import java.io.File;
 import java.nio.file.FileSystems;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -75,16 +78,20 @@ public class PITestRunProfile implements ModuleRunProfile {
         return project.getBasePath() + fs + "target" + fs + fe;
     }
 
+    private static String starAll(String s) {
+        return s.isEmpty() ? "*" : s+".*";
+    }
+
     @Override
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment environment) {
         String codeClasses = Stream.concat(
                 inputBundle.asQn().get(c->c== InputBundle.Category.SOURCE_FILE).stream(),
-                inputBundle.asQn().transform(c->c== InputBundle.Category.SOURCE_PKG, s->s+".*").stream()
+                inputBundle.asQn().transform(c->c== InputBundle.Category.SOURCE_PKG, PITestRunProfile::starAll).stream()
         ).collect(Collectors.joining(","));
 
         String testClasses = Stream.concat(
                 inputBundle.asQn().get(c->c== InputBundle.Category.TEST_FILE).stream(),
-                inputBundle.asQn().transform(c->c== InputBundle.Category.TEST_PKG, s->s+".*").stream()
+                inputBundle.asQn().transform(c->c== InputBundle.Category.TEST_PKG, PITestRunProfile::starAll).stream()
         ).collect(Collectors.joining(","));
 
         System.out.println("*** codeClasses: " + codeClasses);
@@ -158,9 +165,12 @@ public class PITestRunProfile implements ModuleRunProfile {
                             File reportDirectory = cachedRun.getReportFileDir();
                             int code = event.getExitCode();
                             if (code == 0 && reportDirectory.exists() && reportDirectory.isDirectory()) {
-                                onSuccess(cachedRun, mutationControlPanel);
-                                writeConsoleReportLink();
-                                newRunState = RunState.COMPLETED;
+                                if (onSuccess(cachedRun, mutationControlPanel)) {
+                                    writeConsoleReportLink();
+                                    newRunState = RunState.COMPLETED;
+                                }  else {
+                                    newRunState = RunState.FAILED;
+                                }
                             } else {
                                 react("PIT execution error", "View output", () -> {
                                     // Activate this row since console output is exposed and should be consistent
@@ -196,28 +206,40 @@ public class PITestRunProfile implements ModuleRunProfile {
                         });
                     }
 
-                    private void onSuccess(CachedRun cachedRun, MutationControlPanel mutationControlPanel) {
-                        PitExecutionRecorder recorder = cachedRun.getRecorder();
-                        Application app = ApplicationManager.getApplication();
+                    private boolean onSuccess(CachedRun cachedRun, MutationControlPanel mutationControlPanel) {
+                        final PitExecutionRecorder recorder = cachedRun.getRecorder();
+                        final Application app = ApplicationManager.getApplication();
+                        final AtomicBoolean anyErrors = new AtomicBoolean(false);
                         app.executeOnPooledThread(() -> {
                             app.invokeLater(() -> {
                                 app.runWriteAction(() -> cachedRun.getExecutionRecord().writeToDirectory(cachedRun.getReportFileDir()));
                             });
                             File src = cachedRun.getMutationsFile();
-                            app.runReadAction(() -> MutationsFileReader.read(project, src, recorder));
+                            app.runReadAction(() -> {
+                                try {
+                                    MutationsFileReader.read(project, src, recorder);
+                                } catch (InvalidMutatedFileException e) {
+                                    anyErrors.set(true);
+                                }
+                            });
+                            displayResultPopup(cachedRun, mutationControlPanel, app, anyErrors.get());
+                        });
+                        return !anyErrors.get();
+                    }
 
-                            String msg = cachedRun.getExecutionRecord().getHtmlListOfInputs("PIT execution completed for");
-                            System.out.println(">> " + msg);
+                    private void displayResultPopup(CachedRun cachedRun, MutationControlPanel mutationControlPanel, Application app, boolean errors) {
+                        String text = cachedRun.getExecutionRecord().getHtmlListOfInputs();
+                        String pfx = errors ? "&nbsp;&nbsp;<i>(with errors, see log)</i><br>" : "";
+                        String msg = pfx + text;
 
-                            app.invokeLater(() -> {
-                                react(msg, "Show Report", () -> {
-                                    cachedRun.activate();
-                                    mutationControlPanel.setFullScores();
-                                }, () -> {
-                                    if (cachedRun.isCurrent()) {
-                                        mutationControlPanel.markScoresInvalid();
-                                    }
-                                });
+                        app.invokeLater(() -> {
+                            react(msg, "Show Report", () -> {
+                                cachedRun.activate();
+                                mutationControlPanel.setFullScores();
+                            }, () -> {
+                                if (cachedRun.isCurrent()) {
+                                    mutationControlPanel.markScoresInvalid();
+                                }
                             });
                         });
                     }

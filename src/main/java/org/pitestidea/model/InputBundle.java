@@ -72,8 +72,20 @@ public class InputBundle {
             return transformPaths(fn, getTransformer());
         }
 
+        /**
+         * Applies two transformers to each element of the list returned by {@link #get(Function)}. Sorting
+         * is done only after the first transform.
+         *
+         * @param fn to first apply
+         * @param transformer to apply second
+         * @return list after applying both transforms
+         * @param <T> any type
+         */
         public <T> List<T> transform(Function<Category, Boolean> fn, Function<String, T> transformer) {
-            return InputBundle.this.transformPaths(fn, getTransformer().andThen(transformer));
+            List<String> ss = get(fn);
+            // 2nd transform applied independently because we're not sure that it's a Comparable and get()
+            // does a sort that requires Comparable.
+            return ss.stream().map(transformer).toList();
         }
     }
 
@@ -257,10 +269,10 @@ public class InputBundle {
         return generateReportDirectoryName(asQn().get(Category::isSource));
     }
 
-    private static String generateReportDirectoryName(List<String> files) {
-        String rn = String.valueOf(Math.abs(files.hashCode()));
-        if (!files.isEmpty()) {
-            String pfx = files.get(0);
+    private static String generateReportDirectoryName(List<String> qns) {
+        String rn = String.valueOf(Math.abs(qns.hashCode()));
+        if (!qns.isEmpty()) {
+            String pfx = qns.get(0);
             int ix = pfx.lastIndexOf(FileSystems.getDefault().getSeparator());
             if (ix > 0) {
                 // Add a prefix just to ease task of looking through files if/when necessary

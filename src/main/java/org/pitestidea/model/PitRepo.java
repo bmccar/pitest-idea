@@ -6,6 +6,7 @@ import com.intellij.openapi.module.Module;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.pitestidea.configuration.IdeaDiscovery;
+import org.pitestidea.reader.InvalidMutatedFileException;
 import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
@@ -115,54 +116,12 @@ public class PitRepo {
         return cachedRun;
     }
 
-    /* *
-     * Ensures that the report directory exists and return it. Although PIT itself would create that directory if
-     * needed, it is cleaner to set it before PIT execution, and in order to create a VirtualFile for it, that
-     * directory must exist. Because this method involves creating directory, it must be called in a readAction
-     * in accordance with IJ framework.
-     *
-     * @param module where report dir will be created
-     * @param record to get report name from
-     * @return existing or newly-created report directory
-     * @throws IOException unexpected
-     *\/
-    @NotNull
-    private static VirtualFile ensureReportDirectoryCreated(Module module, ExecutionRecord record) throws IOException {
-        @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
-        if (vf == null) {
-            throw new RuntimeException("No output directory for module " + module.getName());
-        } else {
-            vf = vf.getParent(); // Don't want the "classes" child
-            if (record.getInputFiles().isEmpty()) {
-                vf = vf.findChild(PitRepo.PIT_STANDARD_REPORTS_DIR);
-                if (vf == null) {
-                    throw new RuntimeException("No reports directory for module " + module.getName());
-                }
-            } else {
-                VirtualFile pitIdeaDir = vf.findChild(PitRepo.PIT_IDEA_REPORTS_DIR);
-                System.out.println("  PitIdeaDir-found? " + pitIdeaDir);
-                if (pitIdeaDir == null) {
-                    pitIdeaDir = vf.createChildDirectory(null, PitRepo.PIT_IDEA_REPORTS_DIR);
-                    System.out.println("  PitIdeaDir-created " + pitIdeaDir);
-                }
-                String rn = record.getReportDirectoryName();
-                vf = pitIdeaDir.findChild(rn);
-                System.out.println("  vf-found? " + vf);
-                if (vf != null) {
-                    vf.refresh(false, true);  // Make sure it's really there
-                    vf = pitIdeaDir.findChild(rn);
-                }
-
-                if (vf == null) {
-                    vf = pitIdeaDir.createChildDirectory(null, rn);
-                    System.out.println("  vf-created " + vf);
-                }
-            }
+    private static void deregister(Project project, CachedRun cachedRun) {
+        ProjectRunRecords runRecords = projectMap.get(project.getName());
+        if (runRecords != null) {
+            runRecords.runHistory.remove(cachedRun);
         }
-        return vf;
     }
-     */
-
 
     public interface IHistory {
         void visit(CachedRun run, boolean isCurrent);
@@ -209,7 +168,11 @@ public class PitRepo {
             if (standardIdeaDir != null && standardIdeaDir.exists()) {
                 long startedAt = standardIdeaDir.lastModified();
                 CachedRun cachedRun = PitRepo.register(module, new ExecutionRecord(startedAt), standardIdeaDir.getPath());
-                cachedRun.reload();
+                try {
+                    cachedRun.reload();
+                } catch (InvalidMutatedFileException e) {
+                    deregister(project, cachedRun);
+                }
             }
             ensureSorted(project);
         }
@@ -219,10 +182,11 @@ public class PitRepo {
 
     private static void loadReport(Module module, File report) {
         if (report.isDirectory()) {
+            CachedRun cachedRun = PitRepo.register(module, new ExecutionRecord(report), report.getPath());
             try {
-                CachedRun cachedRun = PitRepo.register(module, new ExecutionRecord(report), report.getPath());
                 cachedRun.reload();
-            } catch (ExecutionRecord.InvalidFile _e) {
+            } catch (Exception _e) {
+                deregister(module.getProject(), cachedRun);
                 // Report directories generated from a previous failed/canceled PIT may exist but
                 // easiest to just ignore them as the utility of loading them is low and they'll
                 // get removed anyway on the next project clean.

@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import org.eclipse.jgit.annotations.NonNull;
 import org.jetbrains.annotations.NotNull;
+import org.pitestidea.reader.InvalidMutatedFileException;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
@@ -160,7 +161,7 @@ public class CachedRun implements Comparable<CachedRun> {
         return false;
     }
 
-    public void reload() {
+    public void reload() throws InvalidMutatedFileException {
         MutationsFileReader.read(getProject(), getMutationsFile(), recorder);
     }
 

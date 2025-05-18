@@ -482,7 +482,7 @@ public class MutationControlPanel {
         boolean result = true;
         try {
             cachedRun.reload();
-        } catch (InvalidVirtualFileAccessException e) {
+        } catch (Exception e) {
             cachedRun.setRunState(RunState.FAILED);
             markScoresInvalid();
             result = false;
@@ -539,7 +539,7 @@ public class MutationControlPanel {
                     .addDelegatedSegment("(Click open; Ctrl-click browser)", ClickTree.Hover.FLASH);
         }
 
-        public Level setLine(CachedRun cachedRun, String pkgName, IMutationScore score) {
+        public Level setLine(CachedRun cachedRun, String pkgName, String qualifiedPkgName, IMutationScore score) {
             Level level = isTop ? this : new Level(treeRow.addChildRow(), false);
             boolean isRoot = PitExecutionRecorder.ROOT_PACKAGE_NAME.equals(pkgName);
             ClickTree.Hover hoverRight = isRoot ? ClickTree.Hover.ITALICS : ClickTree.Hover.NONE;
@@ -552,7 +552,7 @@ public class MutationControlPanel {
                             if (isRoot) {
                                 url = IdeaDiscovery.getUrl(cachedRun);
                             } else {
-                                url = IdeaDiscovery.getPackageUrl(cachedRun, pkgName);
+                                url = IdeaDiscovery.getPackageUrl(cachedRun, qualifiedPkgName);
                             }
                             IdeaDiscovery.openBrowserTo(url);
                         }

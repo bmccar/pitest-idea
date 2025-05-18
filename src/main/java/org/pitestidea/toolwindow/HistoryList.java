@@ -72,7 +72,7 @@ public class HistoryList {
             sb.append(record.getFormattedStart()).append("<br>&nbsp;&nbsp;Duration: ");
             sb.append(record.getFormattedDuration());
             sb.append("<br>");
-            sb.append(record.getHtmlListOfInputs(null));
+            sb.append(record.getHtmlListOfInputs());
         } else {
             sb.append("PIT Command-line run<br>&nbsp;&nbsp;<i>Ended</i> at ");
             sb.append(record.getFormattedStart());

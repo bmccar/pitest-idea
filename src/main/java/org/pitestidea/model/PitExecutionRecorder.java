@@ -13,7 +13,7 @@ import org.pitestidea.toolwindow.Viewing;
 import java.util.*;
 
 /**
- * Records the output of a single execution of PITest and reorganizes individual lines into
+ * Records the single execution output of a PITest and reorganizes individual lines into
  * a hierarchical directory/file structure.
  */
 public class PitExecutionRecorder implements IMutationsRecorder {
@@ -54,12 +54,14 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     private class PkgGroup extends BaseMutationsScore implements Directory, PackageDiver {
         private String name;
+        private final PkgGroup parent;
         private Map<String, Directory> children = new HashMap<>();
         private List<Directory> sortedChildren = null;
         private boolean hasCodeFileChildren = false;
 
         private PkgGroup(String name, PkgGroup parent) {
             super(parent == null ? 0 : parent.children.size());
+            this.parent = parent;
             this.name = name;
         }
 
@@ -68,10 +70,20 @@ public class PitExecutionRecorder implements IMutationsRecorder {
             return name;
         }
 
+        @Override
+        public String getQualifiedName() {
+            if (this == rootDirectory) {
+                return null;
+            } else if (parent == rootDirectory) {
+                return name;
+            } else {
+                return parent.getQualifiedName() + '.' + name;
+            }
+        }
 
         @Override
         public void walkInternal(FileVisitor visitor) {
-            visitor.visit(name, this, this);
+            visitor.visit(name, getQualifiedName(), this, this);
         }
 
         /**
@@ -89,7 +101,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
                 if (dir instanceof PkgGroup pkgGroup) {
                     children.remove(key);
                     key = name + '.' + key;
-                    // Absorb single child
+                    // Absorb a single child
                     name = key;
                     children = pkgGroup.children;
                     hasCodeFileChildren = pkgGroup.hasCodeFileChildren;
@@ -164,6 +176,11 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         public String getName() {
             return file.getName();
         }
+
+        @Override
+        public String getQualifiedName() {
+            return getName();
+        }
     }
 
     @Override
@@ -219,10 +236,10 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     public interface FileVisitor {
         void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score);
 
-        void visit(String pkg, PackageDiver diver, IMutationScore score);
+        void visit(String pkg, String qualifiedPkg, PackageDiver diver, IMutationScore score);
     }
 
-    private static PackageDiver EMPTY_PACKAGE_DIVER = new PackageDiver() {
+    private static final PackageDiver EMPTY_PACKAGE_DIVER = new PackageDiver() {
         @Override
         public void apply(FileVisitor visitor) {
 
@@ -242,7 +259,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     public void visit(FileVisitor visitor) {
         if (displayChoices != null && displayChoices.packageChoice() == Viewing.PackageChoice.NONE) {
             if (sortedFiles.size() > 1) {
-                visitor.visit(rootDirectory.name, EMPTY_PACKAGE_DIVER, rootDirectory);
+                visitor.visit(rootDirectory.name, null, EMPTY_PACKAGE_DIVER, rootDirectory);
             }
             sortedFiles.forEach(g -> g.walkInternal(visitor));
         } else {

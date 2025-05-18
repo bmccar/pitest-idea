@@ -77,8 +77,17 @@ class PitExecutionRecorderTest {
         }
 
         @Override
-        public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
-            System.out.println("[TEST] Visiting package " + pkg);
+        public void visit(String pkg, String qualifiedPkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
+            System.out.println("[TEST] Visiting package " + pkg + ", " + qualifiedPkg);
+            if (qualifiedPkg != null) {
+                assertFalse(qualifiedPkg.startsWith(PitExecutionRecorder.ROOT_PACKAGE_NAME), "Qualified name should not start with \"" + PitExecutionRecorder.ROOT_PACKAGE_NAME + '"');
+                String lastSegment = qualifiedPkg;
+                int lastDot = lastSegment.lastIndexOf('.');
+                if (lastDot > 0) {
+                    lastSegment = lastSegment.substring(lastDot + 1);
+                }
+                assertEquals(pkg, lastSegment, "Unexpected qualified package name: " + pkg + ", " + qualifiedPkg);
+            }
             if (pkg.equals(PitExecutionRecorder.ROOT_PACKAGE_NAME)) {
                 assertTrue(expectedTopLevelPackages.size() > 1, "Unexpected package: " + pkg);
             }
@@ -198,7 +207,7 @@ class PitExecutionRecorderTest {
             }
 
             @Override
-            public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
+            public void visit(String pkg, String qualifiedPkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
                 assertTrue(expectedFileNames.length >1, "Unexpected package: " + pkg);
             }
         });

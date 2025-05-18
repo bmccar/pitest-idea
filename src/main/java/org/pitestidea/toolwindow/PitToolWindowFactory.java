@@ -102,7 +102,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
 
         @Override
-        public void visit(String pkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
+        public void visit(String pkg, String qualifiedPkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
             Project project = cachedRun.getProject();
             MutationControlPanel.Level nextLevel = level;
             MutationControlPanel mutationControlPanel = getControlPanel(project);
@@ -111,7 +111,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
             includeLine |= pkgSelection == Viewing.PackageChoice.PACKAGE;
             includeLine |= pkgSelection == Viewing.PackageChoice.CODE && diver.hasCodeFileChildren();
             if (includeLine) {
-                nextLevel = level.setLine(cachedRun, pkg, score);
+                nextLevel = level.setLine(cachedRun, pkg, qualifiedPkg, score);
             }
             MutationControlPanel.Level finalLevel = nextLevel;
             diver.apply(new HierarchyPlanner(cachedRun, finalLevel));

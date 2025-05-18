@@ -35,7 +35,13 @@ public class ExecutionUtils {
     public static void execute(Module module, InputBundle bundle) {
         Project project = module.getProject();
         List<VirtualFile> vfs = bundle.asPath()
-                .transform(_c->true, s-> IdeaDiscovery.findVirtualFileByRQN(project,s));
+                .transform(_c->true, s-> {
+                    VirtualFile file = IdeaDiscovery.findVirtualFileByRQN(project,s);
+                    if (file == null) {
+                        throw new IllegalArgumentException("Unable to find file for " + s);
+                    }
+                    return file;
+                });
         execute(module,vfs);
     }
 

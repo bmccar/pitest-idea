@@ -82,7 +82,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         this.inputBundle = new InputBundle();
         File[] metaFiles = reportDir.listFiles((dir, name) -> META_FILE_NAME.equals(name));
         if (metaFiles == null || metaFiles.length == 0) {
-            throw new InvalidFile("No meta file present");
+            throw new InvalidFile("No meta file present for " + reportDir);
         } else {
             try (InputStream inputStream = new FileInputStream(metaFiles[0])) {
                 readFull(inputStream, reportDir);
@@ -232,7 +232,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         return reportDirectoryName;
     }
 
-    public String getHtmlListOfInputs(String msg) {
+    public String getHtmlListOfInputs() {
         StringBuilder sb = new StringBuilder();
         inputBundle.appendHtmlListOfInputs(sb);
         return sb.toString();
