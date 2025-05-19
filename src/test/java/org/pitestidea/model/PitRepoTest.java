@@ -50,6 +50,7 @@ class PitRepoTest {
         try {
             Thread.sleep(5);  // So the timestamps are different
         } catch (InterruptedException e) {
+            // Do nothing
         }
         InputBundle bundle = new InputBundle();
         Arrays.stream(inputs).forEach(s->bundle.addPath(InputBundle.Category.SOURCE_PKG, s));

@@ -17,11 +17,9 @@ import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.psi.PsiDocumentManager;
 import org.jetbrains.annotations.NotNull;
-import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.FileMutations;
 import org.pitestidea.model.IMutationScore;
 import org.pitestidea.model.Mutation;
-import org.pitestidea.model.PitExecutionRecorder;
 
 import javax.swing.*;
 import java.util.List;
@@ -36,19 +34,18 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
     private static final int ICON_LAYER = HighlighterLayer.WARNING + 20;
     private static final CoverageGutterRenderer INSTANCE = new CoverageGutterRenderer();
 
-    private CoverageGutterRenderer() {}
+    private CoverageGutterRenderer() {
+    }
 
-    public static CoverageGutterRenderer getInstance() {return INSTANCE;}
+    public static CoverageGutterRenderer getInstance() {
+        return INSTANCE;
+    }
 
     @Override
     public void fileOpened(Project project, VirtualFile file, FileMutations fileMutations, IMutationScore score) {
         //System.out.println("RENDERER.fileOpened " + file.getPath());
         Application app = ApplicationManager.getApplication();
-        app.executeOnPooledThread(()-> {
-            app.runReadAction(()-> {
-                fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations));
-            });
-        });
+        app.executeOnPooledThread(() -> app.runReadAction(() -> fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations))));
     }
 
     @Override
@@ -126,7 +123,6 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
         MarkupModel markupModel = DocumentMarkupModel.forDocument(currentDoc, project, true);
         for (@NotNull RangeHighlighter next : markupModel.getAllHighlighters()) {
             if (next.getUserData(HIGHLIGHTER_KEY) != null) {
-                // TODO remove empty lane if not needed
                 markupModel.removeHighlighter(next);
             }
         }

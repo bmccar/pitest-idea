@@ -3,15 +3,18 @@ package org.pitestidea.toolwindow;
 import javax.swing.*;
 import java.awt.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 interface Displayable {
-    public String getDisplayName();
-    default public String getTooltip() {return null;}
+    String getDisplayName();
+
+    default String getTooltip() {
+        return null;
+    }
 }
 
 /**
  * A UI widget that exposes the set of values of an enum and keeps track of the currently selected enum value.
+ *
  * @param <T> enum type
  */
 class EnumRadio<T extends Enum<?> & Displayable> {
@@ -21,9 +24,9 @@ class EnumRadio<T extends Enum<?> & Displayable> {
     /**
      * Creates a new radio.
      *
-     * @param values all values of the enum
-     * @param borderTitle if not null then a border title with this string value will be added
-     * @param consumer called when a new value is selected
+     * @param values      all values of the enum
+     * @param borderTitle if not null, then a border title with this string value will be added
+     * @param consumer    called when a new value is selected
      */
     EnumRadio(T[] values, String borderTitle, Consumer<T> consumer) {
         panel.setLayout(new FlowLayout());
@@ -43,7 +46,7 @@ class EnumRadio<T extends Enum<?> & Displayable> {
             width += button.getPreferredSize().width;
             panel.add(button);
         }
-        // Set component size so that it does not get maximally stretched in its container.
+        // Set size so that it does not get maximally stretched in its container.
         Dimension d = new Dimension(width, 60);
         panel.setMinimumSize(d);
         panel.setMaximumSize(d);
@@ -53,7 +56,7 @@ class EnumRadio<T extends Enum<?> & Displayable> {
             panel.setBorder(BorderFactory.createTitledBorder(borderTitle));
         }
 
-        this.setSelected(values[0]); // Default is first value
+        this.setSelected(values[0]); // Default is the first value
     }
 
     JPanel getPanel() {

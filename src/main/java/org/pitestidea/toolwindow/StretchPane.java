@@ -22,7 +22,7 @@ public class StretchPane {
 
 
     enum PaneState {
-        SCORES(1, stretchLeft, null),  // Scores is maximized
+        SCORES(1, stretchLeft, null),  // Scores pane is maximized
         MIXED(0.5, stretchRight, stretchLeft), // Split between scores and console
         CONSOLE(0, null, stretchRight); // Console is maximized
 
@@ -75,9 +75,7 @@ public class StretchPane {
         button.setContentAreaFilled(false);
         button.setFocusPainted(false);
         button.setToolTipText(tooltip);
-        button.addActionListener(e -> {
-            onClick.run();
-        });
+        button.addActionListener(e -> onClick.run());
         return button;
     }
 

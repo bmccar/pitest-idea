@@ -11,7 +11,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.pitestidea.model.InputBundle;
 import org.pitestidea.psi.fakes.*;
@@ -25,7 +24,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 class PackageWalkerTest {
-    static Project project = Mockito.mock(Project.class);
+    private static final Project project = Mockito.mock(Project.class);
 
     private static final PsiManager psiManager = Mockito.mock(PsiManager.class);
 
@@ -47,12 +46,7 @@ class PackageWalkerTest {
     @BeforeAll
     public static void setUpProject() {
         projectRootManagerStatic.when(() -> ProjectRootManager.getInstance(any())).thenReturn(projectRootManager);
-        when(projectRootManager.getContentSourceRoots()).thenAnswer(new Answer<VirtualFile[]>() {
-            @Override
-            public VirtualFile[] answer(InvocationOnMock invocation) throws Throwable {
-                return RootFake.getContentSourceRoots();
-            }
-        });
+        when(projectRootManager.getContentSourceRoots()).thenAnswer((Answer<VirtualFile[]>) invocation -> RootFake.getContentSourceRoots());
         projectFileIndexStatic.when(() -> ProjectFileIndex.getInstance(any())).thenReturn(projectFileIndex);
 
         when(projectFileIndex.getSourceRootForFile(any())).thenAnswer((Answer<VirtualFile>) invocation -> {
@@ -189,6 +183,11 @@ class PackageWalkerTest {
     @Test
     void singleSrcFileIncludesItsTest() {
         given(P.p1.p2.j, T.p1.p2.jtest).input(P.p1.p2.j, T.p1.p2.jtest).expect(src(P.p1.p2.j), tst(T.p1.p2.jtest));
+    }
+
+    @Test
+    void altScFileIncludesItsTest() {
+        given(P.p1.p2.j, T.p1.p2.testj).input(P.p1.p2.j, T.p1.p2.testj).expect(src(P.p1.p2.j), tst(T.p1.p2.testj));
     }
 
     @Test

@@ -11,7 +11,6 @@ import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
-import org.pitestidea.actions.ExecutionUtils;
 import org.pitestidea.model.PitExecutionRecorder;
 import org.pitestidea.model.PitRepo;
 import org.pitestidea.toolwindow.MutationControlPanel;
@@ -20,7 +19,7 @@ import org.pitestidea.toolwindow.PitToolWindowFactory;
 public class FileOpenCloseListener implements FileEditorManagerListener {
 
     /**
-     * Processes all currently open files in project in the same manner as if a fileOpened event occurred.
+     * Processes all currently open files in a project in the same manner as if a fileOpened event occurred.
      *
      * @param project to check for open files
      */
@@ -56,13 +55,13 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
     }
 
     @Override
-    public void fileClosed(FileEditorManager source, VirtualFile file) {
+    public void fileClosed(FileEditorManager source, @NotNull VirtualFile file) {
         CoverageGutterRenderer renderer = CoverageGutterRenderer.getInstance();
         renderer.fileClosed(source.getProject(), file);
     }
 
     @Override
-    public void selectionChanged(FileEditorManagerEvent event) {
+    public void selectionChanged(@NotNull FileEditorManagerEvent event) {
         /*
         VirtualFile newFile = event.getNewFile();
         if (newFile == null) {

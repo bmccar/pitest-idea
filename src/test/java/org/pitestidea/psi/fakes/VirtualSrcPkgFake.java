@@ -1,6 +1,5 @@
 package org.pitestidea.psi.fakes;
 
-import org.apache.lucene.index.Term;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;

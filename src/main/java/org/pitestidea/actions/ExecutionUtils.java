@@ -16,12 +16,10 @@ import com.intellij.openapi.project.Project;
 
 import com.intellij.execution.Executor;
 import com.intellij.execution.executors.DefaultRunExecutor;
-import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
-import org.pitestidea.model.InputBundle;
 import org.pitestidea.psi.PackageWalker;
 import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
@@ -35,14 +33,14 @@ public class ExecutionUtils {
     public static void execute(Module module, InputBundle bundle) {
         Project project = module.getProject();
         List<VirtualFile> vfs = bundle.asPath()
-                .transform(_c->true, s-> {
-                    VirtualFile file = IdeaDiscovery.findVirtualFileByRQN(project,s);
+                .transform(_c -> true, s -> {
+                    VirtualFile file = IdeaDiscovery.findVirtualFileByRQN(project, s);
                     if (file == null) {
                         throw new IllegalArgumentException("Unable to find file for " + s);
                     }
                     return file;
                 });
-        execute(module,vfs);
+        execute(module, vfs);
     }
 
     public static void execute(Module module, List<VirtualFile> unsortedFiles) {
@@ -51,17 +49,8 @@ public class ExecutionUtils {
 
         Project project = module.getProject();
 
-        ApplicationManager.getApplication().executeOnPooledThread(() -> {
-                    ApplicationManager.getApplication().runReadAction(() -> {
-                    ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
-                    VirtualFile sourceRoot = fileIndex.getSourceRootForFile(sortedFiles.get(0));
-                    });
-                });
-
         InputBundle inputBundle = new InputBundle();
-        ReadAction.run(() -> {
-            PackageWalker.read(project, sortedFiles, inputBundle);
-        });
+        ReadAction.run(() -> PackageWalker.read(project, sortedFiles, inputBundle));
 
         if (inputBundle.isEmpty(InputBundle.Category::isSource)) {
             Messages.showErrorDialog(project, "Unable to find any matching source files for this input request. Please multi-select with at least one source entry from Project view.", "Pointless Execution");
@@ -77,7 +66,7 @@ public class ExecutionUtils {
     }
 
     /**
-     * Compiles the given module and if successful initiates external execution of the given runProfile.
+     * Compiles the given module and, if successful, initiates external execution of the given runProfile.
      *
      * @param project    owning module
      * @param module     to compile
@@ -93,28 +82,24 @@ public class ExecutionUtils {
         }
 
         CompilerManager compilerManager = CompilerManager.getInstance(project);
-        ApplicationManager.getApplication().invokeLater(() -> {
-            WriteAction.run(() -> {
-                compilerManager.make(module, (aborted, errors, warnings, compileContext) -> {
-                    if (aborted || errors > 0) {
-                        LOGGER.error(String.format("Pre-PIT compilation aborted, errors=%d, warnings=%d", errors, warnings));
-                        cachedRun.setRunState(RunState.FAILED);
-                        mutationControlPanel.reloadHistory(project);
-                        ApplicationManager.getApplication().invokeLater(() -> {
-                            String msg = errors > 0 ? "There are compilation errors, please fix these before running PIT" : "Compilation aborted";
-                            Messages.showErrorDialog(project, msg, "Pre-PIT Compilation");
-                        });
-                    } else {
-                        try {
-                            executePlugin(project, runProfile);
-                        } catch (RuntimeException | ExecutionException e) {
-                            LOGGER.error("Failed to execute PIT", e);
-                            throw new RuntimeException(e);
-                        }
-                    }
+        ApplicationManager.getApplication().invokeLater(() -> WriteAction.run(() -> compilerManager.make(module, (aborted, errors, warnings, compileContext) -> {
+            if (aborted || errors > 0) {
+                LOGGER.error(String.format("Pre-PIT compilation aborted, errors=%d, warnings=%d", errors, warnings));
+                cachedRun.setRunState(RunState.FAILED);
+                mutationControlPanel.reloadHistory(project);
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    String msg = errors > 0 ? "There are compilation errors, please fix these before running PIT" : "Compilation aborted";
+                    Messages.showErrorDialog(project, msg, "Pre-PIT Compilation");
                 });
-            });
-        });
+            } else {
+                try {
+                    executePlugin(project, runProfile);
+                } catch (RuntimeException | ExecutionException e) {
+                    LOGGER.error("Failed to execute PIT", e);
+                    throw new RuntimeException(e);
+                }
+            }
+        })));
     }
 
     private static void executePlugin(Project project, PITestRunProfile runProfile) throws ExecutionException {

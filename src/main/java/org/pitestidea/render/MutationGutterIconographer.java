@@ -1,6 +1,7 @@
 package org.pitestidea.render;
 
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.util.Objects;
@@ -19,8 +20,7 @@ class MutationGutterIconographer extends GutterIconRenderer {
         if (obj == this) {
             return true;
         }
-        if (obj instanceof MutationGutterIconographer) {
-            MutationGutterIconographer that = (MutationGutterIconographer) obj;
+        if (obj instanceof MutationGutterIconographer that) {
             return that.icon.equals(this.icon) && that.toolTip.equals(this.toolTip);
         }
         return false;
@@ -32,7 +32,7 @@ class MutationGutterIconographer extends GutterIconRenderer {
     }
 
     @Override
-    public Icon getIcon() {
+    public @NotNull Icon getIcon() {
         return icon;
     }
 

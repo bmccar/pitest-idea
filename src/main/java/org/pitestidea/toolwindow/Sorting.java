@@ -4,7 +4,8 @@ public class Sorting {
 
     public enum By implements Displayable {
         PROJECT("Project", "Sort by project structure"),
-        SCORE("Score", "Sort by mutation score"),;
+        SCORE("Score", "Sort by mutation score"),
+        ;
 
         final String displayName;
         final String tooltipText;
@@ -17,7 +18,10 @@ public class Sorting {
         public String getDisplayName() {
             return displayName;
         }
-        public String getTooltip() {return tooltipText;}
+
+        public String getTooltip() {
+            return tooltipText;
+        }
     }
 
     public enum Direction implements Displayable {
@@ -35,6 +39,9 @@ public class Sorting {
         public String getDisplayName() {
             return displayName;
         }
-        public String getTooltip() {return tooltipText;}
+
+        public String getTooltip() {
+            return tooltipText;
+        }
     }
 }

@@ -30,7 +30,7 @@ class PitExecutionRecorderTest {
         // Track Top-level packages so we can know if a top-level aggregated results row should be expected
         private final Set<String> expectedTopLevelPackages = new HashSet<>();
 
-        // Expected elements are removed one-by-one on each callback from recorder
+        // Expected elements are removed one-by-one on each callback from the recorder
         private final Set<String> expectedPackages = new HashSet<>();
         private final List<ExpectedFileLine> expectedFileLines = new ArrayList<>();
 
@@ -56,7 +56,7 @@ class PitExecutionRecorderTest {
 
             // Expect that the collective calls to visit() below would have removed all of these entries
             assertTrue(expectedFileLines.isEmpty(), "Missed files");
-            int expSize = expectedTopLevelPackages.size()==1 ? 1 : 0;  // Account for ROOT_PACKAGE_NAME
+            int expSize = expectedTopLevelPackages.size() == 1 ? 1 : 0;  // Account for ROOT_PACKAGE_NAME
             assertEquals(expSize, expectedPackages.size(), "Missed packages: " + expectedPackages);
         }
 
@@ -164,7 +164,8 @@ class PitExecutionRecorderTest {
 
         tracker.expect("aaa", "f1.java", MutationImpact.SURVIVED, 5);
 
-        verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.ASC,"f1.java");
+        verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.ASC, "f1.java");
+        verifyFileSort(tracker, Sorting.By.PROJECT, Sorting.Direction.ASC, "f1.java");
     }
 
     @Test
@@ -191,8 +192,8 @@ class PitExecutionRecorderTest {
         tracker.expect("bbb", "f4.java", MutationImpact.KILLED, 7);
         tracker.expect("bbb", "f4.java", MutationImpact.KILLED, 8);
 
-        verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.ASC,"f1.java", "f2.java", "f3.java", "f4.java");
-        verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.DESC,"f4.java", "f3.java", "f2.java", "f1.java");
+        verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.ASC, "f1.java", "f2.java", "f3.java", "f4.java");
+        verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.DESC, "f4.java", "f3.java", "f2.java", "f1.java");
     }
 
     private static void verifyFileSort(Tracker tracker, Sorting.By sortBy, Sorting.Direction dir, String... expectedFileNames) {
@@ -208,15 +209,10 @@ class PitExecutionRecorderTest {
 
             @Override
             public void visit(String pkg, String qualifiedPkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
-                assertTrue(expectedFileNames.length >1, "Unexpected package: " + pkg);
+                assertTrue(expectedFileNames.length > 1, "Unexpected package: " + pkg);
             }
         });
 
         assertEquals(Arrays.asList(expectedFileNames), gotFileNames);
-    }
-
-    @Test
-    void sortByPackage() {
-        Tracker tracker = new Tracker();
     }
 }

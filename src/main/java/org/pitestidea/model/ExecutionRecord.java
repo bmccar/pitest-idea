@@ -48,7 +48,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
     }
 
     /**
-     * Creates an ExecutionRecord for externally-generated files when the inputs are not known.
+     * Creates an ExecutionRecord for externally generated files when the inputs are not known.
      *
      * @param startedAt last-modified-time from the external file
      */
@@ -148,7 +148,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
             Document doc = docBuilder.newDocument();
             appendContent(doc);
-            writeOutput(doc, new File(reportDir,META_FILE_NAME));
+            writeOutput(doc, new File(reportDir, META_FILE_NAME));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -163,7 +163,7 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
 
         for (InputBundle.Category category : InputBundle.Category.values()) {
             Element cat = doc.createElement(category.getSerializableName());
-            for (String next: inputBundle.asPath().get(c->c==category)) {
+            for (String next : inputBundle.asPath().get(c -> c == category)) {
                 Element nextElement = doc.createElement(INPUT);
                 nextElement.appendChild(doc.createTextNode(next));
                 cat.appendChild(nextElement);
@@ -204,11 +204,11 @@ public class ExecutionRecord implements Comparable<ExecutionRecord> {
         for (InputBundle.Category category : InputBundle.Category.values()) {
             NodeList cat = root.getElementsByTagName(category.getSerializableName());
             for (int i = 0; i < cat.getLength(); i++) {
-                Element node = (Element)cat.item(i);
+                Element node = (Element) cat.item(i);
                 NodeList inputsList = node.getChildNodes();
                 for (int j = 0; j < inputsList.getLength(); j++) {
-                    Element inputNode = (Element)inputsList.item(j);
-                    inputBundle.addPath(category,inputNode.getTextContent());
+                    Element inputNode = (Element) inputsList.item(j);
+                    inputBundle.addPath(category, inputNode.getTextContent());
                 }
             }
         }

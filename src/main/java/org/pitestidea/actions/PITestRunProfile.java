@@ -3,7 +3,6 @@ package org.pitestidea.actions;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.Executor;
 import com.intellij.execution.configurations.*;
-import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.process.OSProcessHandler;
 import com.intellij.execution.process.ProcessAdapter;
 import com.intellij.execution.process.ProcessEvent;
@@ -11,7 +10,6 @@ import com.intellij.execution.runners.ExecutionEnvironment;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.execution.util.JavaParametersUtil;
-import com.intellij.icons.ExpUiIcons;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
@@ -24,7 +22,6 @@ import com.intellij.util.PathsList;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
-import org.pitestidea.model.InputBundle;
 import org.pitestidea.reader.InvalidMutatedFileException;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.render.CoverageGutterRenderer;
@@ -34,7 +31,6 @@ import org.pitestidea.toolwindow.PitToolWindowFactory;
 import javax.swing.*;
 import java.io.File;
 import java.nio.file.FileSystems;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -79,19 +75,19 @@ public class PITestRunProfile implements ModuleRunProfile {
     }
 
     private static String starAll(String s) {
-        return s.isEmpty() ? "*" : s+".*";
+        return s.isEmpty() ? "*" : s + ".*";
     }
 
     @Override
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment environment) {
         String codeClasses = Stream.concat(
-                inputBundle.asQn().get(c->c== InputBundle.Category.SOURCE_FILE).stream(),
-                inputBundle.asQn().transform(c->c== InputBundle.Category.SOURCE_PKG, PITestRunProfile::starAll).stream()
+                inputBundle.asQn().get(c -> c == InputBundle.Category.SOURCE_FILE).stream(),
+                inputBundle.asQn().transform(c -> c == InputBundle.Category.SOURCE_PKG, PITestRunProfile::starAll).stream()
         ).collect(Collectors.joining(","));
 
         String testClasses = Stream.concat(
-                inputBundle.asQn().get(c->c== InputBundle.Category.TEST_FILE).stream(),
-                inputBundle.asQn().transform(c->c== InputBundle.Category.TEST_PKG, PITestRunProfile::starAll).stream()
+                inputBundle.asQn().get(c -> c == InputBundle.Category.TEST_FILE).stream(),
+                inputBundle.asQn().transform(c -> c == InputBundle.Category.TEST_PKG, PITestRunProfile::starAll).stream()
         ).collect(Collectors.joining(","));
 
         System.out.println("*** codeClasses: " + codeClasses);
@@ -120,15 +116,17 @@ public class PITestRunProfile implements ModuleRunProfile {
                 String pitestVersion = "1.15.8";
                 String pitJunit5PluginVersion = "1.2.1";
 
-                // TODO Newer versions not working
-                // String pitestVersion = "1.18.2";
-                // String pitJunit5PluginVersion = "1.2.2";
-                // classPath.add(pluginJar("junit-platform-launcher-1.12.2"));
+                /*
+                 * These newer versions do not work, leaving commented out for now, for future reference
+                 *   String pitestVersion = "1.18.2";
+                 *   String pitJunit5PluginVersion = "1.2.2";
+                 *   classPath.add(pluginJar("junit-platform-launcher-1.12.2"));
+                 */
 
                 classPath.add(pluginJar("pitest-" + pitestVersion));
                 classPath.add(pluginJar("pitest-command-line-" + pitestVersion));
                 classPath.add(pluginJar("pitest-entry-" + pitestVersion));
-                classPath.add(pluginJar("pitest-junit5-plugin-"+pitJunit5PluginVersion));
+                classPath.add(pluginJar("pitest-junit5-plugin-" + pitJunit5PluginVersion));
                 classPath.add(pluginJar("junit-platform-launcher-1.9.2"));
                 classPath.add(pluginJar("commons-text-1.10.0"));
                 classPath.add(pluginJar("commons-lang3-3.12.0"));
@@ -149,7 +147,7 @@ public class PITestRunProfile implements ModuleRunProfile {
             protected @NotNull OSProcessHandler startProcess() throws ExecutionException {
                 // Avoiding leaving previous icons while executing, else users may be confused that they represent the current result
                 //CoverageGutterRenderer.removeGutterIcons(project);
-                cachedRun.prepareForRun();  // Clean house to avoid confusion in case PIT fails or is cancelled
+                cachedRun.prepareForRun();  // Clean house to avoid confusion in case PIT fails or is canceled
 
                 OSProcessHandler handler = super.startProcess();
                 cachedRun.setProcessHandler(handler);
@@ -168,18 +166,18 @@ public class PITestRunProfile implements ModuleRunProfile {
                                 if (onSuccess(cachedRun, mutationControlPanel)) {
                                     writeConsoleReportLink();
                                     newRunState = RunState.COMPLETED;
-                                }  else {
+                                } else {
                                     newRunState = RunState.FAILED;
                                 }
                             } else {
                                 react("PIT execution error", "View output", () -> {
                                     // Activate this row since console output is exposed and should be consistent
-                                    // with scores even though it's unlikely user would examine the latter
+                                    // with scores even though it's unlikely a user would examine the latter
                                     cachedRun.activate();
                                     PitToolWindowFactory.showPitExecutionOutputOnly(project);
                                 }, () -> {
                                     if (cachedRun.isCurrent()) {
-                                        // If current then ensure scores has proper message displayed
+                                        // If cachedRun is current, then ensure scores it has the proper message displayed
                                         mutationControlPanel.reloadReports(project);
                                     }
                                 });
@@ -220,9 +218,7 @@ public class PITestRunProfile implements ModuleRunProfile {
                                 }
                             });
                             if (!anyErrors.get()) {
-                                app.invokeLater(() -> {
-                                    app.runWriteAction(() -> cachedRun.getExecutionRecord().writeToDirectory(cachedRun.getReportFileDir()));
-                                });
+                                app.invokeLater(() -> app.runWriteAction(() -> cachedRun.getExecutionRecord().writeToDirectory(cachedRun.getReportFileDir())));
                             }
                             displayResultPopup(cachedRun, mutationControlPanel, app, anyErrors.get());
                         });
@@ -234,16 +230,14 @@ public class PITestRunProfile implements ModuleRunProfile {
                         String pfx = errors ? "&nbsp;&nbsp;<i>(with errors, see log)</i><br>" : "";
                         String msg = pfx + text;
 
-                        app.invokeLater(() -> {
-                            react(msg, "Show Report", () -> {
-                                cachedRun.activate();
-                                mutationControlPanel.setFullScores();
-                            }, () -> {
-                                if (cachedRun.isCurrent()) {
-                                    mutationControlPanel.markScoresInvalid();
-                                }
-                            });
-                        });
+                        app.invokeLater(() -> react(msg, "Show Report", () -> {
+                            cachedRun.activate();
+                            mutationControlPanel.setFullScores();
+                        }, () -> {
+                            if (cachedRun.isCurrent()) {
+                                mutationControlPanel.markScoresInvalid();
+                            }
+                        }));
                     }
                 });
                 return handler;
@@ -251,22 +245,9 @@ public class PITestRunProfile implements ModuleRunProfile {
         };
     }
 
-    public static String simpleNameOfPath(String path) {
-        int start = path.lastIndexOf('/');
-        int end = path.lastIndexOf('.');
-        if (end < 0) end = path.length();
-        return path.substring(start+1,end);
-    }
-
     private void writeConsoleReportLink() {
         consoleView.print("\n*** Open results in browser ", ConsoleViewContentType.NORMAL_OUTPUT);
-        consoleView.printHyperlink("here", new HyperlinkInfo() {
-            @Override
-            public void navigate(@NotNull Project project)
-            {
-                IdeaDiscovery.openBrowserTo(IdeaDiscovery.getUrl(cachedRun));
-            }
-        });
+        consoleView.printHyperlink("here", project -> IdeaDiscovery.openBrowserTo(IdeaDiscovery.getUrl(cachedRun)));
         consoleView.print("\n\n", ConsoleViewContentType.NORMAL_OUTPUT);
     }
 

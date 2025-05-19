@@ -6,6 +6,7 @@ import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import org.eclipse.jgit.annotations.NonNull;
+import org.eclipse.jgit.annotations.Nullable;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.reader.InvalidMutatedFileException;
 import org.pitestidea.reader.MutationsFileReader;
@@ -17,21 +18,21 @@ import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 
 /**
- * Pairs an ExecutionRecord with a PitExecutionRecorder, with the ability to lazy
- * load the latter (which can grow large) or drop it save space. An instance of this
+ * Pairs an ExecutionRecord with a PitExecutionRecorder, with the ability to lazily
+ * load the latter (which can grow large) or drop it to save space. An instance of this
  * class is created for every PIT output directory in the project.
  */
 public class CachedRun implements Comparable<CachedRun> {
     private static final String MUTATIONS_FILE = "mutations.xml";
 
-    // Back ptr to owner of this object
+    // Back ptr to the owner of this object
     private final PitRepo.ProjectRunRecords runRecords;
 
-    // Meta information about this run
+    // Holds inputs and timings for this run
     private final ExecutionRecord executionRecord;
 
     // Loaded from mutations.xml -- may be unloaded as well to reduce space usage
-    private PitExecutionRecorder recorder = null;
+    private PitExecutionRecorder recorder;
 
     // State of the run that produced this object
     private RunState runState = RunState.COMPLETED;
@@ -39,7 +40,7 @@ public class CachedRun implements Comparable<CachedRun> {
     // Optional callback for when runState changes
     private BiConsumer<RunState, RunState> runStateChangedListener;
 
-    // Directory may or may not exist -- store String path rather than File to avoid race-deletion headaches
+    // Directory may or may not exist -- store the String path rather than File to avoid race-deletion headaches
     private final @NonNull String reportDirectory;
 
     public CachedRun(PitRepo.ProjectRunRecords runRecords, ExecutionRecord record, PitExecutionRecorder recorder, String reportDirectory) {
@@ -79,23 +80,23 @@ public class CachedRun implements Comparable<CachedRun> {
         return recorder;
     }
 
-    public Project getProject() {
-        return recorder.getModule().getProject(); // TODO may be null
+    public @Nullable Project getProject() {
+        return recorder.getModule().getProject();
     }
 
     public PitExecutionRecorder ensureLoaded() {
-        // TODO load if not loaded!
+        // TODO -- Placeholder for later work on lazy loading
         return recorder;
     }
 
     /**
-     * Makes this CachedRun the currently-selected item in its history list, and performs all necessary
+     * Makes this CachedRun the currently selected item in its history list and performs all necessary
      * UI updates to reflect this new selection.
      */
     public void activate() {
         Project project = getProject();
         setAsCurrent();
-        PitToolWindowFactory.show(project, this, recorder.hasMultiplePackages());
+        PitToolWindowFactory.show(project, this);
     }
 
 
@@ -177,7 +178,7 @@ public class CachedRun implements Comparable<CachedRun> {
 
     /**
      * Deletes all files that PIT generated for this run. For safety, extra checks are made to ensure that the right
-     * thing is being deleted. This does *not* delete any PIT files not generated within this plugin, e.g. those created
+     * thing is being deleted. This does *not* delete any PIT files not generated within this plugin, e.g., those created
      * by command-line PIT runs.
      */
     public void prepareForRun() {
@@ -188,9 +189,7 @@ public class CachedRun implements Comparable<CachedRun> {
             try {
                 File[] files = future.get();
                 if (files != null) {
-                    Arrays.stream(future.get()).forEach(virtualFile -> {
-                        deleteFilesInDir(dir);
-                    });
+                    Arrays.stream(future.get()).forEach(virtualFile -> deleteFilesInDir(dir));
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -200,20 +199,18 @@ public class CachedRun implements Comparable<CachedRun> {
 
     private static @NotNull Future<File[]> collectValidReportDirectories(File dir) {
         final Application app = ApplicationManager.getApplication();
-        @NotNull Future<File[]> future = app.executeOnPooledThread(() -> {
-            return app.runReadAction((Computable<File[]>) () -> {
-                File[] files =  dir.listFiles();
-                if (files != null && Arrays.stream(files).anyMatch(f->f.getName().equals(MUTATIONS_FILE))) {
-                    return files;
-                }
-                return null;
-            });
-        });
+        @NotNull Future<File[]> future = app.executeOnPooledThread(() -> app.runReadAction((Computable<File[]>) () -> {
+            File[] files =  dir.listFiles();
+            if (files != null && Arrays.stream(files).anyMatch(f->f.getName().equals(MUTATIONS_FILE))) {
+                return files;
+            }
+            return null;
+        }));
         return future;
     }
 
     private void deleteFilesInDir(File dir) {
-        // First, extra safety/sanity checks just to be sure we're only deleting within the expected directory
+        // First, extra safety/sanity checks just to be sure we're only doing deletes within the expected directory
         if (dir.exists() && dir.isDirectory() && dir.getAbsolutePath().contains(PitRepo.PIT_IDEA_REPORTS_DIR)) {
             File[] files = dir.listFiles();
             boolean all = true;

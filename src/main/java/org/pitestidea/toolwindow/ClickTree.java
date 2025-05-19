@@ -14,7 +14,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 /**
- * A JTree that allows for independently-selectable components in a row.
+ * A JTree that allows for independently selectable components in a row.
  */
 public class ClickTree {
     private final TreeRow rootTreeRow = new TreeRow(0);
@@ -22,11 +22,11 @@ public class ClickTree {
     private final JTree tree = new Tree(rootTreeRow.node);
     private final CustomTreeCellRenderer renderer;
 
-    // How much horizontal space in each row before first segment
+    // How much horizontal space in each row before the first segment
     private final int rowPrefixWidth;
 
     private RowSegment hoverSegment = null;
-    private int hoveredRow = -1;    // Index of row currently under the mouse
+    private int hoveredRow = -1;    // Index of the row currently under the mouse
     private int rowXPos = -1;      // X position of the mouse
 
     private void setHoveredRow(int row, int x) {
@@ -67,7 +67,7 @@ public class ClickTree {
 
             @Override
             public void mouseExited(MouseEvent e) {
-                setHoveredRow(-1, -1); // Reset hover state when mouse exits
+                setHoveredRow(-1, -1); // Reset hover state when the mouse exits
                 hoverSegment = null;
                 tree.repaint();
             }

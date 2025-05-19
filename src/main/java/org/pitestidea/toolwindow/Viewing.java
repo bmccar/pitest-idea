@@ -2,7 +2,7 @@ package org.pitestidea.toolwindow;
 
 public class Viewing {
     public enum PackageChoice implements Displayable {
-        PACKAGE("All","Display complete package hierarchy"),
+        PACKAGE("All", "Display complete package hierarchy"),
         CODE("Coded", "Display only packages with direct code files"),
         NONE("Flat", "Code files only, no packages");
         final String displayName;
@@ -17,6 +17,8 @@ public class Viewing {
             return displayName;
         }
 
-        public String getTooltip() {return tooltipText;}
+        public String getTooltip() {
+            return tooltipText;
+        }
     }
 }

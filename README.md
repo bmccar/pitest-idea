@@ -1,2 +1,3 @@
 # pitest-idea
-Easily run PIT Mutation Testing from and see run results in IDE
+
+Run PIT Mutation Testing incrementally and see run results in IDE

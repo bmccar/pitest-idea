@@ -29,9 +29,9 @@ public class FileMutationsTest {
         assertEquals(MutationImpact.NO_COVERAGE, FileMutations.lineSummary(List.of(no_coverage)));
         assertEquals(MutationImpact.TIMED_OUT, FileMutations.lineSummary(List.of(timed_out)));
 
-        assertEquals(MutationImpact.SURVIVED, FileMutations.lineSummary(Arrays.asList(survived,survived)));
-        assertEquals(MutationImpact.SURVIVED, FileMutations.lineSummary(Arrays.asList(survived,killed)));
-        assertEquals(MutationImpact.TIMED_OUT, FileMutations.lineSummary(Arrays.asList(killed,timed_out)));
+        assertEquals(MutationImpact.SURVIVED, FileMutations.lineSummary(Arrays.asList(survived, survived)));
+        assertEquals(MutationImpact.SURVIVED, FileMutations.lineSummary(Arrays.asList(survived, killed)));
+        assertEquals(MutationImpact.TIMED_OUT, FileMutations.lineSummary(Arrays.asList(killed, timed_out)));
     }
 
     private void mutate(FileMutations fm, int lineNumber, MutationImpact impact) {
@@ -58,14 +58,14 @@ public class FileMutationsTest {
         }
 
         static Optional<Track> find(int lineNumber, MutationImpact impact) {
-            return tracks.stream().filter(track -> track.lineNumber==lineNumber && track.mutation.mutationImpact()==impact).findFirst();
+            return tracks.stream().filter(track -> track.lineNumber == lineNumber && track.mutation.mutationImpact() == impact).findFirst();
         }
 
         @Override
         public String toString() {
             return String.format("%d[%s]", lineNumber, mutation);
         }
-    };
+    }
 
     @Test
     public void mutationTypes() {
@@ -83,17 +83,11 @@ public class FileMutationsTest {
         mutate(fm, 5, MutationImpact.SURVIVED);
         mutate(fm, 8, MutationImpact.KILLED);
 
-        fm.visit(new FileMutations.LineVisitor() {
-            @Override
-            public void visit(int lineNumber, MutationImpact lineImpact, List<Mutation> mutations) {
-                mutations.forEach(mutation -> {
-                    Optional<Track> track =  Track.find(lineNumber,mutation.mutationImpact());
-                    Assertions.assertTrue(track.isPresent());
-                    track.get().found = true;
-                });
-
-            }
-        });
+        fm.visit((lineNumber, lineImpact, mutations) -> mutations.forEach(mutation -> {
+            Optional<Track> track = Track.find(lineNumber, mutation.mutationImpact());
+            Assertions.assertTrue(track.isPresent());
+            track.get().found = true;
+        }));
 
         Track.tracks.stream().filter(track -> !track.found).forEach(track -> Assertions.fail("Missing track " + track));
     }

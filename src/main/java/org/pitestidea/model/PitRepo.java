@@ -50,20 +50,24 @@ public class PitRepo {
         }
     }
 
-    public static @Nullable CachedRun getCurrent(@NotNull Project project) {
-        ProjectRunRecords runRecords = projectMap.get(project.getName());
-        if (runRecords != null && runRecords.current != null) {
-            return runRecords.current;
+    public static @Nullable CachedRun getCurrent(@Nullable Project project) {
+        if (project != null) {
+            ProjectRunRecords runRecords = projectMap.get(project.getName());
+            if (runRecords != null && runRecords.current != null) {
+                return runRecords.current;
+            }
         }
         return null;
     }
 
-    public static void ensureSorted(@NotNull Project project) {
-        ProjectRunRecords runRecords = projectMap.get(project.getName());
-        if (runRecords != null) {
-            Comparator<CachedRun> comparator = Comparator.comparing(c->c.getExecutionRecord().getStartedAt());
-            comparator = comparator.reversed();
-            runRecords.runHistory.sort(comparator);
+    public static void ensureSorted(@Nullable Project project) {
+        if (project != null) {
+            ProjectRunRecords runRecords = projectMap.get(project.getName());
+            if (runRecords != null) {
+                Comparator<CachedRun> comparator = Comparator.comparing(c -> c.getExecutionRecord().getStartedAt());
+                comparator = comparator.reversed();
+                runRecords.runHistory.sort(comparator);
+            }
         }
     }
 
@@ -75,20 +79,6 @@ public class PitRepo {
      * @return a new CachedRun
      */
     public static @NotNull CachedRun register(@NotNull Module module, @NotNull ExecutionRecord record) {
-        /* TODO rm comment
-        AtomicReference<VirtualFile> ref = new AtomicReference<>();
-        ExecutionUtils.dumpThreads("PitRepo.register OUTER");
-        ApplicationManager.getApplication().invokeAndWait(() -> {
-            ExecutionUtils.dumpThreads("PitRepo.register INNER");
-            try {
-                WriteAction.run(()-> {
-                    ref.set(ensureReportDirectoryCreated(module, record));
-                });
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-         */
         String path = IdeaDiscovery.getAbsoluteOutputPath(module,PitRepo.PIT_IDEA_REPORTS_DIR, record.getReportDirectoryName());
         return register(module, record, path);
     }
@@ -196,8 +186,8 @@ public class PitRepo {
                     LOGGER.warn("Failed to load report for " + cachedRun.getExecutionRecord().getReportDirectoryName(), e);
                     deregister(module.getProject(), cachedRun);
                 }
-                // Report directories generated from a previous failed/canceled PIT may exist but
-                // easiest to just ignore them as the utility of loading them is low and they'll
+                // Report directories generated from a previous failed/canceled PIT may exist, but it
+                // easiest to just ignore them as the utility of loading them is low, and they'll
                 // get removed anyway on the next project clean.
             }
         }

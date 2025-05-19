@@ -1,7 +1,6 @@
 package org.pitestidea.psi.fakes;
 
 import com.intellij.openapi.fileTypes.FileType;
-import com.intellij.openapi.fileTypes.FileTypeRegistry;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
@@ -11,10 +10,9 @@ public class VirtualClassFake extends BaseVirtualFileFake {
     }
 
     @Override
-    public @NotNull FileType getFileType() {  // TODO ???
-        return FileTypeRegistry.getInstance().getFileTypeByFile(this);
+    public @NotNull FileType getFileType() {
+        throw new UnsupportedOperationException("Not supported");
     }
-
 
     @Override
     public boolean isDirectory() {

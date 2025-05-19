@@ -2,9 +2,9 @@ package org.pitestidea.configuration;
 
 import com.intellij.openapi.compiler.CompilerPaths;
 import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
-import com.intellij.openapi.module.ModuleUtil;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.roots.ModuleRootManager;
@@ -13,9 +13,7 @@ import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.WindowManager;
 import com.intellij.psi.*;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.pitestidea.actions.PITestRunProfile;
 import org.pitestidea.model.CachedRun;
 
 import java.awt.*;
@@ -45,10 +43,6 @@ public class IdeaDiscovery {
         return activeProject;
     }
 
-    public static Module getModuleOf(PsiJavaFile file) {
-        return ModuleUtil.findModuleForPsiElement(file);
-    }
-
     public static String getAbsolutePathOfModule(Module module) {
         if (module == null) {
             return null; // Safety check
@@ -64,15 +58,15 @@ public class IdeaDiscovery {
         return null; // No content root available
     }
 
-    public static PsiJavaFile getCurrentJavaFile() {
-        return getCurrentJavaFile(getActiveProject());
-    }
-
-    public static PsiJavaFile getCurrentJavaFile(Project project) {
-        Document currentDoc = FileEditorManager.getInstance(project).getSelectedTextEditor().getDocument();
-        PsiDocumentManager documentManager = PsiDocumentManager.getInstance(project);
-        PsiFile psiFile = documentManager.getPsiFile(currentDoc);
-        return (PsiJavaFile) psiFile;
+    public static @Nullable PsiJavaFile getCurrentJavaFile(Project project) {
+        @Nullable Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
+        if (editor != null) {
+            Document currentDoc = editor.getDocument();
+            PsiDocumentManager documentManager = PsiDocumentManager.getInstance(project);
+            PsiFile psiFile = documentManager.getPsiFile(currentDoc);
+            return (PsiJavaFile) psiFile;
+        }
+        return null;
     }
 
     public static VirtualFile getCurrentFile() {
@@ -82,27 +76,6 @@ public class IdeaDiscovery {
         return fileEditorManager.getSelectedFiles().length > 0
                 ? fileEditorManager.getSelectedFiles()[0]
                 : null;
-    }
-
-    public static PsiClass getMainClassInFile(PsiJavaFile file) {
-        PsiJavaFile psiJavaFile = getCurrentJavaFile();
-        PsiClass[] classes = psiJavaFile.getClasses();
-        return classes[0]; // TODO multiple classes in file
-    }
-
-    public static String getCurrentPackageName() {
-        PsiJavaFile file = getCurrentJavaFile();
-        return file.getPackageName();
-    }
-
-    public static String getCurrentClassName() {
-        PsiJavaFile file = getCurrentJavaFile();
-        PsiClass targetClass = getMainClassInFile(file);
-        return targetClass.getName();
-    }
-
-    public static String getCurrentTestClassName() {
-        return getCurrentClassName() + "Test"; // TODO (a) verify exists, (b) check Test file is current
     }
 
     public static String getAbsoluteOutputPath(Module module, String...subs) {
@@ -134,7 +107,6 @@ public class IdeaDiscovery {
 
     public static <T> T onLocationOf(Project project, VirtualFile selectedFile, T code, T test) {
         ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
-        final String text;
         if (fileIndex.isInSourceContent(selectedFile)) {
             return code;
         } else if (fileIndex.isInTestSourceContent(selectedFile)) {
@@ -200,44 +172,5 @@ public class IdeaDiscovery {
             }
         }
         return null;
-    }
-
-    /**
-     * Resolves a VirtualFile from the given fully qualified name.
-     *
-     * @param project The current project
-     * @param fullyQualifiedName The fully qualified name of the file (e.g., "com.example.TestClass")
-     * @return The VirtualFile, or null if the file cannot be found
-     */
-    public static VirtualFile findVirtualFileByFQN(Project project, String fullyQualifiedName) {
-        // Get the project base path
-        String projectBasePath = project.getBasePath();
-        if (projectBasePath == null) {
-            return null; // Project base path is unavailable.
-        }
-
-        // Convert the FQN to the relative file path (e.g., "com/example/TestClass.java")
-        String relativePath = fullyQualifiedName.replace('.', '/') + ".java";
-
-        // Iterate through all source roots of the project
-        for (VirtualFile sourceRoot : ProjectRootManager.getInstance(project).getContentSourceRoots()) {
-            // Find the file in this source root
-            VirtualFile file = sourceRoot.findFileByRelativePath(relativePath);
-            if (file != null) {
-                return file; // Return the file if found
-            }
-        }
-
-        // File not found in any source root
-        return null;
-/*
-        // Construct the full file path using the project's base path
-        String fullPath = Paths.get(projectBasePath, "src", relativePath).toString();
-        System.out.format("qn=%s, rp=%s, fp=%s%n",fullyQualifiedName,relativePath,fullPath);
-
-        System.out.println(">>> " + LocalFileSystem.getInstance().findFileByPath(fullPath));
-
-        return LocalFileSystem.getInstance().findFileByPath(fullPath);
- */
     }
 }

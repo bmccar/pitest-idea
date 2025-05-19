@@ -27,13 +27,14 @@ public class MutationAction extends AnAction {
         if (project == null) return;
 
         PsiJavaFile javaFile = IdeaDiscovery.getCurrentJavaFile(project);
-        Module module = ModuleUtilCore.findModuleForPsiElement(javaFile);
+        if (javaFile != null) {
+            Module module = ModuleUtilCore.findModuleForPsiElement(javaFile);
 
-        VirtualFile selectedFile = e.getData(CommonDataKeys.VIRTUAL_FILE);
-        VirtualFile currentFile = IdeaDiscovery.getCurrentFile();
+            VirtualFile currentFile = IdeaDiscovery.getCurrentFile();
 
-        if (module != null && currentFile != null) {
-            ExecutionUtils.execute(module, List.of(currentFile));
+            if (module != null && currentFile != null) {
+                ExecutionUtils.execute(module, List.of(currentFile));
+            }
         }
     }
 
@@ -46,8 +47,8 @@ public class MutationAction extends AnAction {
             e.getPresentation().setEnabledAndVisible(false);
         } else {
             String loc = IdeaDiscovery.onLocationOf(project, selectedFile,
-                    "Run PITest against this file using its test",
-                    "Run PITest for this test file against its source");
+                    "Run PITest Against This File Using Its Test",
+                    "Run PITest for This Test File Against Its Source");
             if (loc == null) {
                 e.getPresentation().setEnabledAndVisible(false);
                 return;

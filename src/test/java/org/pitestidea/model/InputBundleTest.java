@@ -16,8 +16,8 @@ class InputBundleTest {
     private static final int MAX = InputBundle.MAX_REPORT_NAME_LENGTH;
     private static final String FS = File.separator;
 
-    private static String extendPast(String s) {
-        StringBuilder sb = new StringBuilder(s);
+    private static String biggerThanMax() {
+        StringBuilder sb = new StringBuilder("x");
         while (sb.length() <= InputBundleTest.MAX) {
             sb.append('*');
         }
@@ -42,8 +42,8 @@ class InputBundleTest {
 
     @Test
     void reportDirectoryName() {
-        verifyReportDirectoryName("abcdefg.x");
-        verifyReportDirectoryName("abcdefg");
+        verifyReportDirectoryName("abc.x");
+        verifyReportDirectoryName("abc");
     }
 
     private static String path(String...segments) {
@@ -63,6 +63,8 @@ class InputBundleTest {
     void noSourcesName() {
         String name = "FooTest.x";
         InputBundle bundle = new InputBundle().addPath(Category.TEST_FILE, name);
+        assertEquals(1,bundle.asPath().get(Category::isFile).size());
+        assertEquals(0,bundle.asPath().get(Category::isPkg).size());
         assertEquals("FooTest", bundle.generateReportName());
         bundle = new InputBundle().addPath(Category.TEST_FILE, path("a",name));
         assertEquals("FooTest", bundle.generateReportName());
@@ -72,6 +74,8 @@ class InputBundleTest {
     void oneDirectoryName() {
         String name = "Foo";
         InputBundle bundle = new InputBundle().addPath(Category.SOURCE_PKG, name);
+        assertEquals(0,bundle.asPath().get(Category::isFile).size());
+        assertEquals(1,bundle.asPath().get(Category::isPkg).size());
         assertEquals("Foo", bundle.generateReportName());
         bundle = new InputBundle().addPath(Category.SOURCE_PKG, path("a",name));
         assertEquals("Foo", bundle.generateReportName());
@@ -87,8 +91,8 @@ class InputBundleTest {
 
     @Test
     void oneLongFileName() {
-        InputBundle bundle = new InputBundle().addPath(Category.SOURCE_PKG, extendPast("x") + ".z");
-        String exp = extendPast("x").substring(0, MAX) + "...";
+        InputBundle bundle = new InputBundle().addPath(Category.SOURCE_PKG, biggerThanMax() + ".z");
+        String exp = biggerThanMax().substring(0, MAX) + "...";
         assertEquals(exp, bundle.generateReportName());
     }
 

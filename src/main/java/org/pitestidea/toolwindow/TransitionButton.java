@@ -1,6 +1,7 @@
 package org.pitestidea.toolwindow;
 
 import com.intellij.ui.JBColor;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 
@@ -20,7 +21,7 @@ public class TransitionButton extends JButton {
 
     public record State(String name, Icon icon, String tooltipText, Supplier<Boolean> action) {
         @Override
-        public String toString() {
+        public @NotNull String toString() {
             return String.format("State(%s)", name);
         }
     }
@@ -67,15 +68,6 @@ public class TransitionButton extends JButton {
         }
     }
 
-    void restore(State state) {
-        currentStateIndex = states.indexOf(state);
-        update();
-    }
-
-    State getState() {
-        return currentStateIndex >= 0 ? states.get(currentStateIndex) : null;
-    }
-
     private void update() {
         State state = states.get(currentStateIndex);
         setIcon(state.icon);
@@ -86,19 +78,18 @@ public class TransitionButton extends JButton {
      * Add a new state that will be transitioned to from the last-added state. The default
      * appearance of the button is set by the first-added state.
      *
-     * @param name for debugging
-     * @param icon to display
+     * @param name        for debugging
+     * @param icon        to display
      * @param tooltipText to display
-     * @param action if not-null, called before transitioning and may prevent transition by returning false
+     * @param action      if not-null, called before transitioning and may prevent transition by returning false
      */
-    State addState(String name, Icon icon, String tooltipText, boolean makeCurrent, Supplier<Boolean> action) {
-        State state = new State(name,icon, tooltipText, action);
+    void addState(String name, Icon icon, String tooltipText, boolean makeCurrent, Supplier<Boolean> action) {
+        State state = new State(name, icon, tooltipText, action);
         states.add(state);
         if (makeCurrent || states.size() == 1) {
             currentStateIndex = states.size() - 1;
             update();
         }
-        return state;
     }
 
 }

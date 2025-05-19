@@ -52,10 +52,6 @@ public class InputBundle {
         public boolean isTest() {
             return isTest;
         }
-
-        public boolean is(boolean isTest, boolean isPkg) {
-            return this.isTest == isTest && this.isPkg == isPkg;
-        }
     }
 
     private final Map<Category, Set<String>> map = new HashMap<>();
@@ -102,6 +98,11 @@ public class InputBundle {
         }
     }
 
+    /**
+     * For getting input files as qualified names, e.g., package "com.foo.x" or class "com.foo.Foo".
+     *
+     * @return object for additional queries returning qualified names.
+     */
     public Format asQn() {
         return new AsQn();
     }
@@ -138,16 +139,14 @@ public class InputBundle {
         }
     }
 
+    /**
+     * For getting input files as paths relative to their source root, e.g.,
+     * package "com/foo/x" or class "com/foo/x/Foo.java".
+     *
+     * @return object for additional queries returning relative path names.
+     */
     public Format asPath() {
         return new AsPath();
-    }
-
-    private List<String> getPaths(Function<Category, Boolean> fn) {
-        return Stream.of(Category.values()).filter(fn::apply)
-                .map(map::get)
-                .flatMap(Set::stream)
-                .sorted()
-                .toList();
     }
 
     private <T> List<T> transformPaths(Function<Category, Boolean> fn, Function<String, T> transformer) {
@@ -275,7 +274,7 @@ public class InputBundle {
             String pfx = qns.get(0);
             int ix = pfx.lastIndexOf(FileSystems.getDefault().getSeparator());
             if (ix > 0) {
-                // Add a prefix just to ease task of looking through files if/when necessary
+                // Add a prefix just to ease the task of looking through files if/when necessary
                 pfx = pfx.substring(ix + 1);
             }
             pfx = pfx.substring(0, Math.min(pfx.length(), MAX_PREFIX_LENGTH));

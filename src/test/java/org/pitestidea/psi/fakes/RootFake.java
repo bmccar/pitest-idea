@@ -38,8 +38,4 @@ public class RootFake extends VirtualPkgFake {
     public boolean isTest() {
         return isTest;
     }
-
-    public boolean isRootTest() {
-        return isTest;
-    }
 }

@@ -38,22 +38,23 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
     }
 
     /**
-     * Updates the scores and execution history in the toolwindow. The scores content is set to reflect the
+     * Updates the scores and execution history in the toolwindow. The score content is set to reflect the
      * values in the provided recorder.
      *
      * @param project project
      * @param cachedRun to update scores from
-     * @param hasMultiplePackages true if the input has more than a single package
      */
-    public static void show(Project project, CachedRun cachedRun, boolean hasMultiplePackages) {
-        MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
+    public static void show(Project project, CachedRun cachedRun) {
+        if (project != null && cachedRun != null) {
+            MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
 
-        mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
-        mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
+            mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
+            mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
 
-        mutationControlPanel.setOptionsChangeFn(_choices -> reshow(project, mutationControlPanel, PitRepo.getCurrent(project), hasMultiplePackages));
-        mutationControlPanel.reloadHistory(project);
-        reshow(project, mutationControlPanel, cachedRun, hasMultiplePackages);
+            mutationControlPanel.setOptionsChangeFn(_choices -> reshow(project, mutationControlPanel, PitRepo.getCurrent(project)));
+            mutationControlPanel.reloadHistory(project);
+            reshow(project, mutationControlPanel, cachedRun);
+        }
     }
 
     public static void showPitExecutionOutputOnly(Project project) {
@@ -66,18 +67,20 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         }
     }
 
-    private static void reshow(Project project, MutationControlPanel mutationControlPanel, CachedRun cachedRun, boolean hasMultiplePackages) {
-        PitExecutionRecorder recorder = cachedRun.getRecorder();
-        recorder.sort(mutationControlPanel.getDisplayChoices());
+    private static void reshow(Project project, MutationControlPanel mutationControlPanel, CachedRun cachedRun) {
+        if (cachedRun != null) {
+            PitExecutionRecorder recorder = cachedRun.getRecorder();
+            recorder.sort(mutationControlPanel.getDisplayChoices());
 
-        mutationControlPanel.clearScores(cachedRun);
+            mutationControlPanel.clearScores(cachedRun);
 
-        ToolWindow tw = getToolWindow(project);
-        if (tw != null) {
-            if (tw.isActive()) {
-                mutationControlPanel.reloadScores(cachedRun);
-            } else {
-                tw.activate(() -> mutationControlPanel.onFirstActivation(cachedRun, hasMultiplePackages));
+            ToolWindow tw = getToolWindow(project);
+            if (tw != null) {
+                if (tw.isActive()) {
+                    mutationControlPanel.reloadScores(cachedRun);
+                } else {
+                    tw.activate(() -> mutationControlPanel.onFirstActivation(cachedRun));
+                }
             }
         }
     }
@@ -136,9 +139,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
             try {
                 PitRepo.reloadReports(project);
                 // Update the UI on the Event Dispatch Thread
-                application.invokeLater(() -> {
-                    mutationControlPanel.getContentPanel().updateUI();
-                });
+                application.invokeLater(() -> mutationControlPanel.getContentPanel().updateUI());
             } catch (Exception e) {
                 LOGGER.error("Failed to reload reports", e);
             }

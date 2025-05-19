@@ -6,8 +6,6 @@ import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
-import org.apache.commons.lang3.StringUtils;
-import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.InputBundle;
 
 import java.util.*;
@@ -45,19 +43,16 @@ public class PackageWalker {
         Set<VirtualFile> srcFiles = new HashSet<>();
         Set<VirtualFile> testFiles = new HashSet<>();
         groupByLocAndType(project, files, srcPkgFiles, testPkgFiles, srcFiles, testFiles);
-        System.out.println("split sp=" + srcPkgFiles + ", tp=" + testPkgFiles + ", sf=" + srcFiles + ", tf=" + testFiles);
         addFileSiblings(project, srcFiles, testFiles, SRC_NAME_TRANSFORMERS);
         addPkgSiblings(project, srcPkgFiles, testPkgFiles);
         if (srcFiles.isEmpty() && srcPkgFiles.isEmpty()) {
             addFileSiblings(project, testFiles, srcFiles, TEST_NAME_TRANSFORMERS);
             addPkgSiblings(project, testPkgFiles, srcPkgFiles);
         }
-        System.out.println("adds  sp=" + srcPkgFiles + ", tp=" + testPkgFiles + ", sf=" + srcFiles + ", tf=" + testFiles);
         simplify(srcPkgFiles);
         simplify(testPkgFiles);
         simplify(srcFiles, srcPkgFiles);
         simplify(testFiles, testPkgFiles);
-        System.out.println("smpfy sp=" + srcPkgFiles + ", tp=" + testPkgFiles + ", sf=" + srcFiles + ", tf=" + testFiles);
 
         inputBundle.setPaths(InputBundle.Category.SOURCE_FILE, names(project, srcFiles));
         inputBundle.setPaths(InputBundle.Category.SOURCE_PKG, names(project, srcPkgFiles));
@@ -116,7 +111,7 @@ public class PackageWalker {
                 VirtualFile[] sourceRoots = ProjectRootManager.getInstance(project).getContentSourceRoots();
                 if (Arrays.asList(sourceRoots).contains(file)) {
                     // PIT accepts only files and packages
-                    for (VirtualFile child: file.getChildren()) {
+                    for (VirtualFile child : file.getChildren()) {
                         groupByLocAndType(project, List.of(child), srcPkgFiles, testPkgFiles, srcFiles, testFiles);
                     }
                 } else if (isInSrc) {
