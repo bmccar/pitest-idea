@@ -47,8 +47,8 @@ public class MutationAction extends AnAction {
             e.getPresentation().setEnabledAndVisible(false);
         } else {
             String loc = IdeaDiscovery.onLocationOf(project, selectedFile,
-                    "Run PITest Against This File Using Its Test",
-                    "Run PITest for This Test File Against Its Source");
+                    "Run PITest for This File",
+                    "Run PITest for Source File");
             if (loc == null) {
                 e.getPresentation().setEnabledAndVisible(false);
                 return;

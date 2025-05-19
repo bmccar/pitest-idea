@@ -78,7 +78,7 @@ public class IdeaDiscovery {
                 : null;
     }
 
-    public static String getAbsoluteOutputPath(Module module, String...subs) {
+    public static String getAbsoluteOutputPath(Module module, String... subs) {
         @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
         if (vf == null) {
             throw new RuntimeException("No output directory for module " + module.getName());
@@ -92,7 +92,7 @@ public class IdeaDiscovery {
         return sb.toString();
     }
 
-    public static File getAbsoluteOutputDir(Module module, String...subs) {
+    public static File getAbsoluteOutputDir(Module module, String... subs) {
         @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
         if (vf == null) {
             return null;
@@ -100,16 +100,18 @@ public class IdeaDiscovery {
         vf = vf.getParent();
         File file = new File(vf.getPath());
         for (String sub : subs) {
-            file = new File(file,sub);
+            file = new File(file, sub);
         }
         return file;
     }
 
     public static <T> T onLocationOf(Project project, VirtualFile selectedFile, T code, T test) {
         ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
-        if (fileIndex.isInSourceContent(selectedFile)) {
+        boolean isSrc = fileIndex.isInSourceContent(selectedFile);
+        boolean isTest = fileIndex.isInTestSourceContent(selectedFile);
+        if (isSrc && !isTest) {
             return code;
-        } else if (fileIndex.isInTestSourceContent(selectedFile)) {
+        } else if (isTest) {
             return test;
         } else {
             return null;
