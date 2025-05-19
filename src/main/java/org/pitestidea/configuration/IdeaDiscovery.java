@@ -182,9 +182,7 @@ public class IdeaDiscovery {
                 String relativePath = filePath.substring(sourcePath.length() + 1);
                 relativePath = relativePath.substring(0, relativePath.lastIndexOf(File.separatorChar));
 
-                String packageName = relativePath.replace(File.separatorChar, '.');
-
-                return packageName;
+                return relativePath.replace(File.separatorChar, '.');
             }
         }
 

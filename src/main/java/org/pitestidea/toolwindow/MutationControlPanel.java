@@ -10,7 +10,6 @@ import com.intellij.openapi.ui.MessageType;
 import com.intellij.openapi.ui.popup.Balloon;
 import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.util.IconLoader;
-import com.intellij.openapi.vfs.InvalidVirtualFileAccessException;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.awt.RelativePoint;
@@ -73,23 +72,41 @@ public class MutationControlPanel {
 
     private void handleStretchPaneChanged(StretchPane.PaneState s) {
         if (s == StretchPane.PaneState.SCORES) {
-            // setting divider only works properly if visible
-            scoresSplitPane.getLeftComponent().setVisible(true);
-            setDefaultScoresSplit();
+            // These change pane sizings in unexpected ways, can do without
+            // scoresSplitPane.getLeftComponent().setVisible(true);
+            // setDefaultScoresSplit();
         } else {
-            scoresSplitPane.getLeftComponent().setVisible(false);
+            //scoresSplitPane.getLeftComponent().setVisible(false);
         }
     }
 
     private JComponent createScoresPanel() {
+        JPanel scoresTreePanel = new JPanel();
+        scoresTreePanel.setLayout(new BoxLayout(scoresTreePanel, BoxLayout.Y_AXIS));
+
+        JPanel scoresHeaderPanel = createScoresHeaderPanel();
+        JComponent comp = tree.getComponent();
+
+        comp.setAlignmentX(Component.LEFT_ALIGNMENT);
+        comp.setMinimumSize(scoresHeaderPanel.getMinimumSize());
+        comp.setPreferredSize(scoresHeaderPanel.getPreferredSize());
+        comp.setMaximumSize(scoresHeaderPanel.getMaximumSize());
+
+        scoresTreePanel.setMinimumSize(scoresHeaderPanel.getMinimumSize());
+
+        // Make sure buttonPanel fills the entire width
+        scoresHeaderPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        scoresHeaderPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+                scoresHeaderPanel.getPreferredSize().height));
+
+        scoresTreePanel.add(scoresHeaderPanel);
+        scoresTreePanel.add(comp);
+
         scoresSplitPane = new JSplitPane();
 
         scoresSplitPane.setLeftComponent(createHistoryPanel());
+        scoresSplitPane.setRightComponent(scoresTreePanel);
 
-        JPanel treePanel = new JPanel(new BorderLayout());
-        treePanel.add(createScoresHeaderPanel(), BorderLayout.NORTH);
-        treePanel.add(tree.getComponent(), BorderLayout.CENTER);
-        scoresSplitPane.setRightComponent(treePanel);
         setDefaultScoresSplit();
 
         return new JBScrollPane(scoresSplitPane);
@@ -147,16 +164,19 @@ public class MutationControlPanel {
 
     private JPanel createScoresHeaderPanel() {
         JPanel header = new JPanel(new BorderLayout());
-        header.setLayout(new BoxLayout(header, BoxLayout.X_AXIS)); // Horizontal layout
-        header.add(createPackagePanel());
-        header.add(createSortPanel());
-        header.add(createDirPanel());
+        Box box = Box.createHorizontalBox();
+        box.add(createPackagePanel());
+        box.add(createSortPanel());
+        box.add(createDirPanel());
 
-        header.add(Box.createHorizontalGlue());
-        header.add(createRemoveButton());
-        header.add(Box.createHorizontalGlue());
-        header.add(stretchPane.getScoresButton());
+        box.add(Box.createHorizontalGlue());
+        box.add(createRemoveButton());
+        box.add(Box.createHorizontalGlue());
+        box.add(stretchPane.getScoresButton());
+        header.add(box, BorderLayout.CENTER);
+
         headerHeight = header.getPreferredSize().height;
+
         return header;
     }
 
@@ -174,7 +194,14 @@ public class MutationControlPanel {
                 CoverageGutterRenderer.removeGutterIcons(project);
             }
         });
-        return checkBox;
+        // Overwrite default behavior on checkbox that defaults to an extra-wide min width
+        Dimension d = new Dimension(10, checkBox.getMinimumSize().height);
+        checkBox.setMinimumSize(d);
+        checkBox.setPreferredSize(d);
+        checkBox.setMaximumSize(d);
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(checkBox, BorderLayout.CENTER);
+        return panel;
     }
 
     private JPanel createPackagePanel() {

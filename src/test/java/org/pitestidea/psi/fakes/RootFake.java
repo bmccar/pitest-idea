@@ -4,6 +4,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+
 public class RootFake extends VirtualPkgFake {
     public static final RootFake javaSrc = new RootFake("main", "java", false);
     public static final RootFake javaTest = new RootFake("test", "java", true);
@@ -29,7 +31,7 @@ public class RootFake extends VirtualPkgFake {
 
     @Override
     public @NonNls @NotNull String getPath() {
-        return BaseVirtualFileFake.BASE_PKG + "src/" + loc + '/' + lang;
+        return BaseVirtualFileFake.BASE_PKG + "src" + File.separatorChar + loc + File.separatorChar + lang;
     }
 
     @Override

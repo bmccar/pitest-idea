@@ -6,6 +6,8 @@ import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
+import org.apache.commons.lang3.StringUtils;
+import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.InputBundle;
 
 import java.util.*;
@@ -111,11 +113,18 @@ public class PackageWalker {
             final boolean isInTest = fileIndex.isInTestSourceContent(file);
             final boolean isInSrc = fileIndex.isInSourceContent(file) && !isInTest;
             if (file.isDirectory()) {
-                if (isInSrc) {
+                VirtualFile[] sourceRoots = ProjectRootManager.getInstance(project).getContentSourceRoots();
+                if (Arrays.asList(sourceRoots).contains(file)) {
+                    // PIT accepts only files and packages
+                    for (VirtualFile child: file.getChildren()) {
+                        groupByLocAndType(project, List.of(child), srcPkgFiles, testPkgFiles, srcFiles, testFiles);
+                    }
+                } else if (isInSrc) {
                     srcPkgFiles.add(file);
                 } else if (isInTest) {
                     testPkgFiles.add(file);
                 }
+
             } else if (SUPPORTED_EXTENSIONS.contains(file.getExtension())) {
                 if (isInSrc) {
                     srcFiles.add(file);

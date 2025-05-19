@@ -9,11 +9,14 @@ import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.reader.InvalidMutatedFileException;
 import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
+import com.intellij.openapi.diagnostic.Logger;
 
 import java.io.File;
 import java.util.*;
 
 public class PitRepo {
+    private static final Logger LOGGER = Logger.getInstance(PitRepo.class);
+
     public static final String PIT_STANDARD_REPORTS_DIR = "pit-reports";
     public static final String PIT_IDEA_REPORTS_DIR = "pit-idea-reports";
 
@@ -148,7 +151,7 @@ public class PitRepo {
     }
 
     /**
-     * Reloads all reports that can be found in the output directory, including CLI generated reports.
+     * Reloads all reports that can be found in the output directory, including those generated from CLI.
      *
      * @param project to update
      */
@@ -182,11 +185,17 @@ public class PitRepo {
 
     private static void loadReport(Module module, File report) {
         if (report.isDirectory()) {
-            CachedRun cachedRun = PitRepo.register(module, new ExecutionRecord(report), report.getPath());
+            CachedRun cachedRun = null;
             try {
+                cachedRun = PitRepo.register(module, new ExecutionRecord(report), report.getPath());
                 cachedRun.reload();
-            } catch (Exception _e) {
-                deregister(module.getProject(), cachedRun);
+            } catch (Exception e) {
+                if (cachedRun == null) {
+                    LOGGER.warn("Failed to load report: " + e.getMessage());
+                } else {
+                    LOGGER.warn("Failed to load report for " + cachedRun.getExecutionRecord().getReportDirectoryName(), e);
+                    deregister(module.getProject(), cachedRun);
+                }
                 // Report directories generated from a previous failed/canceled PIT may exist but
                 // easiest to just ignore them as the utility of loading them is low and they'll
                 // get removed anyway on the next project clean.

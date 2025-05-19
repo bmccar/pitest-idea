@@ -144,8 +144,7 @@ public class CachedRun implements Comparable<CachedRun> {
     }
 
     public File getReportFileDir() {
-        String path = reportDirectory.replace('\\', '/');
-        return new File(path);
+        return new File(reportDirectory);
     }
 
     public File getMutationsFile() {

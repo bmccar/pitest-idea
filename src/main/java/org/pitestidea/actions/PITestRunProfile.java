@@ -211,9 +211,6 @@ public class PITestRunProfile implements ModuleRunProfile {
                         final Application app = ApplicationManager.getApplication();
                         final AtomicBoolean anyErrors = new AtomicBoolean(false);
                         app.executeOnPooledThread(() -> {
-                            app.invokeLater(() -> {
-                                app.runWriteAction(() -> cachedRun.getExecutionRecord().writeToDirectory(cachedRun.getReportFileDir()));
-                            });
                             File src = cachedRun.getMutationsFile();
                             app.runReadAction(() -> {
                                 try {
@@ -222,6 +219,11 @@ public class PITestRunProfile implements ModuleRunProfile {
                                     anyErrors.set(true);
                                 }
                             });
+                            if (!anyErrors.get()) {
+                                app.invokeLater(() -> {
+                                    app.runWriteAction(() -> cachedRun.getExecutionRecord().writeToDirectory(cachedRun.getReportFileDir()));
+                                });
+                            }
                             displayResultPopup(cachedRun, mutationControlPanel, app, anyErrors.get());
                         });
                         return !anyErrors.get();
