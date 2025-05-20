@@ -41,7 +41,7 @@ public class MutationMultiAction extends AnAction {
                 return null;
             }).filter(Objects::nonNull).toList();
 
-            Module module = getModuleForVirtualFile(project,virtualFiles.get(0));
+            Module module = getModuleForVirtualFile(project, virtualFiles.get(0));
             ExecutionUtils.execute(module, virtualFiles);
         }
     }

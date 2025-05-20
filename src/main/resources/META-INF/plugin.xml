@@ -2,7 +2,7 @@
 
     <id>com.github.bmccar.pitestidea</id>
     <name>PITest</name>
-    <vendor email="bmccarthy@sidecourt.com">Brendan McCarthy</vendor>
+    <vendor email="bmccar@sidecourt.com">Brendan McCarthy</vendor>
 
     <!-- Product and plugin compatibility requirements -->
     <depends>com.intellij.modules.platform</depends>
