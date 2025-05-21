@@ -1,7 +1,7 @@
 # pitest-idea
 
 <!-- Plugin description -->
-Run [PIT](https://pitest.org) mutation tests from Intellij IDEA. Features:
+Run [PIT](https://pitest.org) mutation tests from IntelliJ IDEA. Features:
 
 * Run against any combination of files -- automatically matches sources and tests
 * See mutation icons directly in IDE or jump to a browser view

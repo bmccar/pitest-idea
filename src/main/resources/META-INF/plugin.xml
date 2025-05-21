@@ -8,27 +8,6 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
 
-    <description>
-        <![CDATA[
-       Run <a href="https://pitest.org">PIT</a> mutation tests. Features:
-       <ul>
-         <li> Run against any combination of files -- automatically matches sources and tests
-         <li> See mutation icons directly in IDE or jump to a browser view
-         <li> Sort/filter results, see score breakdown
-         <li> View and re-execute previous runs
-       </ul>
-,       Currently only Java and Maven projects are supported.
-    ]]>
-
-    </description>
-    <change-notes>
-        <![CDATA[
-      <ul>
-        <li><b>1.0.0</b> First release.</li>
-      </ul>
-    ]]>
-    </change-notes>
-
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="PITest" secondary="true" icon="/icons/pitest.svg" anchor="bottom"
                     factoryClass="org.pitestidea.toolwindow.PitToolWindowFactory"/>
