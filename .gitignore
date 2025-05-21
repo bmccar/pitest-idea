@@ -2,7 +2,7 @@
 .gradle
 build
 target
-out/*%
+out
 
 .DS_Store
 

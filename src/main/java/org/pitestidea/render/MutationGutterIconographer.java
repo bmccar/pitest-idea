@@ -7,10 +7,10 @@ import javax.swing.*;
 import java.util.Objects;
 
 class MutationGutterIconographer extends GutterIconRenderer {
-    private final Icon icon;
+    private final @NotNull Icon icon;
     private final String toolTip;
 
-    MutationGutterIconographer(Icon icon, String toolTip) {
+    MutationGutterIconographer(@NotNull Icon icon, String toolTip) {
         this.icon = icon;
         this.toolTip = toolTip;
     }

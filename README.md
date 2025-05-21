@@ -41,8 +41,9 @@ options and history (below right).
 
 <p>PIT is run in the background and should not impact IDE performance while it runs. Do be aware however that PIT can 
 take a while for large test scopes with many input files, or packages with extensive progeny. 
-You can always open the PIT window directly from its toolwindow icon and see the status of any ongoing executions 
-and also cancel them if you like. See the [PIT](https://pitest.org) site for more details on its execution.
+You can always open the PIT window directly from its toolwindow icon (lower right in diagrams above) and see the status 
+of any ongoing executions and also cancel them if you like. 
+See the [PIT](https://pitest.org) site for more details on its execution.
 
 ## FAQ
 

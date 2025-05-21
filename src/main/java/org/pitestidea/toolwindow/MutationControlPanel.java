@@ -37,7 +37,7 @@ import java.util.function.Consumer;
  * </ul>
  * These panes are stretchable and include buttons to expand or collapse the panes.
  */
-public class MutationControlPanel {
+public final class MutationControlPanel {
     private static final Logger LOGGER = Logger.getInstance(MutationControlPanel.class);
 
     private final HistoryList historyList = new HistoryList();
@@ -294,7 +294,6 @@ public class MutationControlPanel {
     }
 
     public void reloadReports(Project project) {
-        System.out.println("Reloading reports for " + project.getName());
         CachedRun current = reloadHistory(project);
         if (current != null) {
             clearScores(current);
@@ -303,8 +302,7 @@ public class MutationControlPanel {
     }
 
     public CachedRun reloadHistory(Project project) {
-        System.out.println("Reloading history for " + project.getName());
-        clearHistory();
+                clearHistory();
         class CrossHistory {
             boolean anyDeletable = false;
             CachedRun current = null;
@@ -485,7 +483,7 @@ public class MutationControlPanel {
         }
     }
 
-    public void handleCompletion(CachedRun cachedRun) {
+    public void handleCompletion(@NotNull CachedRun cachedRun) {
         reloadHistory(cachedRun.getProject());
     }
 
@@ -510,7 +508,7 @@ public class MutationControlPanel {
         return result;
     }
 
-    private boolean cancelSync(CachedRun cachedRun) {
+    private boolean cancelSync(@NotNull CachedRun cachedRun) {
         cachedRun.setRunState(RunState.CANCELLED);
         // Assume no other significant work involved in canceling the reload
         reloadReports(cachedRun.getProject());

@@ -24,7 +24,6 @@ public class FileOpenCloseListener implements FileEditorManagerListener {
      * @param project to check for open files
      */
     public static void replayOpenFiles(Project project) {
-        System.out.println("Replaying open files for project: " + project.getName());
         for (Editor editor : EditorFactory.getInstance().getAllEditors()) {
             if (project == editor.getProject()) {
                 Document document = editor.getDocument();

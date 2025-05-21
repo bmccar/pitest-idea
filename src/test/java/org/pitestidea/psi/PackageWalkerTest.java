@@ -76,7 +76,6 @@ class PackageWalkerTest {
         });
         when(virtualFileManager.findFileByUrl(any())).thenAnswer((Answer<VirtualFile>) invocation -> {
             String url = invocation.getArgument(0);
-            System.out.printf("findFileByUrl(%s)%n", url);
             return BaseVirtualFileFake.findByPath(url);
         });
 
@@ -143,10 +142,8 @@ class PackageWalkerTest {
 
     record FileSet(String loc, List<BaseVirtualFileFake> files) {
         void verify(String pathToMatch) {
-            System.out.printf("verify(%s)%n", pathToMatch);
             for (int i = 0; i < files.size(); i++) {
                 BaseVirtualFileFake next = files.get(i);
-                System.out.printf(" %d) name=%s, nextPath=%s, path=%s%n", i, next.getName(), next.getRelativePath(), pathToMatch);
                 if (next.getRelativePath().equals(pathToMatch)) {
                     files.remove(i);
                     return;

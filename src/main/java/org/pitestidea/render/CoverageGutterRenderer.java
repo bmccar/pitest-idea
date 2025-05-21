@@ -43,14 +43,12 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
 
     @Override
     public void fileOpened(Project project, VirtualFile file, FileMutations fileMutations, IMutationScore score) {
-        //System.out.println("RENDERER.fileOpened " + file.getPath());
         Application app = ApplicationManager.getApplication();
         app.executeOnPooledThread(() -> app.runReadAction(() -> fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations))));
     }
 
     @Override
     public void fileClosed(Project project, VirtualFile file) {
-        //System.out.println("RENDERER.fileClosed " + file.getPath());
         FileDocumentManager fileDocumentManager = FileDocumentManager.getInstance();
         Document document = fileDocumentManager.getDocument(file);
         removeDocumentIcons(document, project);

@@ -90,8 +90,6 @@ public class PITestRunProfile implements ModuleRunProfile {
                 inputBundle.asQn().transform(c -> c == InputBundle.Category.TEST_PKG, PITestRunProfile::starAll).stream()
         ).collect(Collectors.joining(","));
 
-        System.out.println("*** codeClasses: " + codeClasses);
-        System.out.println("*** testClasses: " + testClasses);
         return new JavaCommandLineState(environment) {
             @Override
             protected JavaParameters createJavaParameters() {

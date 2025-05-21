@@ -23,7 +23,7 @@ import javax.xml.transform.stream.StreamResult;
 /**
  * Records summary information for a specific for a run of PIT. Can be read/written to an XML file.
  */
-public class ExecutionRecord implements Comparable<ExecutionRecord> {
+public final class ExecutionRecord implements Comparable<ExecutionRecord> {
     public static final String META_FILE_NAME = "run.xml";
 
     private final static String ROOT_ELEMENT = "execution-record";

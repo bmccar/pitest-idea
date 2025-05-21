@@ -49,7 +49,7 @@ public class CachedRun implements Comparable<CachedRun> {
         this.reportDirectory = reportDirectory;
     }
 
-    public RunState getRunState() {
+    public synchronized RunState getRunState() {
         return runState;
     }
 
@@ -198,14 +198,13 @@ public class CachedRun implements Comparable<CachedRun> {
 
     private static @NotNull Future<File[]> collectValidReportDirectories(File dir) {
         final Application app = ApplicationManager.getApplication();
-        @NotNull Future<File[]> future = app.executeOnPooledThread(() -> app.runReadAction((Computable<File[]>) () -> {
+        return app.executeOnPooledThread(() -> app.runReadAction((Computable<File[]>) () -> {
             File[] files = dir.listFiles();
             if (files != null && Arrays.stream(files).anyMatch(f -> f.getName().equals(MUTATIONS_FILE))) {
                 return files;
             }
             return null;
         }));
-        return future;
     }
 
     private void deleteFilesInDir(File dir) {
