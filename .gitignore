@@ -11,6 +11,7 @@ out/*%
 *.iws
 *.iml
 *.ipr
+.intellijPlatform
 
 *~
 no-compile-bucket

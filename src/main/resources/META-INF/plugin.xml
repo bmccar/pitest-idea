@@ -37,7 +37,7 @@
     <actions>
         <action id="MutationAction"
                 class="org.pitestidea.actions.MutationAction"
-                text="Run PITest against this file and its test"
+                text="Run PITest Against This File and Its Test"
                 icon="/icons/pitest.svg"
                 description="Finds a matching unit test and runs that against this class">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
@@ -47,9 +47,6 @@
                 text="Run PITest Here" icon="/icons/pitest.svg"
                 description="Open a tool window with this package's contents">
             <add-to-group group-id="ProjectViewPopupMenu"/>
-            <!--
-            <enable-on-package />
-            -->
         </action>
     </actions>
 

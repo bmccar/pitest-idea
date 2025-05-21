@@ -1,5 +1,6 @@
 # pitest-idea
 
+<!-- Plugin description -->
 Run [PIT](https://pitest.org) mutation tests from Intellij IDEA. Features:
 
 * Run against any combination of files -- automatically matches sources and tests
@@ -8,6 +9,7 @@ Run [PIT](https://pitest.org) mutation tests from Intellij IDEA. Features:
 * View and re-execute previous runs
 
 Currently, only Java and Maven projects are supported.
+<!-- Plugin description end -->
 
 ## Getting Started
 
@@ -72,6 +74,7 @@ The practical considerations of this are that:
 <ul>
 <li>Kotlin support
 <li>Gradle support
+<li>Excludes
 <li>Run deltas
 <li>VCS-relative partial execution
 </ul>

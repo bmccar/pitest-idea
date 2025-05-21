@@ -5,9 +5,8 @@ import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
-import org.eclipse.jgit.annotations.NonNull;
-import org.eclipse.jgit.annotations.Nullable;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.pitestidea.reader.InvalidMutatedFileException;
 import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
@@ -41,7 +40,7 @@ public class CachedRun implements Comparable<CachedRun> {
     private BiConsumer<RunState, RunState> runStateChangedListener;
 
     // Directory may or may not exist -- store the String path rather than File to avoid race-deletion headaches
-    private final @NonNull String reportDirectory;
+    private final @NotNull String reportDirectory;
 
     public CachedRun(PitRepo.ProjectRunRecords runRecords, ExecutionRecord record, PitExecutionRecorder recorder, String reportDirectory) {
         this.runRecords = runRecords;
@@ -200,8 +199,8 @@ public class CachedRun implements Comparable<CachedRun> {
     private static @NotNull Future<File[]> collectValidReportDirectories(File dir) {
         final Application app = ApplicationManager.getApplication();
         @NotNull Future<File[]> future = app.executeOnPooledThread(() -> app.runReadAction((Computable<File[]>) () -> {
-            File[] files =  dir.listFiles();
-            if (files != null && Arrays.stream(files).anyMatch(f->f.getName().equals(MUTATIONS_FILE))) {
+            File[] files = dir.listFiles();
+            if (files != null && Arrays.stream(files).anyMatch(f -> f.getName().equals(MUTATIONS_FILE))) {
                 return files;
             }
             return null;
