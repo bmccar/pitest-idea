@@ -38,7 +38,7 @@ public class MutationsFileReader {
         } catch (InvalidMutatedFileException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new InvalidMutatedFileException(e);
         }
     }
 

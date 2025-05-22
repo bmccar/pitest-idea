@@ -118,10 +118,12 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
     }
 
     private static void removeDocumentIcons(Document currentDoc, Project project) {
-        MarkupModel markupModel = DocumentMarkupModel.forDocument(currentDoc, project, true);
-        for (@NotNull RangeHighlighter next : markupModel.getAllHighlighters()) {
-            if (next.getUserData(HIGHLIGHTER_KEY) != null) {
-                markupModel.removeHighlighter(next);
+        if (currentDoc != null) {
+            MarkupModel markupModel = DocumentMarkupModel.forDocument(currentDoc, project, true);
+            for (@NotNull RangeHighlighter next : markupModel.getAllHighlighters()) {
+                if (next.getUserData(HIGHLIGHTER_KEY) != null) {
+                    markupModel.removeHighlighter(next);
+                }
             }
         }
     }
