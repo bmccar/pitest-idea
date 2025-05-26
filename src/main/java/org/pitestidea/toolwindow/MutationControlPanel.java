@@ -51,6 +51,7 @@ public final class MutationControlPanel {
     private EnumRadio<Sorting.Direction> dirSelector;
     private JButton clearAllButton;
     private boolean isGutterIconsEnabled = true;
+    private boolean isPitVerbose = false;
     private int headerHeight;  // For aligning headers across different panes
     private final AtomicInteger activeRuns = new AtomicInteger(0);
 
@@ -63,16 +64,26 @@ public final class MutationControlPanel {
     private JPanel createConsolePane() {
         JPanel fullPanel = new JPanel(new BorderLayout());
 
-        JPanel header = new JPanel(new BorderLayout());
-        JComponent stretchButton = stretchPane.getConsoleButton();
-        header.add(stretchButton, BorderLayout.WEST);
-        // Align header heights with a small fudge factor
+        JPanel header = createConsoleHeaderPanel();
+
         header.setPreferredSize(new Dimension(20, headerHeight + 4));
         fullPanel.add(header, BorderLayout.NORTH);
         fullPanel.add(rightScrollPane, BorderLayout.CENTER);
 
         return fullPanel;
     }
+
+    private JPanel createConsoleHeaderPanel() {
+        JPanel header = new JPanel(new BorderLayout());
+        Box box = Box.createHorizontalBox();
+        box.add(stretchPane.getConsoleButton());
+        box.add(Box.createHorizontalGlue());
+        box.add(createPitVerboseButton());
+        header.add(box, BorderLayout.CENTER);
+        return header;
+    }
+
+
 
     private JSplitPane scoresSplitPane;
 
@@ -188,6 +199,22 @@ public final class MutationControlPanel {
                 CoverageGutterRenderer.removeGutterIcons(project);
             }
         });
+        return getConstrainedPanel(checkBox);
+    }
+
+    private JComponent createPitVerboseButton() {
+        JCheckBox checkBox = new JCheckBox("Verbose");
+        checkBox.setToolTipText("Sets 'verbose' tag on next PIT run");
+        checkBox.setHorizontalAlignment(SwingConstants.CENTER);
+        checkBox.setSelected(isPitVerbose);
+        checkBox.addActionListener(e -> {
+            isPitVerbose = checkBox.isSelected();
+        });
+
+        return getConstrainedPanel(checkBox);
+    }
+
+    private static @NotNull JPanel getConstrainedPanel(JCheckBox checkBox) {
         // Overwrite default behavior on checkbox that defaults to an extra-wide min width
         Dimension d = new Dimension(10, checkBox.getMinimumSize().height);
         checkBox.setMinimumSize(d);
@@ -530,6 +557,10 @@ public final class MutationControlPanel {
     public Level getLevel() {
         tree.clearExistingRows();
         return new Level(tree.addRootRow(), true);
+    }
+
+    public boolean isPitVerboseEnabled() {
+        return isPitVerbose;
     }
 
     public static class Level {

@@ -20,6 +20,7 @@ import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.util.PathsList;
 import org.jetbrains.annotations.NotNull;
+import org.pitestidea.configuration.GradleUtils;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
 import org.pitestidea.reader.InvalidMutatedFileException;
@@ -69,11 +70,6 @@ public class PITestRunProfile implements ModuleRunProfile {
         return path + fe + ".jar";
     }
 
-    private String localBuildPath(String fe) {
-        String fs = FileSystems.getDefault().getSeparator();
-        return project.getBasePath() + fs + "target" + fs + fe;
-    }
-
     private static String starAll(String s) {
         return s.isEmpty() ? "*" : s + ".*";
     }
@@ -96,18 +92,7 @@ public class PITestRunProfile implements ModuleRunProfile {
                 JavaParameters javaParameters = new JavaParameters();
                 javaParameters.setJdk(ProjectRootManager.getInstance(project).getProjectSdk());
                 javaParameters.setUseClasspathJar(true);
-                String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
-                ParametersList params = javaParameters.getProgramParametersList();
-                File reportDir = cachedRun.getReportFileDir();
-                params.add("--reportDir", reportDir.getPath());
-                params.add("--targetClasses", codeClasses);
-                params.add("--targetTests", testClasses);
-                params.add("--sourceDirs", projectDir + "/src/main/java");
-                params.add("--outputFormats", "XML,HTML");
-                params.add("--exportLineCoverage", "true");
-                //params.add("--verbose", "true");
-                javaParameters.setWorkingDirectory(project.getBasePath());
-                javaParameters.setMainClass(PIT_MAIN_CLASS);
+
                 PathsList classPath = javaParameters.getClassPath();
 
                 // Versions must match build.gradle.kts
@@ -128,12 +113,32 @@ public class PITestRunProfile implements ModuleRunProfile {
                 classPath.add(pluginJar("junit-platform-launcher-1.9.2"));
                 classPath.add(pluginJar("commons-text-1.10.0"));
                 classPath.add(pluginJar("commons-lang3-3.12.0"));
-                classPath.add(localBuildPath("test-classes"));
-                classPath.add(localBuildPath("classes"));
+                String mutableCodePath = IdeaDiscovery.getAndSetClassPathOuts(module,classPath);
+
+                String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
+                ParametersList params = javaParameters.getProgramParametersList();
+                File reportDir = cachedRun.getReportFileDir();
+                params.add("--reportDir", reportDir.getPath());
+                params.add("--targetClasses", codeClasses);
+                params.add("--targetTests", testClasses);
+                params.add("--mutableCodePaths", mutableCodePath);
+                params.add("--sourceDirs", projectDir + "/src/main/java");
+                params.add("--outputFormats", "XML,HTML");
+                params.add("--exportLineCoverage", "true");
+                MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
+                if (mutationControlPanel.isPitVerboseEnabled()) {
+                    params.add("--verbose", "true");
+                }
+                javaParameters.setWorkingDirectory(IdeaDiscovery.getAbsolutePathOfModule(module));
+                javaParameters.setMainClass(PIT_MAIN_CLASS);
 
                 ApplicationManager.getApplication().runReadAction(() -> {
                     try {
-                        JavaParametersUtil.configureModule(PITestRunProfile.this.module, javaParameters, JavaParameters.JDK_AND_CLASSES_AND_TESTS, null);
+                        // For Gradle, JavaParametersUtil call doesn't include Provided elements like with Maven,
+                        // so first try to set Gradle-style and if not a Gradle project then fallback to Maven
+                        if (!GradleUtils.configureFromGradleClasspath(module,javaParameters)) {
+                            JavaParametersUtil.configureModule(PITestRunProfile.this.module, javaParameters, JavaParameters.JDK_AND_CLASSES_AND_TESTS, null);
+                        }
                     } catch (ExecutionException e) {
                         throw new RuntimeException(e);
                     }

@@ -1,19 +1,20 @@
 package org.pitestidea.configuration;
 
 import com.intellij.openapi.compiler.CompilerPaths;
-import com.intellij.openapi.editor.Document;
-import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.roots.ModuleRootManager;
+import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.WindowManager;
-import com.intellij.psi.*;
+import com.intellij.util.PathsList;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.model.CachedRun;
 
 import java.awt.*;
@@ -48,25 +49,15 @@ public class IdeaDiscovery {
             return null; // Safety check
         }
 
-        // Get the content roots of the module
-        VirtualFile[] contentRoots = ModuleRootManager.getInstance(module).getContentRoots();
-
-        if (contentRoots.length > 0) {
-            // Return the absolute file system path of the first content root
-            return contentRoots[0].getPath();
+        Project project = module.getProject();
+        String path = GradleUtils.findModulePathGradle(project, module);
+        if (path == null) {
+            VirtualFile file = ProjectUtil.guessModuleDir(module);
+            if (file != null) {
+                path = file.getPath();
+            }
         }
-        return null; // No content root available
-    }
-
-    public static @Nullable PsiJavaFile getCurrentJavaFile(Project project) {
-        @Nullable Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
-        if (editor != null) {
-            Document currentDoc = editor.getDocument();
-            PsiDocumentManager documentManager = PsiDocumentManager.getInstance(project);
-            PsiFile psiFile = documentManager.getPsiFile(currentDoc);
-            return (PsiJavaFile) psiFile;
-        }
-        return null;
+        return path;
     }
 
     public static VirtualFile getCurrentFile() {
@@ -78,13 +69,56 @@ public class IdeaDiscovery {
                 : null;
     }
 
-    public static String getAbsoluteOutputPath(Module module, String... subs) {
+    public static String getAndSetClassPathOuts(Module module, PathsList list) {
+        String outDir = getModuleOutputDirectory(module);
+        String mutableCodePath = outDir + File.separatorChar + "classes";
+        File testClasses = new File(outDir + File.separatorChar + "test-classes");
+        if (testClasses.exists()) {  // true for Maven, false for Gradle
+            list.add(outDir + File.separatorChar + "classes");
+            list.add(testClasses.getPath());
+        } else {
+            list.add(outDir + File.separatorChar + "classes/java/main");
+            list.add(outDir + File.separatorChar + "classes/java/test");
+            mutableCodePath += "/java/main";
+        }
+        return mutableCodePath;
+    }
+
+    /**
+     * Returns the output directory immediately below the module directory.
+
+     * @param module to find output directory for
+     * @return output directory
+     */
+    @VisibleForTesting
+    public static String getModuleOutputDirectory(@NotNull Module module) {
         @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
         if (vf == null) {
-            throw new RuntimeException("No output directory for module " + module.getName());
+            final String firstName = module.getName();
+            // Gradle projects have separate modules for module X: "X.main" and "X.test". If the user request
+            // was initiated from a test file, we get the "X.test" module which doesn't have the source file.
+            // Adjust for that here by switching from X.test to X.main.
+            final String gradleSfx = ".test";
+            if (firstName.endsWith(gradleSfx) ) {
+                String subName = firstName.substring(0, firstName.length() - gradleSfx.length()) + ".main";
+                ModuleManager moduleManager = ModuleManager.getInstance(module.getProject());
+                module =  moduleManager.findModuleByName(subName);
+                if (module != null) {
+                    return getModuleOutputDirectory(module);
+                }
+            }
+            throw new RuntimeException("No output directory for module " + firstName);
         }
-        vf = vf.getParent();
-        StringBuilder sb = new StringBuilder(vf.getPath());
+        String path = vf.getPath();
+        // From the CompilerPaths call, a Gradle project returns several levels while Maven projects just one,
+        // so ensure we're returning only the immediate child of the base
+        String base = getAbsolutePathOfModule(module);
+        return path.substring(0, path.indexOf(File.separatorChar, base.length()+2));
+    }
+
+    public static String getAbsoluteOutputPath(Module module, String... subs) {
+        String path = getModuleOutputDirectory(module);
+        StringBuilder sb = new StringBuilder(path);
         for (String sub : subs) {
             sb.append(FileSystems.getDefault().getSeparator());
             sb.append(sub);
@@ -93,16 +127,7 @@ public class IdeaDiscovery {
     }
 
     public static File getAbsoluteOutputDir(Module module, String... subs) {
-        @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
-        if (vf == null) {
-            return null;
-        }
-        vf = vf.getParent();
-        File file = new File(vf.getPath());
-        for (String sub : subs) {
-            file = new File(file, sub);
-        }
-        return file;
+        return new File(getAbsoluteOutputPath(module,subs));
     }
 
     public static <T> T onLocationOf(Project project, VirtualFile selectedFile, T code, T test) {

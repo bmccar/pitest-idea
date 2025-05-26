@@ -8,7 +8,6 @@ import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleUtilCore;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.psi.PsiJavaFile;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.IdeaDiscovery;
 
@@ -26,13 +25,11 @@ public class MutationAction extends AnAction {
         Project project = e.getProject();
         if (project == null) return;
 
-        PsiJavaFile javaFile = IdeaDiscovery.getCurrentJavaFile(project);
-        if (javaFile != null) {
-            Module module = ModuleUtilCore.findModuleForPsiElement(javaFile);
-
-            VirtualFile currentFile = IdeaDiscovery.getCurrentFile();
-
-            if (module != null && currentFile != null) {
+        VirtualFile currentFile = IdeaDiscovery.getCurrentFile();
+        if (currentFile != null) {
+            Module module = ModuleUtilCore.findModuleForFile(currentFile, project);
+        
+            if (module != null) {
                 ExecutionUtils.execute(module, List.of(currentFile));
             }
         }
@@ -58,4 +55,3 @@ public class MutationAction extends AnAction {
         }
     }
 }
-

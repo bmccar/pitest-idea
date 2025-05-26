@@ -5,24 +5,35 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import com.intellij.openapi.module.Module;
+import org.pitestidea.configuration.IdeaDiscovery;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 class PitRepoTest {
 
     private Module commonModule;
     private MockedStatic<CompilerPaths> compilerPaths;
+
+    @BeforeAll
+    static void beforeAll() {
+        MockedStatic<IdeaDiscovery> discoveryMockedStatic = Mockito.mockStatic(IdeaDiscovery.class);
+        discoveryMockedStatic.when(()->IdeaDiscovery.getModuleOutputDirectory(any())).thenReturn("someOutputDir");
+        discoveryMockedStatic.when(()->IdeaDiscovery.getAbsoluteOutputPath(any(),any(),any())).thenReturn("someAbsoluteOutputPath");
+    }
+
 
     @BeforeEach
     void setUp() {

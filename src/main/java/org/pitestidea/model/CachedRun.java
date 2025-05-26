@@ -42,7 +42,7 @@ public class CachedRun implements Comparable<CachedRun> {
     // Directory may or may not exist -- store the String path rather than File to avoid race-deletion headaches
     private final @NotNull String reportDirectory;
 
-    public CachedRun(PitRepo.ProjectRunRecords runRecords, ExecutionRecord record, PitExecutionRecorder recorder, String reportDirectory) {
+    public CachedRun(PitRepo.ProjectRunRecords runRecords, ExecutionRecord record, PitExecutionRecorder recorder, @NotNull String reportDirectory) {
         this.runRecords = runRecords;
         this.recorder = recorder;
         this.executionRecord = record;

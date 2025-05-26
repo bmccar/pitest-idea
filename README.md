@@ -7,8 +7,9 @@ Run [PIT](https://pitest.org) mutation tests from IntelliJ IDEA. Features:
 * See mutation icons directly in IDE or jump to a browser view
 * Sort/filter results, see score breakdown
 * View and re-execute previous runs
+* Maven and Gradle support
 
-Currently, only Java and Maven projects are supported.
+Currently supports Java. Kotlin is not yet supported.
 <!-- Plugin description end -->
 
 ## Getting Started
@@ -40,7 +41,7 @@ options and history (below right).
 </p>
 
 <p>PIT is run in the background and should not impact IDE performance while it runs. Do be aware however that PIT can 
-take a while for large test scopes with many input files, or packages with extensive progeny. 
+take a while (hours even) for large test scopes with many input files, or packages with extensive progeny. 
 You can always open the PIT window directly from its toolwindow icon (lower right in diagrams above) and see the status 
 of any ongoing executions and also cancel them if you like. 
 See the [PIT](https://pitest.org) site for more details on its execution.
@@ -65,18 +66,43 @@ The final inputs can be seen in the tooltip on entries in the history list.
 
 <p>In the output build directory (look for "pit-idea-reports" if interested). 
 The practical considerations of this are that:
-<ul>
-<li>If you do a 'clean' outside the IDE they will be removed just like everything else</li>
-<li>They are written from a PITest run but loaded back only at startup time, so there is no impact if they are deleted while the IDE is running
-</ul>
+
+* If you do a 'clean' outside the IDE they will be removed just like everything else
+* They are written from a PITest run but loaded back only at startup time, so there is no impact if they are deleted while the IDE is running
+
+
+#### 3. <i>Where does PIT output trace go?</i>
+To the console pane, which is visible by clicking the "<" icon button in the upper right of the plugin tool window.
+If PIT fails, the popup dialog will also unhide the console unless you choose to "Ignore" the failure. 
+
+The console pane can be hidden by clicking on the ">" icon button in the upper right of the scores pane where output
+scores are shown. You might have to horizontally scroll rightward if it's not visible.
+
+## Troubleshooting
+First, make sure your project compiles. The plugin initiates an incremental build before execution, so PIT won't even
+be attempted if the project does not compile.
+
+Second, make sure your tests (those targeted for a given run) pass. PIT will start but will exit with an error if it can't run the tests.
+
+If the failure persists and is from PIT, you can try turning on PIT verbose mode from the checkbox at the top of the console pane (see
+FAQ above for discussion on the console pane). This option will also display output as PIT executes.
+
+If there is nothing noticeable there, you can inspect the full PIT command which is the first line (in white) in the console window.
+You can even copy/paste and run this command in a shell after suitably escaping any wildcard '*' characters. This may provide
+some insight into the problem.
+
+If none of this helps then feel free to file a bug report [here](https://github.com/bmccar/pitest-idea/issues) 
+but please do include the output from verbose mode and the full PIT command as described above (if PIT is itself failing).
+Also describe the language, build system, and project structure — a bug may be due to an unanticipated project structure.
+
+
 
 ## Future Enhancements
 
-<ul>
-<li>Kotlin support
-<li>Gradle support
-<li>Excludes
-<li>Run deltas
-<li>VCS-relative partial execution
-</ul>
+* Kotlin support
+* Cross-module support
+* Optional properties
+* Excludes
+* Run deltas
+* VCS-relative partial execution
 

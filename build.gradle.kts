@@ -20,6 +20,7 @@ kotlin {
 // Configure project's dependencies
 repositories {
     mavenCentral()
+        maven("https://repo.gradle.org/gradle/libs-releases")
 
     // IntelliJ Platform Gradle Plugin Repositories Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-repositories-extension.html
     intellijPlatform {
@@ -47,6 +48,9 @@ dependencies {
         zipSigner()
     }
 
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21")
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.21")
+    implementation("org.gradle:gradle-tooling-api:8.7")
     implementation("org.pitest:pitest-command-line:$pitVersion")
     implementation("org.pitest:pitest-entry:$pitVersion")
     implementation("org.pitest:pitest:$pitVersion")
