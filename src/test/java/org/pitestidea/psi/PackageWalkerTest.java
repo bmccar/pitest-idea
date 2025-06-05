@@ -15,6 +15,7 @@ import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.pitestidea.model.InputBundle;
 import org.pitestidea.psi.fakes.*;
+import org.pitestidea.reader.PackageWalker;
 
 import java.util.ArrayList;
 import java.util.Arrays;

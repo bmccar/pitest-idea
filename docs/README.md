@@ -16,7 +16,7 @@ Run [PIT](https://pitest.org) mutation tests from IntelliJ IDEA. Features:
 * No advanced customization of the PIT command, such as excludes
 
 ## Configuration
-Supports recent versions of junit5 with no additional configuration. See [here](configuration.html) for cases where additional
+Supports recent versions of junit5 with no additional configuration. See [here](https://bmccar.github.io/pitest-idea/configuration.html) for cases where additional
 build file configuration may be necessary.
 
 ## Getting Started
@@ -97,11 +97,4 @@ You can make use of the controls on top of the console pane in the toolwindow fo
 If none of the above helps, feel free to file a bug report [here](https://github.com/bmccar/pitest-idea/issues) with appropriate information from the
 sources above.
 
-## Future Enhancements
-* Kotlin support
-* Cross-module support
-* Optional properties
-* Excludes
-* Run deltas
-* VCS-relative partial execution
 

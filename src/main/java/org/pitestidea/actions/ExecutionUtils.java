@@ -20,7 +20,7 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.pitestidea.configuration.IdeaDiscovery;
 import org.pitestidea.model.*;
-import org.pitestidea.psi.PackageWalker;
+import org.pitestidea.reader.PackageWalker;
 import org.pitestidea.toolwindow.MutationControlPanel;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 

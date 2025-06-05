@@ -1,4 +1,4 @@
-package org.pitestidea.psi;
+package org.pitestidea.reader;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectFileIndex;
