@@ -1,9 +1,9 @@
 package org.pitestidea.configuration;
 
 import com.intellij.openapi.compiler.CompilerPaths;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
-import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.project.ProjectUtil;
@@ -25,6 +25,8 @@ import java.nio.file.FileSystems;
  * Various utilities for accessing elements of the opened project and files in Intellij.
  */
 public class IdeaDiscovery {
+    private static final Logger LOGGER = Logger.getInstance(IdeaDiscovery.class);
+
     public static Project getActiveProject() {
         Project[] openProjects = ProjectManager.getInstance().getOpenProjects();
         Project activeProject = null;
@@ -44,13 +46,12 @@ public class IdeaDiscovery {
         return activeProject;
     }
 
-    public static String getAbsolutePathOfModule(Module module) {
+    public static @Nullable String getAbsolutePathOfModule(Module module) {
         if (module == null) {
             return null; // Safety check
         }
 
-        Project project = module.getProject();
-        String path = GradleUtils.findModulePathGradle(project, module);
+        String path = GradleUtils.findModulePathGradle(module);
         if (path == null) {
             VirtualFile file = ProjectUtil.guessModuleDir(module);
             if (file != null) {
@@ -86,38 +87,39 @@ public class IdeaDiscovery {
 
     /**
      * Returns the output directory immediately below the module directory.
-
+     *
      * @param module to find output directory for
      * @return output directory
      */
     @VisibleForTesting
-    public static String getModuleOutputDirectory(@NotNull Module module) {
+    public static @Nullable String getModuleOutputDirectory(@NotNull Module module) {
         @Nullable VirtualFile vf = CompilerPaths.getModuleOutputDirectory(module, false);
         if (vf == null) {
-            final String firstName = module.getName();
-            // Gradle projects have separate modules for module X: "X.main" and "X.test". If the user request
-            // was initiated from a test file, we get the "X.test" module which doesn't have the source file.
-            // Adjust for that here by switching from X.test to X.main.
-            final String gradleSfx = ".test";
-            if (firstName.endsWith(gradleSfx) ) {
-                String subName = firstName.substring(0, firstName.length() - gradleSfx.length()) + ".main";
-                ModuleManager moduleManager = ModuleManager.getInstance(module.getProject());
-                module =  moduleManager.findModuleByName(subName);
-                if (module != null) {
-                    return getModuleOutputDirectory(module);
-                }
+            // Ensure it's a Gradle ".main" module because the ".test" module does not have the output directory
+            Module alt = GradleUtils.ensureMainModule(module);
+            if (alt != module) {
+                return getModuleOutputDirectory(alt);
             }
-            throw new RuntimeException("No output directory for module " + firstName);
+            return null;
         }
         String path = vf.getPath();
         // From the CompilerPaths call, a Gradle project returns several levels while Maven projects just one,
         // so ensure we're returning only the immediate child of the base
         String base = getAbsolutePathOfModule(module);
-        return path.substring(0, path.indexOf(File.separatorChar, base.length()+2));
+        if (base != null) {
+            int from = path.indexOf(File.separatorChar, base.length() + 2);
+            if (from > 0) {
+                return path.substring(0, from);
+            }
+        }
+        return null;
     }
 
-    public static String getAbsoluteOutputPath(Module module, String... subs) {
+    public static @Nullable String getAbsoluteOutputPath(Module module, String... subs) {
         String path = getModuleOutputDirectory(module);
+        if (path == null) {
+            return null;
+        }
         StringBuilder sb = new StringBuilder(path);
         for (String sub : subs) {
             sb.append(FileSystems.getDefault().getSeparator());
@@ -126,8 +128,20 @@ public class IdeaDiscovery {
         return sb.toString();
     }
 
-    public static File getAbsoluteOutputDir(Module module, String... subs) {
-        return new File(getAbsoluteOutputPath(module,subs));
+    public static @Nullable File getAbsoluteOutputDir(Module module, String... subs) {
+        String path = getModuleOutputDirectory(module);
+        if (path == null) {
+            return null;
+        }
+        if (subs != null && subs.length > 0) {
+            StringBuilder sb = new StringBuilder(path);
+            for (String sub : subs) {
+                sb.append(FileSystems.getDefault().getSeparator());
+                sb.append(sub);
+            }
+            path = sb.toString();
+        }
+        return new File(path);
     }
 
     public static <T> T onLocationOf(Project project, VirtualFile selectedFile, T code, T test) {
@@ -189,13 +203,19 @@ public class IdeaDiscovery {
     }
 
     public static VirtualFile findVirtualFileByRQN(Project project, String relPath) {
-
+        if (!project.isOpen()) {
+            String msg = String.format("Project %s not in expected state open=%b, initialized=%b",
+                    project.getName(),
+                    project.isOpen(),
+                    project.isInitialized());
+            LOGGER.warn(msg);
+        }
+        ProjectRootManager rootManager = ProjectRootManager.getInstance(project);
         // Iterate through all source roots of the project
-        for (VirtualFile sourceRoot : ProjectRootManager.getInstance(project).getContentSourceRoots()) {
-            // Find the file in this source root
+        for (VirtualFile sourceRoot : rootManager.getContentSourceRoots()) {
             VirtualFile file = sourceRoot.findFileByRelativePath(relPath);
             if (file != null) {
-                return file; // Return the file if found
+                return file;
             }
         }
         return null;

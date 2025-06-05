@@ -54,6 +54,7 @@ public final class MutationControlPanel {
     private boolean isPitVerbose = false;
     private int headerHeight;  // For aligning headers across different panes
     private final AtomicInteger activeRuns = new AtomicInteger(0);
+    private ClassPaths classPaths = null;
 
     public MutationControlPanel() {
         stretchPane.setLeft(createScoresPanel());  // Run 1st to set headerHeight;
@@ -79,6 +80,9 @@ public final class MutationControlPanel {
         box.add(stretchPane.getConsoleButton());
         box.add(Box.createHorizontalGlue());
         box.add(createPitVerboseButton());
+        box.add(Box.createHorizontalGlue());
+        box.add(createClasspathButton(header));
+        box.add(Box.createHorizontalGlue());
         header.add(box, BorderLayout.CENTER);
         return header;
     }
@@ -207,11 +211,48 @@ public final class MutationControlPanel {
         checkBox.setToolTipText("Sets 'verbose' tag on next PIT run");
         checkBox.setHorizontalAlignment(SwingConstants.CENTER);
         checkBox.setSelected(isPitVerbose);
-        checkBox.addActionListener(e -> {
-            isPitVerbose = checkBox.isSelected();
-        });
+        checkBox.addActionListener(e -> isPitVerbose = checkBox.isSelected());
 
         return getConstrainedPanel(checkBox);
+    }
+
+    private JComponent createClasspathButton(JComponent parent) {
+        JButton button = new JButton("Show Classpath...");
+        button.setToolTipText("Show classpath used for most recent PIT run, including classpaths added by the plugin, in green");
+        button.addActionListener(e -> {
+            if (classPaths != null) {
+                String msg = classPaths.formatHtml();
+                if (msg.isEmpty()) {
+                    msg = "No PIT runs yet. Select this option after you execute at least one PIT run.";
+                }
+
+                JEditorPane contentPane = new JEditorPane();
+                contentPane.setContentType("text/html");
+                contentPane.setEditable(false);
+                contentPane.setText(msg);
+                // Force scroll to top
+                SwingUtilities.invokeLater(() -> contentPane.setCaretPosition(0));
+
+                JScrollPane scrollPane = new JScrollPane(contentPane);
+                scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+                scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+                Dimension dim = new Dimension(scrollPane.getPreferredSize().width, 400);
+                scrollPane.setPreferredSize(dim);
+                scrollPane.setMaximumSize(dim);
+
+                Frame frame = (Frame) SwingUtilities.getWindowAncestor(parent);
+                JDialog dialog = new JDialog(frame, "Classpath used for most recent PIT run", true);
+                dialog.getContentPane().add(scrollPane);
+                dialog.setResizable(true);
+
+                dialog.pack();
+                dialog.setLocationRelativeTo(frame);
+
+                dialog.setVisible(true);
+            }
+        });
+        return button;
     }
 
     private static @NotNull JPanel getConstrainedPanel(JCheckBox checkBox) {
@@ -299,13 +340,15 @@ public final class MutationControlPanel {
     }
 
     /**
-     * Sets the body of the right panel. This is provided because the console component is
+     * Updates content for the console (right) panel. This is provided because the console component is
      * generated externally on PIT execution.
      *
-     * @param component to set as the right component (inside an already existing scroll pane)
+     * @param component to set as console body (inside an already existing scroll pane)
+     * @param classPaths to display in the classpath popup.
      */
-    public void setRightPaneContent(JComponent component) {
+    public void setConsoleContent(JComponent component, ClassPaths classPaths) {
         rightScrollPane.setViewportView(component);
+        this.classPaths = classPaths;
     }
 
     public void setFullConsole() {
@@ -473,11 +516,14 @@ public final class MutationControlPanel {
                 newRowState = true;
                 if (activeRuns.decrementAndGet() == 0) {
                     AtomicBoolean anyGenerated = new AtomicBoolean(false);
-                    PitRepo.apply(cachedRun.getProject(), (c, current) -> {
-                        if (c.getExecutionRecord().isRunnable()) {
-                            anyGenerated.set(true);
-                        }
-                    });
+                    Project project = cachedRun.getProject();
+                    if (project != null) {
+                        PitRepo.apply(project, (c, current) -> {
+                            if (c.getExecutionRecord().isRunnable()) {
+                                anyGenerated.set(true);
+                            }
+                        });
+                    }
                     newClearAllState = anyGenerated.get();
                 } else {
                     newClearAllState = null;
@@ -581,8 +627,11 @@ public final class MutationControlPanel {
                         if (button) {
                             IdeaDiscovery.openBrowserTo(IdeaDiscovery.getUrl(cachedRun, file));
                         } else {
-                            FileEditorManager fileEditorManager = FileEditorManager.getInstance(cachedRun.getProject());
-                            fileEditorManager.openFile(file, true); // true to focus the file
+                            Project project = cachedRun.getProject();
+                            if (project != null) {
+                                FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+                                fileEditorManager.openFile(file, true); // true to focus the file
+                            }
                         }
                     })
                     .addDelegatedSegment("(Click open; Ctrl-click browser)", ClickTree.Hover.FLASH);

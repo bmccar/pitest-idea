@@ -1,5 +1,8 @@
 package org.pitestidea.model;
 
+/**
+ * State of a PIT execution.
+ */
 public enum RunState {
     RUNNING(true), COMPLETED(true), CANCELLED(false), FAILED(false);
     final public boolean valid;

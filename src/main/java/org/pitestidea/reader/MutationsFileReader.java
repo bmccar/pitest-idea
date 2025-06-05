@@ -58,15 +58,16 @@ public class MutationsFileReader {
             MutationImpact impact = MutationImpact.valueOf(node.getAttribute("status"));
             String sourceFile = node.getElementsByTagName("sourceFile").item(0).getTextContent();
             String filePath = node.getElementsByTagName("mutatedClass").item(0).getTextContent();
-            int ix = filePath.lastIndexOf('.');
 
+            int ix = filePath.lastIndexOf('.');
             final String pkg;
             if (ix < 0) {
                 pkg = "";
                 filePath = sourceFile;
             } else {
                 pkg = filePath.substring(0,ix);
-                filePath = pkg.replace('.','/') + '/' + sourceFile;
+                char fs = File.separatorChar;
+                filePath = pkg.replace('.',fs) + fs + sourceFile;
             }
             VirtualFile virtualFile = findFromPath(project,filePath);
             if (virtualFile == null) {

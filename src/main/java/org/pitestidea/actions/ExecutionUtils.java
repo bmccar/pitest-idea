@@ -111,7 +111,7 @@ public class ExecutionUtils {
             ExecutionConsole ec = descriptor.getExecutionConsole();
             MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
 
-            mutationControlPanel.setRightPaneContent(ec.getComponent());
+            mutationControlPanel.setConsoleContent(ec.getComponent(), runProfile.getCachedRun().getClassPaths());
             runProfile.setOutputConsole((ConsoleView) ec.getComponent());
         };
         ExecutionEnvironment env = builder.build(callBack);

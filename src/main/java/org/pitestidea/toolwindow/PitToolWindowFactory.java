@@ -14,6 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.pitestidea.model.*;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import com.intellij.openapi.diagnostic.Logger;
@@ -100,7 +101,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         @Override
         public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
             String filePath = file.getPath();
-            String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+            String fileName = filePath.substring(filePath.lastIndexOf(File.separator) + 1);
             level.setLine(cachedRun, file, fileName, score);
         }
 
@@ -108,16 +109,18 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         public void visit(String pkg, String qualifiedPkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
             Project project = cachedRun.getProject();
             MutationControlPanel.Level nextLevel = level;
-            MutationControlPanel mutationControlPanel = getControlPanel(project);
-            Viewing.PackageChoice pkgSelection = mutationControlPanel.getPackageSelection();
-            boolean includeLine = diver.isTopLevel();
-            includeLine |= pkgSelection == Viewing.PackageChoice.PACKAGE;
-            includeLine |= pkgSelection == Viewing.PackageChoice.CODE && diver.hasCodeFileChildren();
-            if (includeLine) {
-                nextLevel = level.setLine(cachedRun, pkg, qualifiedPkg, score);
+            if (project != null) {
+                MutationControlPanel mutationControlPanel = getControlPanel(project);
+                Viewing.PackageChoice pkgSelection = mutationControlPanel.getPackageSelection();
+                boolean includeLine = diver.isTopLevel();
+                includeLine |= pkgSelection == Viewing.PackageChoice.PACKAGE;
+                includeLine |= pkgSelection == Viewing.PackageChoice.CODE && diver.hasCodeFileChildren();
+                if (includeLine) {
+                    nextLevel = level.setLine(cachedRun, pkg, qualifiedPkg, score);
+                }
+                MutationControlPanel.Level finalLevel = nextLevel;
+                diver.apply(new HierarchyPlanner(cachedRun, finalLevel));
             }
-            MutationControlPanel.Level finalLevel = nextLevel;
-            diver.apply(new HierarchyPlanner(cachedRun, finalLevel));
         }
     }
 

@@ -42,6 +42,9 @@ public class CachedRun implements Comparable<CachedRun> {
     // Directory may or may not exist -- store the String path rather than File to avoid race-deletion headaches
     private final @NotNull String reportDirectory;
 
+    // For later display of classpath from console
+    private ClassPaths classPaths = null;
+
     public CachedRun(PitRepo.ProjectRunRecords runRecords, ExecutionRecord record, PitExecutionRecorder recorder, @NotNull String reportDirectory) {
         this.runRecords = runRecords;
         this.recorder = recorder;
@@ -73,6 +76,14 @@ public class CachedRun implements Comparable<CachedRun> {
 
     public ExecutionRecord getExecutionRecord() {
         return executionRecord;
+    }
+
+    public void setClassPath(ClassPaths classPaths) {
+        this.classPaths = classPaths;
+    }
+
+    public ClassPaths getClassPaths() {
+        return classPaths;
     }
 
     public PitExecutionRecorder getRecorder() {

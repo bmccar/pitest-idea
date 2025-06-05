@@ -7,6 +7,7 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.psi.*;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -42,6 +43,14 @@ class PackageWalkerTest {
     private static final VirtualFileManager virtualFileManager = Mockito.mock(VirtualFileManager.class);
     private static final MockedStatic<VirtualFileManager> virtualFileManagerStatic = Mockito.mockStatic(VirtualFileManager.class);
 
+    @AfterAll
+    public static void afterAll() {
+        projectRootManagerStatic.close();
+        projectFileIndexStatic.close();
+        psiManagerStatic.close();
+        javaDirectoryServiceStatic.close();
+        virtualFileManagerStatic.close();
+        }
 
     @BeforeAll
     public static void setUpProject() {

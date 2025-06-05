@@ -62,11 +62,8 @@ class PitExecutionRecorderTest {
 
         @Override
         public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
-            System.out.println("[TEST] Visiting file " + fileMutations.getPkg() + '.' + file.getName());
             fileMutations.visit((lineNumber, lineImpactSummary, mutations) -> {
-                System.out.println("[TEST] Visiting ln " + lineNumber + ", impactSummary " + lineImpactSummary);
                 mutations.forEach(mutation -> {
-                    System.out.println("[TEST] Visiting mutation " + lineNumber + " " + mutation.mutationImpact());
                     ExpectedFileLine match = new ExpectedFileLine(fileMutations.getPkg(), file, mutation.mutationImpact(), lineNumber, "");
                     ExpectedFileLine expectedFileLine = expectedFileLines.stream().filter(t -> t.equals(match)).findFirst().orElse(null);
                     assertNotNull(expectedFileLine, "Unexpected mutation on file " + file.getName() + " line " + lineNumber + " " + mutation.mutationImpact());
@@ -78,7 +75,6 @@ class PitExecutionRecorderTest {
 
         @Override
         public void visit(String pkg, String qualifiedPkg, PitExecutionRecorder.PackageDiver diver, IMutationScore score) {
-            System.out.println("[TEST] Visiting package " + pkg + ", " + qualifiedPkg);
             if (qualifiedPkg != null) {
                 assertFalse(qualifiedPkg.startsWith(PitExecutionRecorder.ROOT_PACKAGE_NAME), "Qualified name should not start with \"" + PitExecutionRecorder.ROOT_PACKAGE_NAME + '"');
                 String lastSegment = qualifiedPkg;

@@ -79,7 +79,12 @@ public class PitRepo {
      * @return a new CachedRun
      */
     public static @NotNull CachedRun register(@NotNull Module module, @NotNull ExecutionRecord record) {
-        String path = IdeaDiscovery.getAbsoluteOutputPath(module,PitRepo.PIT_IDEA_REPORTS_DIR, record.getReportDirectoryName());
+        String reportDir = record.getReportDirectoryName();
+        String path = IdeaDiscovery.getAbsoluteOutputPath(module,PitRepo.PIT_IDEA_REPORTS_DIR, reportDir);
+        if (path == null) {
+            throw new IllegalArgumentException("Unable to find output directory for " + reportDir +
+                    " in " + module.getName());
+        }
         return register(module, record, path);
     }
 

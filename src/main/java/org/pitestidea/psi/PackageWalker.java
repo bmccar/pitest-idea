@@ -8,6 +8,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import org.pitestidea.model.InputBundle;
 
+import java.io.File;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -91,7 +92,7 @@ public class PackageWalker {
         }
 
         String relativePath = file.getPath().substring(sourceRoot.getPath().length());
-        if (relativePath.startsWith("/")) {
+        if (relativePath.startsWith(File.separator)) {
             relativePath = relativePath.substring(1);
         }
         return relativePath;
@@ -179,9 +180,10 @@ public class PackageWalker {
         String sfx = "";
         int lastDot = name.lastIndexOf('.');
         if (lastDot > 0) {
-            sfx = name.substring(lastDot + 1);  // TODO can langs alt between src & test?
+            sfx = name.substring(lastDot + 1);  // TODO can languages alt between src & test?
             name = name.substring(0, lastDot);
         }
+
         if (SUPPORTED_EXTENSIONS.contains(sfx)) {
             VirtualFile pkgSibling = getContentSibling(project, virtualFile.getParent());
             if (pkgSibling != null) {
@@ -215,12 +217,14 @@ public class PackageWalker {
                     .toArray(VirtualFile[]::new);
 
             for (VirtualFile altRoot : altRoots) {
-                String altPackagePath = altRoot.getPath() + relativePath;
-                String url = VirtualFileManager.constructUrl(LocalFileSystem.PROTOCOL, altPackagePath);
-                VirtualFile altFile = VirtualFileManager.getInstance().findFileByUrl(url);
+                if (!altRoot.equals(rootFile)) {
+                    String altPackagePath = altRoot.getPath() + relativePath;
+                    String url = VirtualFileManager.constructUrl(LocalFileSystem.PROTOCOL, altPackagePath);
+                    VirtualFile altFile = VirtualFileManager.getInstance().findFileByUrl(url);
 
-                if (altFile != null && altFile.exists() && altFile.isDirectory() == virtualFile.isDirectory()) {
-                    return altFile;
+                    if (altFile != null && altFile.exists() && altFile.isDirectory() == virtualFile.isDirectory()) {
+                        return altFile;
+                    }
                 }
             }
         }

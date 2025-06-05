@@ -118,7 +118,7 @@ public class InputBundle {
                     }
                 }
                 {
-                    int lastSlash = s.lastIndexOf('/');
+                    int lastSlash = s.lastIndexOf(File.separatorChar);
                     if (lastSlash >= 0) {
                         s = s.substring(lastSlash + 1);
                     }
@@ -165,7 +165,7 @@ public class InputBundle {
     }
 
     public @NotNull InputBundle addPath(Category category, @NotNull String element) {
-        if (element.startsWith("/")) {
+        if (element.startsWith(File.separator)) {
             throw new IllegalArgumentException("Path must not start with a slash: " + element);
         }
         map.get(category).add(element);
@@ -173,7 +173,7 @@ public class InputBundle {
     }
 
     public void setPaths(@NotNull Category category, @NotNull List<String> elements) {
-        if (elements.stream().anyMatch(s -> s.startsWith("/"))) {
+        if (elements.stream().anyMatch(s -> s.startsWith(File.separator))) {
             throw new IllegalArgumentException("No path must start with a slash: " + elements);
         }
         Set<String> list = map.get(category);

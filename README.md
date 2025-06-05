@@ -3,17 +3,23 @@
 <!-- Plugin description -->
 Run [PIT](https://pitest.org) mutation tests from IntelliJ IDEA. Features:
 
-* Run against any combination of files -- automatically matches sources and tests
+* Run against any combination of Java files -- automatically matches sources and tests
 * See mutation icons directly in IDE or jump to a browser view
 * Sort/filter results, see score breakdown
 * View and re-execute previous runs
 * Maven and Gradle support
-
-Currently supports Java. Kotlin is not yet supported.
 <!-- Plugin description end -->
 
-## Getting Started
+## Current limitations
+* Java only, no Kotlin
+* Can be run in multi-module projects, but the selected tests and source must be in the same module (no cross-module support for test in a separate module from source)
+* No advanced customization of the PIT command, such as excludes
 
+## Configuration
+Supports recent versions of junit5 with no additional configuration. See [here](documentation/configuration.html) for cases where additional
+build file configuration may be necessary.
+
+## Getting Started
 Select "Run PITest for This File" from the editor menu on any Java file (left).
 After a while, a popup appears when PITest has completed (middle). Choose the "Show Report" option.
 The results (right) show the score in the toolwindow at the bottom of the screen, and the applied mutations
@@ -67,7 +73,7 @@ The final inputs can be seen in the tooltip on entries in the history list.
 <p>In the output build directory (look for "pit-idea-reports" if interested). 
 The practical considerations of this are that:
 
-* If you do a 'clean' outside the IDE they will be removed just like everything else
+* If you do a 'clean' outside the IDE, they will be removed just like everything else
 * They are written from a PITest run but loaded back only at startup time, so there is no impact if they are deleted while the IDE is running
 
 
@@ -84,18 +90,13 @@ be attempted if the project does not compile.
 
 Second, make sure your tests (those targeted for a given run) pass. PIT will start but will exit with an error if it can't run the tests.
 
-If the failure persists and is from PIT, you can try turning on PIT verbose mode from the checkbox at the top of the console pane (see
-FAQ above for discussion on the console pane). This option will also display output as PIT executes.
+Third, check for any classpath problems. See the [Configuration](documentation/configuration.html) page for details.
+You can make use of the controls on top of the console pane in the toolwindow for more information:
+* The "Verbose" checkbox will run the <i>next</i> PIT execution in verbose mode, capturing all verbose output from PIT.
+* The "Show Classpath..." button displays the classpath used for the <i>last</i> PIT execution.
 
-If there is nothing noticeable there, you can inspect the full PIT command which is the first line (in white) in the console window.
-You can even copy/paste and run this command in a shell after suitably escaping any wildcard '*' characters. This may provide
-some insight into the problem.
-
-If none of this helps then feel free to file a bug report [here](https://github.com/bmccar/pitest-idea/issues) 
-but please do include the output from verbose mode and the full PIT command as described above (if PIT is itself failing).
-Also describe the language, build system, and project structure — a bug may be due to an unanticipated project structure.
-
-
+If none of the above helps, feel free to file a bug report [here](https://github.com/bmccar/pitest-idea/issues) with appropriate information from the
+sources above.
 
 ## Future Enhancements
 

@@ -4,10 +4,7 @@ import com.intellij.openapi.compiler.CompilerPaths;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -25,15 +22,20 @@ import static org.mockito.Mockito.when;
 class PitRepoTest {
 
     private Module commonModule;
-    private MockedStatic<CompilerPaths> compilerPaths;
+    private static final MockedStatic<CompilerPaths> compilerPaths = Mockito.mockStatic(CompilerPaths.class);
+    private static final MockedStatic<IdeaDiscovery> discoveryMockedStatic = Mockito.mockStatic(IdeaDiscovery.class);
 
     @BeforeAll
     static void beforeAll() {
-        MockedStatic<IdeaDiscovery> discoveryMockedStatic = Mockito.mockStatic(IdeaDiscovery.class);
         discoveryMockedStatic.when(()->IdeaDiscovery.getModuleOutputDirectory(any())).thenReturn("someOutputDir");
         discoveryMockedStatic.when(()->IdeaDiscovery.getAbsoluteOutputPath(any(),any(),any())).thenReturn("someAbsoluteOutputPath");
     }
 
+    @AfterAll
+    static void afterAll() {
+        compilerPaths.close();
+        discoveryMockedStatic.close();
+    }
 
     @BeforeEach
     void setUp() {
@@ -46,15 +48,9 @@ class PitRepoTest {
         when(vf.getParent()).thenReturn(pf);
         when(pf.getPath()).thenReturn("someFile");
 
-        compilerPaths = Mockito.mockStatic(CompilerPaths.class);
         compilerPaths.when(() -> CompilerPaths.getModuleOutputDirectory(commonModule, false)).thenReturn(vf);
 
         PitRepo.clear(commonModule.getProject());
-    }
-
-    @AfterEach
-    void tearDown() {
-        compilerPaths.close();
     }
 
     private @NotNull CachedRun genRecorder(String... inputs) {

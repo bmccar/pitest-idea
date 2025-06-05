@@ -60,22 +60,21 @@ public abstract class BaseMutationsScore implements IMutationScore {
 
     @Override
     public String getScoreDescription() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("How this score is calculated:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;");
-        sb.append(String.format("%.2f%%",getScore()));
-        sb.append(" = (");
-        sb.append(killed);
-        sb.append(" killed) over (");
-        sb.append(getMutationsTotal());
-        sb.append(" total mutations).<br><br>That total is the sum of:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;");
-        sb.append(killed);
-        sb.append(" killed +<br>&nbsp;&nbsp;&nbsp;&nbsp;");
-        sb.append(survived);
-        sb.append(" survived +<br>&nbsp;&nbsp;&nbsp;&nbsp;");
-        sb.append(noCoverage);
-        sb.append(" no coverage +<br>&nbsp;&nbsp;&nbsp;&nbsp;");
-        sb.append(timedOut);
-        sb.append(" time outs");
-        return sb.toString();
+        String sb = "How this score is calculated:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;" +
+                String.format("%.2f%%", getScore()) +
+                " = (" +
+                killed +
+                " killed) over (" +
+                getMutationsTotal() +
+                " total mutations).<br><br>That total is the sum of:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;" +
+                killed +
+                " killed +<br>&nbsp;&nbsp;&nbsp;&nbsp;" +
+                survived +
+                " survived +<br>&nbsp;&nbsp;&nbsp;&nbsp;" +
+                noCoverage +
+                " no coverage +<br>&nbsp;&nbsp;&nbsp;&nbsp;" +
+                timedOut +
+                " time outs";
+        return sb;
     }
 }

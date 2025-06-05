@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>pit-idea configuration</title>
+    <style>
+        body {
+          font-family: 'Segoe UI', Arial, sans-serif;
+          background: #f4f4f4;
+          margin: 40px;
+        }
+
+        /* Hide radio buttons */
+        input[type="radio"] {
+          display: none;
+        }
+
+        /* Main tab labels */
+        .main-tabs label {
+          display: inline-block;
+          padding: 10px 28px;
+          margin-right: 5px;
+          border: 2px solid #ccc;
+          border-bottom: none;
+          border-radius: 8px 8px 0 0;
+          background: #e9ecef;
+          cursor: pointer;
+          font-weight: 500;
+          transition: border-color 0.3s, background 0.3s;
+        }
+        /* Highlight selected main tab */
+        #main-tab1:checked ~ .main-tabs label[for="main-tab1"],
+        #main-tab2:checked ~ .main-tabs label[for="main-tab2"] {
+          border-color: #007bff;
+          background: #fff;
+          font-weight: bold;
+          color: #007bff;
+        }
+
+        /* Main tab content */
+        .main-tab-content {
+          display: none;
+          border: 2px solid #007bff;
+          border-radius: 0 0 8px 8px;
+          background: #fff;
+          margin-bottom: 24px;
+          padding: 24px 20px 18px 20px;
+          min-height: 220px;
+        }
+        #main-tab1:checked ~ #content1,
+        #main-tab2:checked ~ #content2 {
+          display: block;
+        }
+
+        /* Nested tab labels */
+        .nested-tabs label {
+          display: inline-block;
+          padding: 7px 20px;
+          margin-right: 5px;
+          border: 2px solid #bbb;
+          border-bottom: none;
+          border-radius: 8px 8px 0 0;
+          background: #f8f9fa;
+          cursor: pointer;
+          font-size: 0.98em;
+          transition: border-color 0.3s, background 0.3s;
+        }
+        /* Highlight selected nested tab */
+        #nested1-1:checked ~ .nested-tabs label[for="nested1-1"],
+        #nested1-2:checked ~ .nested-tabs label[for="nested1-2"],
+        #nested2-1:checked ~ .nested-tabs label[for="nested2-1"],
+        #nested2-2:checked ~ .nested-tabs label[for="nested2-2"] {
+          border-color: #28a745;
+          background: #fff;
+          font-weight: bold;
+          color: #28a745;
+        }
+
+        /* Nested tab content */
+        .nested-tab-content {
+          display: none;
+          border: 2px solid #28a745;
+          border-radius: 0 0 8px 8px;
+          background: #f6f8fa;
+          margin-top: -2px;
+          padding: 18px 18px 12px 18px;
+        }
+        #nested1-1:checked ~ #nested-content1-1,
+        #nested1-2:checked ~ #nested-content1-2,
+        #nested2-1:checked ~ #nested-content2-1,
+        #nested2-2:checked ~ #nested-content2-2 {
+          display: block;
+        }
+
+        /* Code block styling */
+        pre {
+          background: #23272e;
+          color: #f8f8f2;
+          padding: 16px;
+          border-radius: 6px;
+          font-size: 1em;
+          overflow-x: auto;
+          margin: 0;
+          box-shadow: 0 2px 8px rgba(40,40,40,0.06);
+          border: 1px solid #16181d;
+        }
+        code {
+          font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+          font-size: 1em;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Configuring the pit-idea plugin</h1>
+
+The plugin should work out of the box when using JUnit versions 5.7.2 through 5.12.2.
+This is because the necessary jars for those JUnit versions are bundled with the plugin,
+so <b>no additional configuration is required</b>.
+
+<p></p>
+You may have to add additional dependencies to your build file if:
+<ul>
+    <li>You are using a version of junit outside the above range</li>
+    <li>You are using a different test framework</li>
+    <li>You want to use a different PITest version other than the bundled 1.18.2 version</li>
+    <li>PIT won't run or is reporting missing classes or library conflicts</li>
+</ul>
+
+The classpath logic used by the plugin is completely configurable.
+You can add your own dependencies of any of the files that PIT would used from its bundled directory.
+If your classpath already has any version of some jar X, then the plugin will not include any other version of X.
+Also, if you have any version of PITest in your classpath, the plugin will not attempt to include any related PITtest
+jars since these tend to work in particular combinations, and the plugin can't anticipate all cases.
+You can always see what the plugin is doing with the classpath by clicking the "Show Classpath..." button
+in the upper right of the toolwindow console pane. The ones the plugin added are highlighted in green.
+
+<p></p>
+For reference, below are examples of including older or newer versions of PITest (the newer version
+shown only works for the latest JUnit). Note that the plugin requires
+pitest-command-line in addition to the main pitest jar, and including the former transitively includes the
+latter. Also note that it is fine to load them in <i>test</i> scope as far as the pit-idea plugin is concerned.
+If you add add dependencies like these to your build file, you won't see any green highlighted rows in the
+"Show Classpath..." popup because (based on the rules described above) the plugin will not have added anything additional.
+
+<p></p>
+<!-- Main Tabs -->
+<input type="radio" id="main-tab1" name="main-tab" checked>
+<input type="radio" id="main-tab2" name="main-tab">
+
+<div class="main-tabs">
+    <label for="main-tab1">Maven</label>
+    <label for="main-tab2">Gradle</label>
+</div>
+
+<!-- Main Tab 1 Content -->
+<div class="main-tab-content" id="content1">
+    <!-- Nested Tabs for Tab 1 -->
+    <input type="radio" id="nested1-1" name="nested1" checked>
+    <input type="radio" id="nested1-2" name="nested1">
+
+    <div class="nested-tabs">
+        <label for="nested1-1">PITest older version</label>
+        <label for="nested1-2">PITest newer version</label>
+    </div>
+
+    <div class="nested-tab-content" id="nested-content1-1">
+      <pre><code>
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.pitest&lt;/groupId&gt;
+            &lt;artifactId&gt;pitest-command-line&lt;/artifactId&gt;
+            &lt;version&gt;1.15.8&lt;/version&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.pitest&lt;/groupId&gt;
+            &lt;artifactId&gt;pitest-junit5-plugin&lt;/artifactId&gt;
+            &lt;version&gt;1.2.1&lt;/version&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+</code></pre>
+    </div>
+    <div class="nested-tab-content" id="nested-content1-2">
+      <pre><code>
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.pitest&lt;/groupId&gt;
+            &lt;artifactId&gt;pitest-command-line&lt;/artifactId&gt;
+            &lt;version&gt;1.19.4&lt;/version&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.pitest&lt;/groupId&gt;
+            &lt;artifactId&gt;pitest-junit5-plugin&lt;/artifactId&gt;
+            &lt;version&gt;1.2.2&lt;/version&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+</code></pre>
+    </div>
+</div>
+
+<!-- Main Tab 2 Content -->
+<div class="main-tab-content" id="content2">
+    <!-- Nested Tabs for Tab 2 -->
+    <input type="radio" id="nested2-1" name="nested2" checked>
+    <input type="radio" id="nested2-2" name="nested2">
+
+    <div class="nested-tabs">
+        <label for="nested2-1">PITest older version</label>
+        <label for="nested2-2">PITest newer version</label>
+    </div>
+
+    <div class="nested-tab-content" id="nested-content2-1">
+      <pre><code>
+    testImplementation("org.pitest:pitest-command-line:1.15.8")
+    testImplementation("org.pitest:pitest-junit5-plugin:1.2.1")
+</code></pre>
+    </div>
+    <div class="nested-tab-content" id="nested-content2-2">
+      <pre><code>
+    testImplementation("org.pitest:pitest-command-line:1.19.4")
+    testImplementation("org.pitest:pitest-junit5-plugin:1.2.2")
+</code></pre>
+    </div>
+</div>
+</body>
+</html>

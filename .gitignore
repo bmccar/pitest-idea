@@ -12,6 +12,7 @@ out
 *.iml
 *.ipr
 .intellijPlatform
+.publish
 
 *~
 no-compile-bucket

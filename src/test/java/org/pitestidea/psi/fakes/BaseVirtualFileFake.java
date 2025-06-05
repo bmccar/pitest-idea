@@ -5,6 +5,7 @@ import com.intellij.openapi.vfs.VirtualFileSystem;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
@@ -88,11 +89,11 @@ public abstract class BaseVirtualFileFake extends VirtualFile {
     @Override
     public @NotNull String getPath() {
         BaseVirtualFileFake pre = parent == null ? getRoot() : parent;
-        return pre.getPath() + '/' + name;
+        return pre.getPath() + File.separatorChar + name;
     }
 
     public @NotNull String getRelativePath() {
-        String pre = (parent == null || (parent instanceof RootFake))? "" : (parent.getRelativePath() + '/');
+        String pre = (parent == null || (parent instanceof RootFake))? "" : (parent.getRelativePath() + File.separatorChar);
         return pre + name;
     }
 

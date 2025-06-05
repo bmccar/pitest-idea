@@ -20,7 +20,8 @@ kotlin {
 // Configure project's dependencies
 repositories {
     mavenCentral()
-        maven("https://repo.gradle.org/gradle/libs-releases")
+    //gradlePluginPortal()
+    maven("https://repo.gradle.org/gradle/libs-releases")
 
     // IntelliJ Platform Gradle Plugin Repositories Extension - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-repositories-extension.html
     intellijPlatform {
@@ -28,8 +29,67 @@ repositories {
     }
 }
 
-val pitVersion = "1.15.8"
-val pitJunit5PluginVersion = "1.2.1"
+val pitVersion = "1.18.2"
+val pitJunit5PluginVersion = "1.2.2"
+val junitPlatformVersion = "1.12.2"
+val junitVersion = "5.12.2"
+val pluginName: String by project
+// $pluginName does not always get resolved without this trick, is there a better way?
+val pluginNameAsString = "$pluginName"
+
+// Expose useful constants from this file in Java code by generating a Java source file.
+val generateConstants by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/sources/constants")
+    outputs.dir(outputDir)
+
+    doLast {
+        val constantsFile = outputDir.get().file("org/pitestidea/constants/PluginVersions.java").asFile
+        constantsFile.parentFile.mkdirs()
+        constantsFile.writeText("""
+            package org.pitestidea.constants;
+            
+            public final class PluginVersions {
+                public static final String PLUGIN_NAME = "$pluginName";
+                public static final String PITEST_VERSION = "$pitVersion";
+                public static final String PIT_JUNIT5_PLUGIN_VERSION = "$pitJunit5PluginVersion";
+                public static final String JUNIT_PLATFORM_VERSION = "$junitPlatformVersion";
+                public static final String JUNIT_BUNDLED_VERSION = "$junitVersion";
+                
+                private PluginVersions() {}
+            }
+        """.trimIndent())
+    }
+}
+
+sourceSets.main {
+    java.srcDir(generateConstants)
+}
+
+tasks.compileJava {
+    dependsOn(generateConstants)
+}
+
+// Create different Gradle configurations so that different versions of the same dependency can be resolved.
+// Otherwise, Gradle will only ever choose the latest version of a given dependency.
+// Note that creating configurations this way is deprecated and set to break in Gradle 9, but the suggested fix breaks now.
+val junit582 by configurations.creating {
+    description = "Junit lt 5.12.2"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val junit5122 by configurations.creating {
+    description = "Junit ge 5.12.2"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val pitest by configurations.creating {
+    description = "PiTest dependencies"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
 dependencies {
@@ -51,17 +111,42 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21")
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.21")
     implementation("org.gradle:gradle-tooling-api:8.7")
-    implementation("org.pitest:pitest-command-line:$pitVersion")
-    implementation("org.pitest:pitest-entry:$pitVersion")
-    implementation("org.pitest:pitest:$pitVersion")
-    implementation("org.pitest:pitest-junit5-plugin:$pitJunit5PluginVersion")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.8.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
+
+    junit582("org.pitest:pitest-junit5-plugin:1.2.1")  // Note platform-launcher 1.9.2 vs. 1.8.2 still works
+    //testImplementation("org.pitest:pitest-command-line:1.19.4")
+    //testImplementation("org.pitest:pitest-junit5-plugin:1.2.2")
+
+    junit5122("org.pitest:pitest-junit5-plugin:1.2.2")
+    junit5122("org.junit.platform:junit-platform-launcher:1.12.2")
+    pitest("org.pitest:pitest:$pitVersion")
+    pitest("org.pitest:pitest-command-line:$pitVersion")
+    pitest("org.pitest:pitest-entry:$pitVersion")
+
+    testImplementation("org.junit.platform:junit-platform-launcher:1.9.2")
+
+    testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
+    // Normally this would be testRuntimeOnly, but made testImplementation here so that we can pick it up later when
+    // scanning the sandbox, without having to deal with RUNTIME scope elements
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion}")
+
     testImplementation("org.mockito:mockito-core:5.16.1")
     testImplementation("org.mockito:mockito-junit-jupiter:5.16.1")
 }
 
-// Configure IntelliJ Platform Gradle Plugin - read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
+// Ensure the custom configurations above end up in the sandbox (doesn't happen by default).
+tasks.prepareSandbox {
+    from(junit582) {
+        into("$pluginNameAsString/lib/ifc-junit-jupiter-api/5.8.2")
+    }
+    from(junit5122) {
+        into("$pluginNameAsString/lib/ifc-junit-jupiter-api/5.12.2")
+    }
+    from(pitest) {
+        into("$pluginNameAsString/lib/ifn-pitest")
+    }
+}
+
+// https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html
 intellijPlatform {
     pluginConfiguration {
         version = providers.gradleProperty("pluginVersion")

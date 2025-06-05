@@ -12,7 +12,7 @@ import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.execution.util.JavaParametersUtil;
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.application.PathManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectRootManager;
@@ -31,16 +31,18 @@ import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 import javax.swing.*;
 import java.io.File;
-import java.nio.file.FileSystems;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * Defines how the PIT process is run, in accordance with the IJ framework. This includes the steps taken when
- * the process completes. See {@link ExecutionUtils} for how the process is initiated.
+ * the process completes. See {@link ExecutionUtils} for how a PIT execution is initiated.
  */
 public class PITestRunProfile implements ModuleRunProfile {
+    private static final Logger LOGGER = Logger.getInstance(PITestRunProfile.class);
+
     private static final String PIT_MAIN_CLASS = "org.pitest.mutationtest.commandline.MutationCoverageReport";
     private static final Icon PLUGIN_ICON = IconLoader.getIcon("/icons/pitest.svg", CoverageGutterRenderer.class);
 
@@ -64,12 +66,6 @@ public class PITestRunProfile implements ModuleRunProfile {
         this.consoleView = consoleView;
     }
 
-    private String pluginJar(String fe) {
-        String fs = FileSystems.getDefault().getSeparator();
-        String path = PathManager.getPluginsPath() + fs + "pitest-idea" + fs + "lib" + fs;
-        return path + fe + ".jar";
-    }
-
     private static String starAll(String s) {
         return s.isEmpty() ? "*" : s + ".*";
     }
@@ -88,32 +84,36 @@ public class PITestRunProfile implements ModuleRunProfile {
 
         return new JavaCommandLineState(environment) {
             @Override
-            protected JavaParameters createJavaParameters() {
+            protected JavaParameters createJavaParameters() throws ExecutionException {
+                try {
+                    final JavaParameters javaParameters = createJavaParametersInternal();
+                    final List<String> classPathsAdded = ClassPathConfigurator.updateClassPathBundles(javaParameters.getClassPath());
+                    cachedRun.setClassPath(new ClassPaths(javaParameters.getClassPath().getPathList(), classPathsAdded));
+                    return javaParameters;
+                } catch (RuntimeException e) {
+                    String msg = e.getMessage();
+                    if (msg == null) {
+                        LOGGER.warn("Unable to create JavaParameters on exception", e);
+                    } else {
+                        LOGGER.warn("Unable to create JavaParameters on exception: " + msg);
+                    }
+                    cachedRun.setRunState(RunState.FAILED);
+                    // Activate here because there doesn't seem to be any other way to synchronously handle
+                    // this exception update the screen
+                    cachedRun.activate();
+                    throw new ExecutionException(e);
+                }
+            }
+
+            private JavaParameters createJavaParametersInternal() {
+
                 JavaParameters javaParameters = new JavaParameters();
                 javaParameters.setJdk(ProjectRootManager.getInstance(project).getProjectSdk());
                 javaParameters.setUseClasspathJar(true);
 
                 PathsList classPath = javaParameters.getClassPath();
 
-                // Versions must match build.gradle.kts
-                String pitestVersion = "1.15.8";
-                String pitJunit5PluginVersion = "1.2.1";
-
-                /*
-                 * These newer versions do not work, leaving commented out for now, for future reference
-                 *   String pitestVersion = "1.18.2";
-                 *   String pitJunit5PluginVersion = "1.2.2";
-                 *   classPath.add(pluginJar("junit-platform-launcher-1.12.2"));
-                 */
-
-                classPath.add(pluginJar("pitest-" + pitestVersion));
-                classPath.add(pluginJar("pitest-command-line-" + pitestVersion));
-                classPath.add(pluginJar("pitest-entry-" + pitestVersion));
-                classPath.add(pluginJar("pitest-junit5-plugin-" + pitJunit5PluginVersion));
-                classPath.add(pluginJar("junit-platform-launcher-1.9.2"));
-                classPath.add(pluginJar("commons-text-1.10.0"));
-                classPath.add(pluginJar("commons-lang3-3.12.0"));
-                String mutableCodePath = IdeaDiscovery.getAndSetClassPathOuts(module,classPath);
+                String mutableCodePath = IdeaDiscovery.getAndSetClassPathOuts(module, classPath);
 
                 String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
                 ParametersList params = javaParameters.getProgramParametersList();
@@ -135,14 +135,21 @@ public class PITestRunProfile implements ModuleRunProfile {
                 ApplicationManager.getApplication().runReadAction(() -> {
                     try {
                         // For Gradle, JavaParametersUtil call doesn't include Provided elements like with Maven,
-                        // so first try to set Gradle-style and if not a Gradle project then fallback to Maven
-                        if (!GradleUtils.configureFromGradleClasspath(module,javaParameters)) {
+                        // so first try to set Gradle-style, but fall-back to Maven-style if the current project is not a Gradle project
+                        if (!GradleUtils.configureFromGradleClasspath(module, javaParameters)) {
                             JavaParametersUtil.configureModule(PITestRunProfile.this.module, javaParameters, JavaParameters.JDK_AND_CLASSES_AND_TESTS, null);
                         }
                     } catch (ExecutionException e) {
                         throw new RuntimeException(e);
                     }
+
+                    try {
+                        JavaParametersUtil.configureModule(PITestRunProfile.this.module, javaParameters, JavaParameters.JDK_AND_CLASSES_AND_TESTS, null);
+                    } catch (ExecutionException e) {
+                        throw new RuntimeException(e);
+                    }
                 });
+
                 return javaParameters;
             }
 
