@@ -16,7 +16,7 @@ Run [PIT](https://pitest.org) mutation tests from IntelliJ IDEA. Features:
 * No advanced customization of the PIT command, such as excludes
 
 ## Configuration
-Supports recent versions of junit5 with no additional configuration. See [here](documentation/configuration.html) for cases where additional
+Supports recent versions of junit5 with no additional configuration. See [here](docs/configuration.html) for cases where additional
 build file configuration may be necessary.
 
 ## Getting Started
@@ -26,11 +26,11 @@ The results (right) show the score in the toolwindow at the bottom of the screen
 in the editor window.
 
 <p >
-  <img alt="Light" src="documentation/selectEditor.png" width="30%">
+  <img alt="Light" src="docs/selectEditor.png" width="30%">
 &nbsp; &nbsp; &nbsp; &nbsp;
-  <img alt="Dark" src="documentation/showReport.png" width="30%">
+  <img alt="Dark" src="docs/showReport.png" width="30%">
 &nbsp; &nbsp; &nbsp; &nbsp;
-  <img alt="Dark" src="documentation/mutationsInEditor.png" width="30%">
+  <img alt="Dark" src="docs/mutationsInEditor.png" width="30%">
 </p>
 
 Alternatively, you can select any combination of files and packages from the project or package view (below left), 
@@ -39,11 +39,11 @@ The toolwindow becomes more interesting, showing results across multiple files a
 options and history (below right).
 
 <p >
-  <img alt="Light" src="documentation/multiSelect.png" width="30%">
+  <img alt="Light" src="docs/multiSelect.png" width="30%">
 &nbsp; &nbsp; &nbsp; &nbsp;
-  <img alt="Dark" src="documentation/multiShow.png" width="30%">
+  <img alt="Dark" src="docs/multiShow.png" width="30%">
 &nbsp; &nbsp; &nbsp; &nbsp;
-  <img alt="Dark" src="documentation/multiHistory.png" width="30%">
+  <img alt="Dark" src="docs/multiHistory.png" width="30%">
 </p>
 
 PIT is run in the background and should not impact IDE performance while it runs. PIT can 
@@ -89,7 +89,7 @@ be attempted if the project does not compile.
 
 Second, make sure your tests (those targeted for a given run) pass. PIT will start but will exit with an error if it can't run the tests.
 
-Third, check for any classpath problems. See the [Configuration](documentation/configuration.html) page for guidance on handling classpath problems.
+Third, check for any classpath problems. See the [Configuration](docs/configuration.html) page for guidance on handling classpath problems.
 You can make use of the controls on top of the console pane in the toolwindow for more information:
 * The "Verbose" checkbox will run the <i>next</i> PIT execution in verbose mode, capturing all verbose output from PIT.
 * The "Show Classpath..." button displays the classpath used for the <i>last</i> PIT execution.
