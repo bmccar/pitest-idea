@@ -74,7 +74,6 @@ public class GradleUtils {
     }
 
     public static boolean configureFromGradleClasspath(Module module, JavaParameters javaParameters) {
-        //if (1==1) return false;
         module = ensureTestModule(module);
         ProjectDataManager projectDataManager = ProjectDataManager.getInstance();
         Project project = module.getProject();
@@ -98,11 +97,11 @@ public class GradleUtils {
                                 m->m.getData().getExternalName().equals(finalModuleName));
 
                 if (moduleNode != null) {
-                    @NotNull Collection<DataNode<LibraryDependencyData>> cnodes =
+                    @NotNull Collection<DataNode<LibraryDependencyData>> libraryNodes =
                             ExternalSystemApiUtil.findAllRecursively(
                                     moduleNode,
                                     ProjectKeys.LIBRARY_DEPENDENCY);
-                    for (DataNode<LibraryDependencyData> libDataNode : cnodes) {
+                    for (DataNode<LibraryDependencyData> libDataNode : libraryNodes) {
                         LibraryDependencyData libData = libDataNode.getData();
                         @NotNull Set<String> binaries = libData.getTarget().getPaths(LibraryPathType.BINARY);
                         if (binaries.isEmpty()) {

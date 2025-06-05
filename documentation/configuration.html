@@ -128,17 +128,17 @@ You may have to add additional dependencies to your build file if:
 </ul>
 
 The classpath logic used by the plugin is completely configurable.
-You can add your own dependencies of any of the files that PIT would used from its bundled directory.
+You can add your own dependencies in place of the files that PIT would use from its bundled directory.
 If your classpath already has any version of some jar X, then the plugin will not include any other version of X.
 Also, if you have any version of PITest in your classpath, the plugin will not attempt to include any related PITtest
 jars since these tend to work in particular combinations, and the plugin can't anticipate all cases.
-You can always see what the plugin is doing with the classpath by clicking the "Show Classpath..." button
-in the upper right of the toolwindow console pane. The ones the plugin added are highlighted in green.
+You can always see the full classpath used in the last PIT execution by clicking the "Show Classpath..." button
+in the upper right of the toolwindow console pane. The classpath elements the plugin added are highlighted in green.
 
 <p></p>
 For reference, below are examples of including older or newer versions of PITest (the newer version
 shown only works for the latest JUnit). Note that the plugin requires
-pitest-command-line in addition to the main pitest jar, and including the former transitively includes the
+<i>pitest-command-line</i> in addition to the main pitest jar. Including the former transitively includes the
 latter. Also note that it is fine to load them in <i>test</i> scope as far as the pit-idea plugin is concerned.
 If you add add dependencies like these to your build file, you won't see any green highlighted rows in the
 "Show Classpath..." popup because (based on the rules described above) the plugin will not have added anything additional.

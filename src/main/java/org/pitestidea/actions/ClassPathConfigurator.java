@@ -244,7 +244,7 @@ class ClassPathConfigurator {
         List<String> paths = classPath.getPathList();
         List<String> addedPaths = new ArrayList<>();
 
-        // Map segment name back to path, preferring higher versions if there are name conflicts
+        // Map segment name back to their full path, preferring higher versions if there are name conflicts
         Map<String, String> pathMap = new HashMap<>();
         for (String path : paths) {
             if (path.endsWith(".jar")) {

@@ -60,7 +60,7 @@ public abstract class BaseMutationsScore implements IMutationScore {
 
     @Override
     public String getScoreDescription() {
-        String sb = "How this score is calculated:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;" +
+        return "How this score is calculated:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;" +
                 String.format("%.2f%%", getScore()) +
                 " = (" +
                 killed +
@@ -75,6 +75,5 @@ public abstract class BaseMutationsScore implements IMutationScore {
                 " no coverage +<br>&nbsp;&nbsp;&nbsp;&nbsp;" +
                 timedOut +
                 " time outs";
-        return sb;
     }
 }

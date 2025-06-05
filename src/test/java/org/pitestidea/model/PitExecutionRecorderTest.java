@@ -62,15 +62,13 @@ class PitExecutionRecorderTest {
 
         @Override
         public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
-            fileMutations.visit((lineNumber, lineImpactSummary, mutations) -> {
-                mutations.forEach(mutation -> {
-                    ExpectedFileLine match = new ExpectedFileLine(fileMutations.getPkg(), file, mutation.mutationImpact(), lineNumber, "");
-                    ExpectedFileLine expectedFileLine = expectedFileLines.stream().filter(t -> t.equals(match)).findFirst().orElse(null);
-                    assertNotNull(expectedFileLine, "Unexpected mutation on file " + file.getName() + " line " + lineNumber + " " + mutation.mutationImpact());
-                    assertEquals(expectedFileLine.pkg, fileMutations.getPkg());
-                    expectedFileLines.remove(expectedFileLine);
-                });
-            });
+            fileMutations.visit((lineNumber, lineImpactSummary, mutations) -> mutations.forEach(mutation -> {
+                ExpectedFileLine match = new ExpectedFileLine(fileMutations.getPkg(), file, mutation.mutationImpact(), lineNumber, "");
+                ExpectedFileLine expectedFileLine = expectedFileLines.stream().filter(t -> t.equals(match)).findFirst().orElse(null);
+                assertNotNull(expectedFileLine, "Unexpected mutation on file " + file.getName() + " line " + lineNumber + " " + mutation.mutationImpact());
+                assertEquals(expectedFileLine.pkg, fileMutations.getPkg());
+                expectedFileLines.remove(expectedFileLine);
+            }));
         }
 
         @Override
