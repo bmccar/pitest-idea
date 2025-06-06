@@ -12,6 +12,8 @@ Run [PIT](https://pitest.org) mutation tests from IntelliJ IDEA. Features:
 
 See [here](https://bmccar.github.io/pitest-idea) for usage, FAQ, and troubleshooting.
 
+Available on [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/27437-pitest/edit).
+
 ## Implementation Notes
 * Runs PITest in the background through the command line
 * Tracks and saves executions
