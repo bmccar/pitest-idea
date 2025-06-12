@@ -1,4 +1,4 @@
-package org.pitestidea.psi.fakes;
+package org.pitestidea.reader.fakes;
 
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.vfs.VirtualFile;

@@ -1,4 +1,4 @@
-package org.pitestidea.psi.fakes;
+package org.pitestidea.reader.fakes;
 
 import org.jetbrains.annotations.NotNull;
 

@@ -67,8 +67,8 @@ though you might have to horizontally scroll rightward if it's not visible.
 For package directories, it matches the equivalent path between test and source. 
 For files, it matches between source and test files using standard naming conventions, e.g. "FooTest.java" to "Foo.java". 
 If you need an alternate mix, e.g., if your test for "Foo.java" is "MyTest.java", 
-you can multi-select and run both from the project menu. 
-This matching also works in the reverse direction if you select test files first. 
+you can multi-select and run both from the project menu. This matching also works in the reverse direction if you select test files first, 
+but only if you haven't also included any source files.
 
 In all cases, the plugin removes redundant entries to simplify the collection of inputs. For example, if you select
 both a file and its package, then only the package will be listed as part of the input since that file is included

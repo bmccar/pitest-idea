@@ -114,7 +114,7 @@
 
 <h1>Configuring the pit-idea plugin</h1>
 
-The plugin should work out of the box when using JUnit versions 5.7.2 through 5.12.2.
+The plugin should work out of the box when using JUnit versions 5.7.2 through 5.13.0.
 This is because the necessary jars for those JUnit versions are bundled with the plugin,
 so <b>no additional configuration is required</b>.
 
@@ -123,7 +123,7 @@ You may have to add additional dependencies to your build file if:
 <ul>
     <li>You are using a version of junit outside the above range</li>
     <li>You are using a different test framework</li>
-    <li>You want to use a different PITest version other than the bundled 1.18.2 version</li>
+    <li>You want to use a different PITest version other than the bundled version</li>
     <li>PIT won't run or is reporting missing classes or library conflicts</li>
 </ul>
 
@@ -140,7 +140,7 @@ For reference, below are examples of including older or newer versions of PITest
 shown only works for the latest JUnit). Note that the plugin requires
 <i>pitest-command-line</i> in addition to the main pitest jar. Including the former transitively includes the
 latter. Also note that it is fine to load them in <i>test</i> scope as far as the pit-idea plugin is concerned.
-If you add add dependencies like these to your build file, you won't see any green highlighted rows in the
+If you add dependencies like these to your build file, you will see fewer if any green highlighted rows in the
 "Show Classpath..." popup because (based on the rules described above) the plugin will not have added anything additional.
 
 <p></p>

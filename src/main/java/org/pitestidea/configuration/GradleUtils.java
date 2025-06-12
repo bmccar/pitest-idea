@@ -107,10 +107,8 @@ public class GradleUtils {
                         if (binaries.isEmpty()) {
                             LOGGER.warn("Invalid dependency: " + libData.getTarget().getExternalName());
                         } else {
-                            DependencyScope scope = libData.getScope();
-                            if (scope == DependencyScope.COMPILE || scope == DependencyScope.PROVIDED) {
+                            if (include(libData)) {
                                 String path = binaries.iterator().next();
-
                                 javaParameters.getClassPath().add(path);
                             }
                         }
@@ -120,6 +118,20 @@ public class GradleUtils {
             }
         }
         return false;
+    }
+
+    private static boolean include(LibraryDependencyData libData) {
+        String nm = libData.getTarget().getExternalName();
+        //System.out.println("Gradle dependency: " + nm + ", scope=" + libData.getScope());
+        DependencyScope scope = libData.getScope();
+        if (scope == DependencyScope.COMPILE || scope == DependencyScope.PROVIDED) {
+            return true;
+        } else {
+            // These files end up in scope==RUNTIME based on standard Gradle recommendations
+            return nm.contains("junit-jupiter-engine")
+                    || nm.contains("junit-platform-engine")
+                    || nm.contains("junit-platform-commons");
+        }
     }
 }
 

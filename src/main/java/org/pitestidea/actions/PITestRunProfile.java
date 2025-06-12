@@ -19,9 +19,11 @@ import com.intellij.openapi.roots.ProjectRootManager;
 import com.intellij.openapi.ui.MessageDialogBuilder;
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.util.PathsList;
+import com.intellij.util.text.SemVer;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.configuration.GradleUtils;
 import org.pitestidea.configuration.IdeaDiscovery;
+import org.pitestidea.constants.PluginVersions;
 import org.pitestidea.model.*;
 import org.pitestidea.reader.InvalidMutatedFileException;
 import org.pitestidea.reader.MutationsFileReader;
@@ -53,6 +55,7 @@ public class PITestRunProfile implements ModuleRunProfile {
     private final InputBundle inputBundle;
 
     private ConsoleView consoleView;
+    private String junitVersion = null;
 
     PITestRunProfile(Project project, Module module, InputBundle inputBundle) {
         this.project = project;
@@ -139,6 +142,7 @@ public class PITestRunProfile implements ModuleRunProfile {
                         if (!GradleUtils.configureFromGradleClasspath(module, javaParameters)) {
                             JavaParametersUtil.configureModule(PITestRunProfile.this.module, javaParameters, JavaParameters.JDK_AND_CLASSES_AND_TESTS, null);
                         }
+                        junitVersion = extractJUnitVersion(javaParameters);
                     } catch (ExecutionException e) {
                         throw new RuntimeException(e);
                     }
@@ -180,7 +184,8 @@ public class PITestRunProfile implements ModuleRunProfile {
                                     newRunState = RunState.FAILED;
                                 }
                             } else {
-                                react("PIT execution error", "View output", () -> {
+                                String msg = createErrorMessage();
+                                react(msg, "View output", () -> {
                                     // Activate this row since console output is exposed and should be consistent
                                     // with scores even though it's unlikely a user would examine the latter
                                     cachedRun.activate();
@@ -253,6 +258,42 @@ public class PITestRunProfile implements ModuleRunProfile {
                 return handler;
             }
         };
+    }
+
+    private String createErrorMessage() {
+        String msg = "PIT execution error";
+        if (isLowerThanBundledVersion(junitVersion)) {
+            msg += ".<p>It appears you're using an older version ("
+                    + junitVersion
+                    + ") of JUnit than supported out of the box by this plugin."
+                    + " You can either upgrade your JUnit version to one greater than "
+                    + PluginVersions.LOWEST_BUNDLED_JUNIT_VERSION
+                    + " or follow the configuration advice <a href='https://bmccar.github.io/pitest-idea/configuration.html'>here</a>.";
+        }
+        return msg;
+    }
+
+    private static boolean isLowerThanBundledVersion(String junitVersion) {
+        if (junitVersion != null) {
+            SemVer versionUsed = SemVer.parseFromText(junitVersion);
+            SemVer lowestBundledVersion = SemVer.parseFromText(PluginVersions.LOWEST_BUNDLED_JUNIT_VERSION);
+            return versionUsed != null && lowestBundledVersion != null && lowestBundledVersion.isGreaterThan(versionUsed);
+        }
+        return false;
+    }
+
+    private static String extractJUnitVersion(JavaParameters javaParameters) {
+        String fs = File.separator;
+        final String match = "junit-jupiter-api" + fs;
+        @NotNull List<String> ps = javaParameters.getClassPath().getPathList();
+        for (String next: ps) {
+            int ix = next.indexOf(match);
+            if (ix >= 0) {
+                int ij = next.indexOf(fs, ix + match.length());
+                return next.substring(ix + match.length(), ij);
+            }
+        }
+        return null;
     }
 
     private void writeConsoleReportLink() {

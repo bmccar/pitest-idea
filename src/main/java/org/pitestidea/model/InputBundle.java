@@ -3,11 +3,12 @@ package org.pitestidea.model;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
 
-import java.io.File;
-import java.nio.file.FileSystems;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
+
+import static org.pitestidea.model.SysDiffs.fs;
+import static org.pitestidea.model.SysDiffs.fss;
 
 /**
  * A bundle of input files for a PIT run.
@@ -93,7 +94,7 @@ public class InputBundle {
                 if (lastDot >= 0) {
                     s = s.substring(0, lastDot);
                 }
-                return s.replace(File.separatorChar, '.');
+                return s.replace(fs(), '.');
             };
         }
     }
@@ -118,7 +119,7 @@ public class InputBundle {
                     }
                 }
                 {
-                    int lastSlash = s.lastIndexOf(File.separatorChar);
+                    int lastSlash = s.lastIndexOf(fs());
                     if (lastSlash >= 0) {
                         s = s.substring(lastSlash + 1);
                     }
@@ -165,7 +166,7 @@ public class InputBundle {
     }
 
     public @NotNull InputBundle addPath(Category category, @NotNull String element) {
-        if (element.startsWith(File.separator)) {
+        if (element.startsWith(fss())) {
             throw new IllegalArgumentException("Path must not start with a slash: " + element);
         }
         map.get(category).add(element);
@@ -173,8 +174,11 @@ public class InputBundle {
     }
 
     public void setPaths(@NotNull Category category, @NotNull List<String> elements) {
-        if (elements.stream().anyMatch(s -> s.startsWith(File.separator))) {
+        if (elements.stream().anyMatch(s -> s.startsWith(fss()))) {
             throw new IllegalArgumentException("No path must start with a slash: " + elements);
+        }
+        if (elements.contains(null)) {
+            throw new IllegalArgumentException("Null element in paths list: " + elements);
         }
         Set<String> list = map.get(category);
         list.clear();
@@ -221,11 +225,17 @@ public class InputBundle {
      */
     @VisibleForTesting
     String generateReportName(int maxLength) {
+        if (maxLength < 1) {
+            throw new IllegalArgumentException("maxLength must be at least 1, but was " + maxLength);
+        }
         // Prefer source files if any
         String name = generateShortName(asSimple().transform(Category::isSource, InputBundle::nameFrom), maxLength);
         if (name.isEmpty()) {
             // Else if no sources, use test files rather than an empty string
             name = generateShortName(asSimple().transform(Category::isTest, InputBundle::nameFrom), maxLength);
+            if (name.isEmpty()) {
+                throw new IllegalStateException("No source or test files found leading to empty report name");
+            }
         }
         return name;
     }
@@ -256,7 +266,7 @@ public class InputBundle {
     }
 
     private static String nameFrom(String relPath) {
-        int from = relPath.lastIndexOf(FileSystems.getDefault().getSeparator()) + 1;
+        int from = relPath.lastIndexOf(fs()) + 1;
         int to = relPath.lastIndexOf('.');
         if (to < 0) {
             to = relPath.length();
@@ -272,7 +282,7 @@ public class InputBundle {
         String rn = String.valueOf(Math.abs(qns.hashCode()));
         if (!qns.isEmpty()) {
             String pfx = qns.get(0);
-            int ix = pfx.lastIndexOf(FileSystems.getDefault().getSeparator());
+            int ix = pfx.lastIndexOf(fs());
             if (ix > 0) {
                 // Add a prefix just to ease the task of looking through files if/when necessary
                 pfx = pfx.substring(ix + 1);

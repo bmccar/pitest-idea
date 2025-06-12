@@ -1,4 +1,4 @@
-package org.pitestidea.psi;
+package org.pitestidea.reader;
 
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectFileIndex;
@@ -14,8 +14,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.pitestidea.model.InputBundle;
-import org.pitestidea.psi.fakes.*;
-import org.pitestidea.reader.PackageWalker;
+import org.pitestidea.reader.fakes.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;

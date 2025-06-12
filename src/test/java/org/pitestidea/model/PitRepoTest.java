@@ -40,6 +40,7 @@ class PitRepoTest {
     @BeforeEach
     void setUp() {
         Project project = Mockito.mock(Project.class);
+        when(project.getName()).thenReturn("someProject");
         commonModule = Mockito.mock(Module.class);
         when(commonModule.getProject()).thenReturn(project);
 

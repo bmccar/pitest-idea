@@ -5,6 +5,7 @@ public abstract class BaseMutationsScore implements IMutationScore {
     protected int killed = 0;
     protected int noCoverage = 0;
     protected int timedOut = 0;
+    protected int runError = 0;
 
     private final int order;
 
@@ -24,6 +25,7 @@ public abstract class BaseMutationsScore implements IMutationScore {
             case SURVIVED -> survived++;
             case NO_COVERAGE -> noCoverage++;
             case TIMED_OUT -> timedOut++;
+            case RUN_ERROR -> runError++;
         }
     }
 
@@ -49,7 +51,7 @@ public abstract class BaseMutationsScore implements IMutationScore {
 
     @Override
     public int getMutationsTotal() {
-        return survived + killed + noCoverage + timedOut;
+        return survived + killed + noCoverage + timedOut + runError;
     }
 
     @Override
@@ -60,7 +62,7 @@ public abstract class BaseMutationsScore implements IMutationScore {
 
     @Override
     public String getScoreDescription() {
-        return "How this score is calculated:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;" +
+        String description =  "How this score is calculated:<br><br>&nbsp;&nbsp;&nbsp;&nbsp;" +
                 String.format("%.2f%%", getScore()) +
                 " = (" +
                 killed +
@@ -75,5 +77,9 @@ public abstract class BaseMutationsScore implements IMutationScore {
                 " no coverage +<br>&nbsp;&nbsp;&nbsp;&nbsp;" +
                 timedOut +
                 " time outs";
+        if (runError > 0) {
+            description += "<br><br>&nbsp;&nbsp;&nbsp;&nbsp;" + runError + " run errors";
+        }
+        return description;
     }
 }

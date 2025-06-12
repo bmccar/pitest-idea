@@ -32,7 +32,8 @@ repositories {
 val pitVersion = "1.18.2"
 val pitJunit5PluginVersion = "1.2.2"
 val junitPlatformVersion = "1.12.2"
-val junitVersion = "5.12.2"
+val junitVersion = "5.13.1"
+val lowestBundledJunitVersion = "5.10.0"
 val pluginName: String by project
 // $pluginName does not always get resolved without this trick, is there a better way?
 val pluginNameAsString = "$pluginName"
@@ -54,6 +55,7 @@ val generateConstants by tasks.registering {
                 public static final String PIT_JUNIT5_PLUGIN_VERSION = "$pitJunit5PluginVersion";
                 public static final String JUNIT_PLATFORM_VERSION = "$junitPlatformVersion";
                 public static final String JUNIT_BUNDLED_VERSION = "$junitVersion";
+                public static final String LOWEST_BUNDLED_JUNIT_VERSION = "$lowestBundledJunitVersion";
                 
                 private PluginVersions() {}
             }
@@ -72,24 +74,35 @@ tasks.compileJava {
 // Create different Gradle configurations so that different versions of the same dependency can be resolved.
 // Otherwise, Gradle will only ever choose the latest version of a given dependency.
 // Note that creating configurations this way is deprecated and set to break in Gradle 9, but the suggested fix breaks now.
-val junit582 by configurations.creating {
-    description = "Junit lt 5.12.2"
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
-
-val junit5122 by configurations.creating {
-    description = "Junit ge 5.12.2"
-    isCanBeConsumed = false
-    isCanBeResolved = true
-}
-
-val pitest by configurations.creating {
+val pitest182 by configurations.creating {
     description = "PiTest dependencies"
     isCanBeConsumed = false
     isCanBeResolved = true
 }
 
+val junitPlatform113 by configurations.creating {
+    description = "JUnit-platform dependencies"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val junitPlatform112 by configurations.creating {
+    description = "JUnit-platform dependencies"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val junitPlatform111 by configurations.creating {
+    description = "JUnit-platform dependencies"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
+val junitPlatform110 by configurations.creating {
+    description = "JUnit-platform dependencies"
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
 
 // Dependencies are managed with Gradle version catalog - read more: https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog
 dependencies {
@@ -112,22 +125,33 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.1.21")
     implementation("org.gradle:gradle-tooling-api:8.7")
 
-    junit582("org.pitest:pitest-junit5-plugin:1.2.1")  // Note platform-launcher 1.9.2 vs. 1.8.2 still works
-    //testImplementation("org.pitest:pitest-command-line:1.19.4")
-    //testImplementation("org.pitest:pitest-junit5-plugin:1.2.2")
+    // Pitest sometimes has problems with commons-txt 1.12.0 even though that is what it resolves to.
+    // Problem doesn't show up in 1.10.0
+    pitest182("org.pitest:pitest-command-line:$pitVersion") {
+        exclude(group = "org.apache.commons", module = "commons-text")
+    }
+    pitest182("org.pitest:pitest-junit5-plugin:1.2.2")
+    pitest182("org.apache.commons:commons-text:1.10.0")
 
-    junit5122("org.pitest:pitest-junit5-plugin:1.2.2")
-    junit5122("org.junit.platform:junit-platform-launcher:1.12.2")
-    pitest("org.pitest:pitest:$pitVersion")
-    pitest("org.pitest:pitest-command-line:$pitVersion")
-    pitest("org.pitest:pitest-entry:$pitVersion")
+    // platform-launcher is not typically included by junit users, but this plugin needs it to invoke pitest
+    junitPlatform113("org.junit.platform:junit-platform-launcher:1.13.1") {
+        exclude(group = "org.junit.platform", module = "junit-platform-engine")
+    }
+    junitPlatform112("org.junit.platform:junit-platform-launcher:1.12.2") {
+        exclude(group = "org.junit.platform", module = "junit-platform-engine")
+    }
+    junitPlatform111("org.junit.platform:junit-platform-launcher:1.11.4") {
+        exclude(group = "org.junit.platform", module = "junit-platform-engine")
+    }
+    junitPlatform110("org.junit.platform:junit-platform-launcher:1.10.5") {
+        exclude(group = "org.junit.platform", module = "junit-platform-engine")
+    }
 
-    testImplementation("org.junit.platform:junit-platform-launcher:1.9.2")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.13.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter-api:$junitVersion")
-    // Normally this would be testRuntimeOnly, but made testImplementation here so that we can pick it up later when
-    // scanning the sandbox, without having to deal with RUNTIME scope elements
-    testImplementation("org.junit.jupiter:junit-jupiter-engine:$junitVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion}")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:$junitVersion")
 
     testImplementation("org.mockito:mockito-core:5.16.1")
     testImplementation("org.mockito:mockito-junit-jupiter:5.16.1")
@@ -135,14 +159,20 @@ dependencies {
 
 // Ensure the custom configurations above end up in the sandbox (doesn't happen by default).
 tasks.prepareSandbox {
-    from(junit582) {
-        into("$pluginNameAsString/lib/ifc-junit-jupiter-api/5.8.2")
-    }
-    from(junit5122) {
-        into("$pluginNameAsString/lib/ifc-junit-jupiter-api/5.12.2")
-    }
-    from(pitest) {
+    from(pitest182) {
         into("$pluginNameAsString/lib/ifn-pitest")
+    }
+    from(junitPlatform113) {
+        into("$pluginNameAsString/lib/ifc-junit-jupiter-api/5.13.0")
+    }
+    from(junitPlatform112) {
+        into("$pluginNameAsString/lib/ifc-junit-jupiter-api/5.12.0")
+    }
+    from(junitPlatform111) {
+        into("$pluginNameAsString/lib/ifc-junit-jupiter-api/5.11.0")
+    }
+    from(junitPlatform110) {
+        into("$pluginNameAsString/lib/ifc-junit-jupiter-api/5.10.0")
     }
 }
 

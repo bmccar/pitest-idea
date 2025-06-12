@@ -7,5 +7,6 @@ public enum MutationImpact {
     KILLED,
     SURVIVED,
     NO_COVERAGE,
-    TIMED_OUT
+    TIMED_OUT,
+    RUN_ERROR
 }

@@ -13,6 +13,7 @@ import com.intellij.openapi.diagnostic.Logger;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PitRepo {
     private static final Logger LOGGER = Logger.getInstance(PitRepo.class);
@@ -40,7 +41,7 @@ public class PitRepo {
         }
     }
 
-    private static final Map<String, ProjectRunRecords> projectMap = new HashMap<>();
+    private static final Map<String, ProjectRunRecords> projectMap = new ConcurrentHashMap<>();
 
     public static void clear(@NotNull Project project) {
         ProjectRunRecords runRecords = projectMap.get(project.getName());
@@ -134,9 +135,11 @@ public class PitRepo {
 
     public static void deleteHistory(Project project) {
         ProjectRunRecords runRecords = projectMap.get(project.getName());
-        List<CachedRun> cachedRunsToDelete = new ArrayList<>(runRecords.runHistory);
-        cachedRunsToDelete.forEach(CachedRun::deleteFilesForThisRun);
-        runRecords.runHistory.clear();
+        if (runRecords != null) {
+            List<CachedRun> cachedRunsToDelete = new ArrayList<>(runRecords.runHistory);
+            cachedRunsToDelete.forEach(CachedRun::deleteFilesForThisRun);
+            runRecords.runHistory.clear();
+        }
         runRecords.current = null;
     }
 

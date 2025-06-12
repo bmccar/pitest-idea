@@ -26,7 +26,6 @@ public class ClassPaths {
         for (String classPath : classPaths) {
             sb.append("<div");
             if (addedClassPaths.contains(classPath)) {
-                //sb.append("<div style='color:#80ff80'>");
                 sb.append(" style='color:#80ff80'");
             }
             sb.append('>');

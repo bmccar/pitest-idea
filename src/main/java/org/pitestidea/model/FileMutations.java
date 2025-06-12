@@ -41,12 +41,14 @@ public class FileMutations /*extends BaseMutationsScore*/ {
         int killed = 0;
         int no_coverage = 0;
         int timed_out = 0;
+        int run_error = 0;
         for (Mutation record : records) {
             switch (record.mutationImpact()) {
                 case KILLED -> killed++;
                 case SURVIVED -> survived++;
                 case NO_COVERAGE -> no_coverage++;
                 case TIMED_OUT -> timed_out++;
+                case RUN_ERROR -> run_error++;
             }
         }
         if (survived > 0) {
@@ -57,6 +59,8 @@ public class FileMutations /*extends BaseMutationsScore*/ {
             return MutationImpact.KILLED;
         } else if (no_coverage > 0) {
             return MutationImpact.NO_COVERAGE;
+        } else if (run_error > 0) {
+            return MutationImpact.RUN_ERROR;
         } else {
             throw new RuntimeException("No coverage for any line");
         }

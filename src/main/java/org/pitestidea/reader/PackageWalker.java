@@ -67,7 +67,7 @@ public class PackageWalker {
 
     private static void addPkgSiblings(Project project, Set<VirtualFile> forFiles, Set<VirtualFile> fileCollection) {
         for (VirtualFile forFile : forFiles) {
-            VirtualFile sibling = getContentSibling(project, forFile);
+            VirtualFile sibling = getMatching(project, forFile, p->p);
             if (sibling != null) {
                 fileCollection.add(sibling);
             }
@@ -183,37 +183,48 @@ public class PackageWalker {
             sfx = name.substring(lastDot + 1);  // TODO can languages alt between src & test?
             name = name.substring(0, lastDot);
         }
+        final String finalName = name;
+        final String finalSfx = sfx;
 
         if (SUPPORTED_EXTENSIONS.contains(sfx)) {
-            VirtualFile pkgSibling = getContentSibling(project, virtualFile.getParent());
-            if (pkgSibling != null) {
-                for (Function<String, String> transformer : matchingNameTransformers) {
-                    String transformedName = transformer.apply(name);
-                    if (transformedName != null) {
-                        VirtualFile match = pkgSibling.findChild(transformedName + '.' + sfx);
-                        if (match != null && match.exists()) {
-                            return match;
+            return getMatching(project, virtualFile.getParent(), p->{
+                        for (Function<String, String> transformer : matchingNameTransformers) {
+                            String transformedName = transformer.apply(finalName);
+                            if (transformedName != null) {
+                                VirtualFile match = p.findChild(transformedName + '.' + finalSfx);
+                                if (match != null && match.exists()) {
+                                    return match;
+                                }
+                            }
                         }
-                    }
-                }
-            }
+                        return null;
+                    });
         }
         return null;
     }
 
-    public static VirtualFile getContentSibling(Project project, VirtualFile virtualFile) {
+    /**
+     * Finds a file in a source other than that containing virtualFile which (a) has the same relative path and
+     * (b) passes the supplied fn that returns a non-null result.
+     *
+     * @param project to search
+     * @param virtualFile to match
+     * @param fn to determine the final result
+     * @return an existing valid file or null if none of the criteria above match
+     */
+    private static VirtualFile getMatching(Project project, VirtualFile virtualFile, Function<VirtualFile, VirtualFile> fn) {
         ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
         VirtualFile rootFile = fileIndex.getSourceRootForFile(virtualFile);
 
         if (rootFile != null) {
             String relativePath = virtualFile.getPath().substring(rootFile.getPath().length());
-            Predicate<VirtualFile> filter =
+            Predicate<VirtualFile> typeFilter =
                     fileIndex.isInTestSourceContent(virtualFile) ?
                             fileIndex::isInSourceContent :
                             fileIndex::isInTestSourceContent;
 
             VirtualFile[] altRoots = Arrays.stream(ProjectRootManager.getInstance(project).getContentSourceRoots())
-                    .filter(filter)
+                    .filter(typeFilter)
                     .toArray(VirtualFile[]::new);
 
             for (VirtualFile altRoot : altRoots) {
@@ -223,7 +234,10 @@ public class PackageWalker {
                     VirtualFile altFile = VirtualFileManager.getInstance().findFileByUrl(url);
 
                     if (altFile != null && altFile.exists() && altFile.isDirectory() == virtualFile.isDirectory()) {
-                        return altFile;
+                        VirtualFile match = fn.apply(altFile);
+                        if (match != null) {
+                            return match;
+                        }
                     }
                 }
             }

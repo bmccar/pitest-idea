@@ -94,7 +94,7 @@ public class CachedRun implements Comparable<CachedRun> {
         return recorder.getModule().getProject();
     }
 
-    public PitExecutionRecorder ensureLoaded() {
+    public synchronized PitExecutionRecorder ensureLoaded() {
         // TODO -- Placeholder for later work on lazy loading
         return recorder;
     }
@@ -103,7 +103,7 @@ public class CachedRun implements Comparable<CachedRun> {
      * Makes this CachedRun the currently selected item in its history list and performs all necessary
      * UI updates to reflect this new selection.
      */
-    public void activate() {
+    public synchronized void activate() {
         Project project = getProject();
         setAsCurrent();
         PitToolWindowFactory.show(project, this);
@@ -195,18 +195,11 @@ public class CachedRun implements Comparable<CachedRun> {
 
         File dir = getReportFileDir();
         if (dir.exists() && dir.isDirectory()) {
-            Future<File[]> future = collectValidReportDirectories(dir);
-            try {
-                File[] files = future.get();
-                if (files != null) {
-                    Arrays.stream(future.get()).forEach(virtualFile -> deleteFilesInDir(dir));
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
+            deleteFilesInDir(dir);
         }
     }
 
+    // TODO find all cmd line
     private static @NotNull Future<File[]> collectValidReportDirectories(File dir) {
         final Application app = ApplicationManager.getApplication();
         return app.executeOnPooledThread(() -> app.runReadAction((Computable<File[]>) () -> {
