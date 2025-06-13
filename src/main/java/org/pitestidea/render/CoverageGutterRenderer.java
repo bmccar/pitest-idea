@@ -105,7 +105,12 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
                     highlighter.putUserData(HIGHLIGHTER_KEY, Boolean.TRUE);
                     StringBuilder sb = new StringBuilder();
                     for (Mutation record : records) {
-                        sb.append(String.format("%s: %s%n", record.mutationImpact(), record.description()));
+                        String description = record.description();
+                        String anchor = PitLinkAnchors.linkFor(description);;
+                        if (anchor != null) {
+                            description = "<a href=\"https://pitest.org/quickstart/mutators/#" + anchor + "\">" + description + "</a>";
+                        }
+                        sb.append(String.format("%s: %s%n", record.mutationImpact(), description));
                     }
                     String tooltip = sb.toString();
                     highlighter.setGutterIconRenderer(new MutationGutterIconographer(icon, tooltip));

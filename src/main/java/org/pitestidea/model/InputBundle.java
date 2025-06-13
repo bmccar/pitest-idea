@@ -112,17 +112,13 @@ public class InputBundle {
         @Override
         public Function<String, String> getTransformer() {
             return s -> {
-                {
-                    int lastDot = s.lastIndexOf('.');
-                    if (lastDot >= 0) {
-                        s = s.substring(0, lastDot);
-                    }
+                int lastDot = s.lastIndexOf('.');
+                int lastSlash = s.lastIndexOf(fs());
+                if (lastDot >= 0 && lastDot > lastSlash) {
+                    s = s.substring(0, lastDot);
                 }
-                {
-                    int lastSlash = s.lastIndexOf(fs());
-                    if (lastSlash >= 0) {
-                        s = s.substring(lastSlash + 1);
-                    }
+                if (lastSlash >= 0) {
+                    s = s.substring(lastSlash + 1);
                 }
                 return s;
             };
@@ -166,7 +162,9 @@ public class InputBundle {
     }
 
     public @NotNull InputBundle addPath(Category category, @NotNull String element) {
-        if (element.startsWith(fss())) {
+        if (element.isBlank()) {
+            throw new IllegalArgumentException("Empty path segment");
+        } else if (element.startsWith(fss())) {
             throw new IllegalArgumentException("Path must not start with a slash: " + element);
         }
         map.get(category).add(element);

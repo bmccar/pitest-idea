@@ -36,6 +36,10 @@ class ClassPathConfiguratorTest {
     private static MockedConstruction<File> mockedFileConstruction;
     private final Map<Path, Set<Path>> directoryMap = new HashMap<>();
     private static Path libDir;
+    static {
+        // Force class load, PITest fails otherwise
+        Object x = ClassPathConfigurator.class;
+    }
 
     @BeforeAll
     static void beforeAll() {

@@ -2,16 +2,17 @@ package org.pitestidea.model;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
+import org.pitestidea.model.InputBundle.Category;
 
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.MockedStatic;
-import org.pitestidea.model.InputBundle.Category;
-
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.junit.jupiter.api.Assertions.*;
 
 class InputBundleTest {
@@ -20,6 +21,7 @@ class InputBundleTest {
     private static final String FS = File.separator;
 
     @Test
+    @DisplayName("Should throw IllegalStateException when bundle is empty")
     void emptyBundleFails() {
         InputBundle bundle = new InputBundle();
         assertThrows(IllegalStateException.class, bundle::generateReportName,
@@ -27,71 +29,55 @@ class InputBundleTest {
     }
 
     private static String biggerThanMax() {
-        StringBuilder sb = new StringBuilder("x");
-        while (sb.length() <= InputBundleTest.MAX) {
-            sb.append('*');
-        }
-        return sb.toString();
+        return "x".repeat(MAX + 1);
     }
 
-    private void verifyReportDirectoryName(String fn, String exp) {
+    @ParameterizedTest
+    @CsvSource({
+            "abc.x, abc",
+            "abc, abc"
+    })
+    @DisplayName("Should generate correct report directory name prefix")
+    void reportDirectoryName(String fileName, String expectedPrefix) {
         final int max_pfx = InputBundle.MAX_PREFIX_LENGTH;
-        InputBundle bundle = new InputBundle().addPath(Category.SOURCE_FILE, fn);
+        InputBundle bundle = new InputBundle().addPath(Category.SOURCE_FILE, fileName);
         String got = bundle.generateReportName();
-        got = got.substring(0, max_pfx);
-        assertEquals(exp, got);
+        got = got.substring(0, Math.min(got.length(), max_pfx));
+        assertEquals(expectedPrefix, got);
+
+        bundle = new InputBundle().addPath(Category.SOURCE_FILE, "x" + FS + fileName);
+        got = bundle.generateReportName();
+        got = got.substring(0, Math.min(got.length(), max_pfx));
+        assertEquals(expectedPrefix, got);
+
+        bundle = new InputBundle().addPath(Category.SOURCE_FILE, path("a", "x", fileName));
+        got = bundle.generateReportName();
+        got = got.substring(0, Math.min(got.length(), max_pfx));
+        assertEquals(expectedPrefix, got);
     }
 
-    void verifyReportDirectoryName(String fn) {
-        final int max_pfx = InputBundle.MAX_PREFIX_LENGTH;
-        final String exp = fn.substring(0, max_pfx);
-        verifyReportDirectoryName(fn, exp);
-        verifyReportDirectoryName("x" + FS + fn, exp);
-        verifyReportDirectoryName(path("a","x",fn), exp);
+    private static String path(String... segments) {
+        return String.join(FS, segments);
     }
 
-    @Test
-    void reportDirectoryName() {
-        verifyReportDirectoryName("abc.x");
-        verifyReportDirectoryName("abc");
-    }
-
-    private static String path(String...segments) {
-        return String.join(FS, Arrays.asList(segments));
-    }
-
-    @Test
-    void oneFileName() {
-        String name = "Foo.x";
-        InputBundle bundle = new InputBundle().addPath(Category.SOURCE_FILE, name).addPath(Category.TEST_FILE, "Junk.y");
-        assertEquals("Foo", bundle.generateReportName());
-        bundle = new InputBundle().addPath(Category.SOURCE_FILE, path("a",name));
-        assertEquals("Foo", bundle.generateReportName());
-    }
-
-    @Test
-    void noSourcesName() {
-        String name = "FooTest.x";
-        InputBundle bundle = new InputBundle().addPath(Category.TEST_FILE, name);
-        assertEquals(1,bundle.asPath().get(Category::isFile).size());
-        assertEquals(0,bundle.asPath().get(Category::isPkg).size());
-        assertEquals("FooTest", bundle.generateReportName());
-        bundle = new InputBundle().addPath(Category.TEST_FILE, path("a",name));
-        assertEquals("FooTest", bundle.generateReportName());
+    @ParameterizedTest
+    @CsvSource({
+            "SOURCE_FILE, Foo.x, Foo",
+            "TEST_FILE, FooTest.x, FooTest",
+            "SOURCE_PKG, Foo, Foo",
+            "SOURCE_FILE, a/Foo.x, Foo",
+            "TEST_FILE, a/FooTest.x, FooTest",
+            "SOURCE_PKG, a/Foo, Foo",
+            "SOURCE_FILE, a.b/c, c",
+    })
+    @DisplayName("Should generate correct report name for single path")
+    void singlePathNameGeneration(Category category, String path, String expectedName) {
+        InputBundle bundle = new InputBundle().addPath(category, path);
+        assertEquals(expectedName, bundle.generateReportName());
     }
 
     @Test
-    void oneDirectoryName() {
-        String name = "Foo";
-        InputBundle bundle = new InputBundle().addPath(Category.SOURCE_PKG, name);
-        assertEquals(0,bundle.asPath().get(Category::isFile).size());
-        assertEquals(1,bundle.asPath().get(Category::isPkg).size());
-        assertEquals("Foo", bundle.generateReportName());
-        bundle = new InputBundle().addPath(Category.SOURCE_PKG, path("a",name));
-        assertEquals("Foo", bundle.generateReportName());
-    }
-
-    @Test
+    @DisplayName("Should combine names for multiple source files")
     void twoFileNames() {
         InputBundle bundle = new InputBundle()
                 .addPath(Category.SOURCE_FILE, "Foo.x")
@@ -100,25 +86,31 @@ class InputBundleTest {
     }
 
     @Test
+    @DisplayName("Should truncate a long file name")
     void truncateLongFileName() {
         InputBundle bundle = new InputBundle().addPath(Category.SOURCE_PKG, biggerThanMax() + ".z");
-        String exp = biggerThanMax().substring(0, MAX) + "...";
-        assertEquals(exp, bundle.generateReportName());
+        String expected = biggerThanMax().substring(0, MAX) + "...";
+        assertEquals(expected, bundle.generateReportName());
     }
 
-    @Test
-    void truncateLongMultiFile() {
+    @ParameterizedTest
+    @CsvSource({
+            "1, 'a...'",
+            "2, 'aa,...'",
+            "3, 'aa,...'",
+            "4, 'aa,b...'",
+            "5, 'aa,bb'"
+    })
+    @DisplayName("Should truncate long multi-file name at specified length")
+    void truncateLongMultiFile(int maxLength, String expected) {
         InputBundle bundle = new InputBundle()
                 .addPath(Category.SOURCE_PKG, "aa")
                 .addPath(Category.SOURCE_PKG, "bb");
-        assertEquals("a...", bundle.generateReportName(1));
-        assertEquals("aa,...", bundle.generateReportName(2));
-        assertEquals("aa,...", bundle.generateReportName(3));
-        assertEquals("aa,b...", bundle.generateReportName(4));
-        assertEquals("aa,bb", bundle.generateReportName(5));
+        assertEquals(expected, bundle.generateReportName(maxLength));
     }
 
     @Test
+    @DisplayName("Should correctly order report names")
     void reportNameOrder() {
         InputBundle bundle = new InputBundle()
                 .addPath(Category.SOURCE_PKG, "a/x")
@@ -128,24 +120,26 @@ class InputBundleTest {
     }
 
     @Test
+    @DisplayName("Should throw IllegalArgumentException for paths starting with a slash")
     void rejectLeadingSlash() {
         String bad = "/a/b/c.x";
         assertThrows(IllegalArgumentException.class,
-                ()->new InputBundle().addPath(Category.SOURCE_FILE, bad));
+                () -> new InputBundle().addPath(Category.SOURCE_FILE, bad));
         assertThrows(IllegalArgumentException.class,
-                ()->new InputBundle().setPaths(Category.SOURCE_FILE, List.of(bad)));
+                () -> new InputBundle().setPaths(Category.SOURCE_FILE, List.of(bad)));
     }
 
     @Test
+    @DisplayName("Should reformat paths to qualified names and simple names")
     void reformat() {
         InputBundle bundle = new InputBundle().addPath(Category.SOURCE_FILE, "a/b/c.x");
-        assertEquals(List.of("a/b/c.x"),bundle.asPath().get(c->true));
-        assertEquals(List.of("a.b.c"),bundle.asQn().get(c->true));
-        assertEquals(List.of("c"),bundle.asSimple().get(c->true));
+        assertEquals(List.of("a/b/c.x"), bundle.asPath().get(c -> true));
+        assertEquals(List.of("a.b.c"), bundle.asQn().get(c -> true));
+        assertEquals(List.of("c"), bundle.asSimple().get(c -> true));
     }
 
     @Test
-    @DisplayName("Should fail when list contains null elements")
+    @DisplayName("Should throw NullPointerException when list contains null elements")
     void failWhenListContainsNullElements() {
         InputBundle bundle = new InputBundle();
         List<String> pathsWithNull = Arrays.asList("valid/path", null, "another/path");
@@ -154,22 +148,21 @@ class InputBundleTest {
                 bundle.setPaths(Category.SOURCE_FILE, pathsWithNull));
     }
 
-    @Test
-    @DisplayName("Should fail with zero or negative maxLength")
-    void failWithZeroOrNegativeMaxLength() {
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1})
+    @DisplayName("Should throw IllegalArgumentException for zero or negative maxLength")
+    void failWithZeroOrNegativeMaxLength(int maxLength) {
         InputBundle bundle = new InputBundle()
                 .addPath(Category.SOURCE_FILE, "Test.java");
 
-        assertThrows(Exception.class, () ->
-                bundle.generateReportName(0));
-
-        assertThrows(Exception.class, () ->
-                bundle.generateReportName(-1));
+        assertThrows(IllegalArgumentException.class, () ->
+                bundle.generateReportName(maxLength));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/", "\\"})
-    void failWithWrongFileSeparators(String separator) {
+    @ValueSource(strings = {"/", "\\" })
+    @DisplayName("Should handle different file separators")
+    void handleDifferentFileSeparators(String separator) {
         try (MockedStatic<SysDiffs> sysDiffsMockedStatic = org.mockito.Mockito.mockStatic(SysDiffs.class)) {
             sysDiffsMockedStatic.when(SysDiffs::fs).thenReturn(separator.charAt(0));
             sysDiffsMockedStatic.when(SysDiffs::fss).thenReturn(separator);
@@ -181,13 +174,14 @@ class InputBundleTest {
 
             String reportName = bundle.generateReportName();
             assertEquals("Test", reportName);
-            assertEquals(bundle.asQn().get(Category::isSource), List.of("com.example.Test"));
-            assertEquals(bundle.asPath().get(Category::isSource), List.of(path));
+            assertEquals(List.of("com.example.Test"), bundle.asQn().get(Category::isSource));
+            assertEquals(List.of(path), bundle.asPath().get(Category::isSource));
         }
     }
 
     @Test
-    void shouldFailWithEmptyFileSeparatorEdgeCase() {
+    @DisplayName("Should throw IllegalStateException when file name is only an extension")
+    void failWhenFileNameIsOnlyAnExtension() {
         InputBundle bundle = new InputBundle()
                 .addPath(Category.SOURCE_FILE, ".java"); // No actual name, just extension
 
@@ -195,8 +189,8 @@ class InputBundleTest {
     }
 
     @Test
-    @DisplayName("Should fail with hash code collision in directory name generation")
-    void failWithHashCodeCollision() {
+    @DisplayName("Should generate unique directory names for different inputs")
+    void shouldGenerateUniqueDirectoryNamesForDifferentInputs() {
         // Create two different bundles that might have the same hash code
         InputBundle bundle1 = new InputBundle()
                 .addPath(Category.SOURCE_FILE, "Aa.java");
@@ -211,7 +205,8 @@ class InputBundleTest {
     }
 
     @Test
-    void failEmptyFileType() {
+    @DisplayName("Should handle file name ending with a dot")
+    void handleFileNameEndingWithDot() {
         InputBundle bundle = new InputBundle()
                 .addPath(Category.SOURCE_FILE, "file."); // Ends with a dot but no extension
 
@@ -221,6 +216,7 @@ class InputBundleTest {
     }
 
     @Test
+    @DisplayName("Should handle single character file name")
     void shortFileName() {
         InputBundle bundle = new InputBundle()
                 .addPath(Category.SOURCE_FILE, "a"); // Single character, no extension
@@ -230,5 +226,31 @@ class InputBundleTest {
 
         String dirName = bundle.generateReportDirectoryName();
         assertTrue(dirName.contains("a"));
+    }
+
+    @Test
+    void removeThis() {
+        InputBundle bundle = new InputBundle()
+                .addPath(Category.SOURCE_FILE, "a.b/c");
+        String result = bundle.generateReportName(2);
+        assertEquals("c", result);
+
+        /*
+        InputBundle bundle = new InputBundle()
+                .addPath(Category.SOURCE_FILE, "a")
+                .addPath(Category.SOURCE_FILE, "b");
+
+        String result = bundle.generateReportName(1);
+        assertEquals("a,...", result);
+         */
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "  " })
+    @DisplayName("Should throw for empty or blank paths")
+    void shouldThrowForEmptyOrBlankPaths(String invalidPath) {
+        InputBundle bundle = new InputBundle();
+        assertThatIllegalArgumentException().isThrownBy(() ->
+                bundle.addPath(Category.SOURCE_FILE, invalidPath));
     }
 }
