@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.constants.PluginVersions;
+import org.pitestidea.model.SysDiffs;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,20 +37,6 @@ class ClassPathConfigurator {
             return ver2.equals(ver1) || ver2.isGreaterThan(ver1);
         }
         return false;
-    }
-
-    /**
-     * Returns "c" from "a/b/c".
-     *
-     * @param path to read
-     * @return last segment of a multi-segment path
-     */
-    private static String lastSegmentOf(String path) {
-        int ix = path.lastIndexOf(File.separatorChar);
-        if (ix >= 0) {
-            return path.substring(ix + 1);
-        }
-        return path;
     }
 
     /**
@@ -90,7 +77,7 @@ class ClassPathConfigurator {
             if (from < to) {
                 to = from-1;  // Account for the necessary '-' of the version string
             }
-            int ix = path.lastIndexOf(File.separatorChar, from);
+            int ix = path.lastIndexOf(SysDiffs.fs(), from);
             from = ix < 0 ? 0 : ix + 1;
             return path.substring(from, to);
         });
@@ -134,7 +121,7 @@ class ClassPathConfigurator {
      */
     private static void walk(Map<String, String> pathMap, Path fullPath, List<String> paths, List<String> addedPaths, boolean add) throws IOException {
         String fullPathStr = fullPath.toString();
-        int ix = fullPathStr.lastIndexOf(File.separatorChar);
+        int ix = fullPathStr.lastIndexOf(SysDiffs.fs());
         String segment = ix < 0 ? fullPathStr : fullPathStr.substring(ix + 1);
         if (segment.startsWith("ifn-")) {
             String nm = segment.substring(4);
@@ -178,7 +165,7 @@ class ClassPathConfigurator {
             SemVer bestMatch = null;
             SemVer least = null;
             for (String nextVersionToMatch : versions) {
-                SemVer nextVersion = SemVer.parseFromText(lastSegmentOf(nextVersionToMatch));
+                SemVer nextVersion = SemVer.parseFromText(SysDiffs.lastSegmentOf(nextVersionToMatch));
                 if (least == null || versionLte(nextVersion, least)) {
                     least = nextVersion;
                 }

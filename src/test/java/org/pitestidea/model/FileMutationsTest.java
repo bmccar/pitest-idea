@@ -5,33 +5,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class FileMutationsTest {
 
     private Mutation mutation(int lineNumber, MutationImpact impact) {
         return new Mutation(impact, String.format("%d-%s", lineNumber, impact));
-    }
-
-    @Test
-    public void lineSummary() {
-        Mutation survived = mutation(1, MutationImpact.SURVIVED);
-        Mutation killed = mutation(1, MutationImpact.KILLED);
-        Mutation no_coverage = mutation(1, MutationImpact.NO_COVERAGE);
-        Mutation timed_out = mutation(1, MutationImpact.TIMED_OUT);
-
-        assertEquals(MutationImpact.SURVIVED, FileMutations.lineSummary(List.of(survived)));
-        assertEquals(MutationImpact.KILLED, FileMutations.lineSummary(List.of(killed)));
-        assertEquals(MutationImpact.NO_COVERAGE, FileMutations.lineSummary(List.of(no_coverage)));
-        assertEquals(MutationImpact.TIMED_OUT, FileMutations.lineSummary(List.of(timed_out)));
-
-        assertEquals(MutationImpact.SURVIVED, FileMutations.lineSummary(Arrays.asList(survived, survived)));
-        assertEquals(MutationImpact.SURVIVED, FileMutations.lineSummary(Arrays.asList(survived, killed)));
-        assertEquals(MutationImpact.TIMED_OUT, FileMutations.lineSummary(Arrays.asList(killed, timed_out)));
     }
 
     private void mutate(FileMutations fm, int lineNumber, MutationImpact impact) {
@@ -69,7 +49,7 @@ public class FileMutationsTest {
 
     @Test
     public void mutationTypes() {
-        FileMutations fm = new FileMutations("somePkg");
+        FileMutations fm = new FileMutations("somePkg", null);
         mutate(fm, 1, MutationImpact.SURVIVED);
         mutate(fm, 2, MutationImpact.KILLED);
         mutate(fm, 3, MutationImpact.NO_COVERAGE);
@@ -78,13 +58,13 @@ public class FileMutationsTest {
 
     @Test
     public void testGetMutationsTotalWithNoMutations() {
-        FileMutations fm = new FileMutations("somePkg");
+        FileMutations fm = new FileMutations("somePkg", null);
         mutate(fm, 5, MutationImpact.KILLED);
         mutate(fm, 5, MutationImpact.SURVIVED);
         mutate(fm, 8, MutationImpact.KILLED);
 
-        fm.visit((lineNumber, lineImpact, mutations) -> mutations.forEach(mutation -> {
-            Optional<Track> track = Track.find(lineNumber, mutation.mutationImpact());
+        fm.visit((lineImpact) -> lineImpact.getMutations(LineImpact.LineImpactPoint.CURRENT).forEach(mutation -> {
+            Optional<Track> track = Track.find(lineImpact.getLineNumber(), mutation.mutationImpact());
             Assertions.assertTrue(track.isPresent());
             track.get().found = true;
         }));

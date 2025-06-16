@@ -6,6 +6,7 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.impl.DocumentMarkupModel;
 import com.intellij.openapi.editor.markup.*;
+
 import com.intellij.openapi.util.IconLoader;
 import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiFile;
@@ -19,6 +20,7 @@ import com.intellij.psi.PsiDocumentManager;
 import org.jetbrains.annotations.NotNull;
 import org.pitestidea.model.FileMutations;
 import org.pitestidea.model.IMutationScore;
+import org.pitestidea.model.LineImpact;
 import org.pitestidea.model.Mutation;
 
 import javax.swing.*;
@@ -44,7 +46,7 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
     @Override
     public void fileOpened(Project project, VirtualFile file, FileMutations fileMutations, IMutationScore score) {
         Application app = ApplicationManager.getApplication();
-        app.executeOnPooledThread(() -> app.runReadAction(() -> fileMutations.visit((lineNumber, lineImpact, mutations) -> addGutterIcon(project, file, lineNumber, mutations))));
+        app.executeOnPooledThread(() -> app.runReadAction(() -> fileMutations.visit(lineImpact -> addGutterIcon(project, file, lineImpact))));
     }
 
     @Override
@@ -84,39 +86,68 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
         return "/icons/" + root + '_' + sfx + ".svg";
     }
 
-    private static void addGutterIcon(Project project, VirtualFile file, int lineNumber, List<Mutation> records) {
+    private static void addGutterIcon(Project project, VirtualFile file, LineImpact lineImpact) {
+        int lineNumber = lineImpact.getLineNumber();
+        //List<Mutation> records = lineImpact.getMutations(LineImpact.LineImpactPoint.CURRENT);
         if (lineNumber > 0) {
-            // Adjust for IJ editor positioning
-            // Sometimes lineNumber is zero, apparently when PIT can't locate it
+            // Adjust for IJ editor positioning -- sometimes lineNumber is zero, apparently when PIT can't locate it
             lineNumber -= 1;
         }
         PsiManager psiManager = PsiManager.getInstance(project);
         PsiFile psiFile = psiManager.findFile(file);
-        String iconFile = locateIconFile(records);
-        if (psiFile != null && iconFile != null) {
+        if (psiFile != null) {
             Document document = PsiDocumentManager.getInstance(project).getDocument(psiFile);
             if (document != null) {
-                int startOffset = document.getLineStartOffset(lineNumber);
-                int endOffset = document.getLineEndOffset(lineNumber);
+                final int startOffset = document.getLineStartOffset(lineNumber);
+                final int endOffset = document.getLineEndOffset(lineNumber);
+
                 if (startOffset != -1 && endOffset != -1) {
-                    Icon icon = IconLoader.getIcon(iconFile, CoverageGutterRenderer.class);
                     MarkupModel markupModel = DocumentMarkupModel.forDocument(document, project, true);
-                    RangeHighlighter highlighter = markupModel.addLineHighlighter(lineNumber, ICON_LAYER, ICON_TEXT_ATTRIBUTES);
-                    highlighter.putUserData(HIGHLIGHTER_KEY, Boolean.TRUE);
-                    StringBuilder sb = new StringBuilder();
-                    for (Mutation record : records) {
-                        String description = record.description();
-                        String anchor = PitLinkAnchors.linkFor(description);;
-                        if (anchor != null) {
-                            description = "<a href=\"https://pitest.org/quickstart/mutators/#" + anchor + "\">" + description + "</a>";
-                        }
-                        sb.append(String.format("%s: %s%n", record.mutationImpact(), description));
+
+                    String pfx1 = null;
+                    String pfx2 = null;
+                    final boolean diff = lineImpact.getMutations(LineImpact.LineImpactPoint.PREVIOUS) != null;
+                    if (diff) {
+                        pfx1 = "From <i>most recent<i> run";
+                        pfx2 = "From <i>previous</i> run";
                     }
-                    String tooltip = sb.toString();
-                    highlighter.setGutterIconRenderer(new MutationGutterIconographer(icon, tooltip));
+
+                    addLineIcon(markupModel, lineNumber, lineImpact, LineImpact.LineImpactPoint.CURRENT, pfx1);
+                    if (diff) {
+                        addLineIcon(markupModel, lineNumber, lineImpact, LineImpact.LineImpactPoint.PREVIOUS, pfx2);
+                    }
                 }
             }
         }
+    }
+
+    private static void addLineIcon(MarkupModel markupModel, int adjustedLineNumber, LineImpact lineImpact, LineImpact.LineImpactPoint point, String header) {
+        List<Mutation> records = lineImpact.getMutations(point);
+        String iconFile = locateIconFile(records);
+        if (iconFile != null) {
+            Icon icon = IconLoader.getIcon(iconFile, CoverageGutterRenderer.class);
+            RangeHighlighter highlighter = markupModel.addLineHighlighter(adjustedLineNumber, ICON_LAYER, ICON_TEXT_ATTRIBUTES);
+            highlighter.putUserData(HIGHLIGHTER_KEY, Boolean.TRUE);
+            String tooltip = createTooltipFrom(header, records);
+            highlighter.setGutterIconRenderer(new MutationGutterIconographer(icon, tooltip));
+        }
+    }
+
+    private static @NotNull String createTooltipFrom(String header, List<Mutation> records) {
+        StringBuilder sb = new StringBuilder();
+        if (header != null) {
+            sb.append(header);
+            sb.append(":<br>");
+        }
+        for (Mutation record : records) {
+            String description = record.description();
+            String anchor = PitLinkAnchors.linkFor(description);
+            if (anchor != null) {
+                description = "<a href=\"https://pitest.org/quickstart/mutators/#" + anchor + "\">" + description + "</a>";
+            }
+            sb.append(String.format("%s: %s%n", record.mutationImpact(), description));
+        }
+        return sb.toString();
     }
 
     public static void removeGutterIcons(Project project) {

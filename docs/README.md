@@ -85,7 +85,8 @@ The practical considerations of this are that:
 
 ## Troubleshooting
 First, make sure your project compiles. The plugin initiates an incremental build before execution, so PIT won't even
-be attempted if the project does not compile.
+be attempted if the project does not compile. Also, PIT sometimes complains about "No mutations found" if the project
+wasn't built properly — "Rebuild all" can fix this.
 
 Second, make sure your tests (those targeted for a given run) pass. PIT will start but will exit with an error if it can't run the tests.
 

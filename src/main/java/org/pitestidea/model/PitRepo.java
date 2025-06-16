@@ -98,15 +98,16 @@ public class PitRepo {
      * @return a new CachedRun
      */
     public static @NotNull CachedRun register(@NotNull Module module, @NotNull ExecutionRecord record, @NotNull String reportDir) {
-        PitExecutionRecorder recorder = new PitExecutionRecorder(module);
-        Project project = recorder.getModule().getProject();
+        Project project = module.getProject();
         ProjectRunRecords runRecords = projectMap.computeIfAbsent(project.getName(), _x -> new ProjectRunRecords());
+        CachedRun old = runRecords.runHistory.stream().filter(r -> r.getExecutionRecord().equals(record)).findFirst().orElse(null);
+
+        PitExecutionRecorder recorder = new PitExecutionRecorder(module, old==null ? null : old.getRecorder());
         CachedRun cachedRun = new CachedRun(runRecords, record, recorder, reportDir);
         if (cachedRun.equals(runRecords.current)) {
             // While swapping in a new CachedRun, ensure the replacement is current if the original was
             runRecords.setAsCurrent(cachedRun);
         }
-        CachedRun old = runRecords.runHistory.stream().filter(r -> r.getExecutionRecord().equals(record)).findFirst().orElse(null);
         if (old != null) {
             cachedRun.setRunStateChangedListener(old.getRunStateChangedListener());
             runRecords.runHistory.remove(old);

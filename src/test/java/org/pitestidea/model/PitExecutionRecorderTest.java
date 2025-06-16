@@ -2,6 +2,8 @@ package org.pitestidea.model;
 
 import com.intellij.openapi.vfs.VirtualFile;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 import org.pitestidea.toolwindow.DisplayChoices;
 import org.pitestidea.toolwindow.Sorting;
@@ -24,7 +26,7 @@ class PitExecutionRecorderTest {
     }
 
     private static class Tracker implements PitExecutionRecorder.FileVisitor {
-        private final PitExecutionRecorder recorder = new PitExecutionRecorder(null);
+        private final PitExecutionRecorder recorder = new PitExecutionRecorder(null, null);
         private final Map<String, VirtualFile> fileMap = new HashMap<>();
 
         // Track Top-level packages so we can know if a top-level aggregated results row should be expected
@@ -62,7 +64,8 @@ class PitExecutionRecorderTest {
 
         @Override
         public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
-            fileMutations.visit((lineNumber, lineImpactSummary, mutations) -> mutations.forEach(mutation -> {
+            fileMutations.visit(lineImpact -> lineImpact.getMutations(LineImpact.LineImpactPoint.CURRENT).forEach(mutation -> {
+                int lineNumber = lineImpact.getLineNumber();
                 ExpectedFileLine match = new ExpectedFileLine(fileMutations.getPkg(), file, mutation.mutationImpact(), lineNumber, "");
                 ExpectedFileLine expectedFileLine = expectedFileLines.stream().filter(t -> t.equals(match)).findFirst().orElse(null);
                 assertNotNull(expectedFileLine, "Unexpected mutation on file " + file.getName() + " line " + lineNumber + " " + mutation.mutationImpact());
@@ -188,6 +191,32 @@ class PitExecutionRecorderTest {
 
         verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.ASC, "f1.java", "f2.java", "f3.java", "f4.java");
         verifyFileSort(tracker, Sorting.By.SCORE, Sorting.Direction.DESC, "f4.java", "f3.java", "f2.java", "f1.java");
+    }
+
+    void sortBy(Sorting.By sortBy) {
+        Tracker tracker = new Tracker();
+
+        // NAME and SCORE sort in the same order
+        tracker.expect("aaa", "a/f1.java", MutationImpact.SURVIVED, 5);
+
+        tracker.expect("aaa", "a/f3.java", MutationImpact.SURVIVED, 5);
+        tracker.expect("aaa", "a/f3.java", MutationImpact.KILLED, 5);
+        tracker.expect("aaa", "a/f3.java", MutationImpact.KILLED, 5);
+
+        tracker.expect("aaa", "b/f2.java", MutationImpact.SURVIVED, 5);
+        tracker.expect("aaa", "b/f2.java", MutationImpact.KILLED, 5);
+
+        tracker.expect("aaa", "b/f4.java", MutationImpact.KILLED, 5);
+
+        verifyFileSort(tracker, sortBy, Sorting.Direction.ASC, "a/f1.java", "b/f2.java", "a/f3.java", "b/f4.java");
+        verifyFileSort(tracker, sortBy, Sorting.Direction.DESC, "b/f4.java", "a/f3.java", "b/f2.java", "a/f1.java");
+    }
+
+    //@ParameterizedTest
+    //@CsvSource({"NAME","SCORE"})
+    @CsvSource({"SCORE"})
+    void sortFilesInDifferentPackages(Sorting.By sortBy) {
+        sortBy(sortBy);
     }
 
     private static void verifyFileSort(Tracker tracker, Sorting.By sortBy, Sorting.Direction dir, String... expectedFileNames) {

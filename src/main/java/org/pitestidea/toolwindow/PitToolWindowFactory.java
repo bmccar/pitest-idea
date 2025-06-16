@@ -49,9 +49,6 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         if (project != null && cachedRun != null) {
             MutationControlPanel mutationControlPanel = getOrCreateControlPanel(project);
 
-            mutationControlPanel.setSortSelection(Sorting.By.PROJECT);
-            mutationControlPanel.setDirSelection(Sorting.Direction.ASC);
-
             mutationControlPanel.setOptionsChangeFn(_choices -> reshow(project, mutationControlPanel, PitRepo.getCurrent(project)));
             mutationControlPanel.reloadHistory(project);
             reshow(project, mutationControlPanel, cachedRun);

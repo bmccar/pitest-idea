@@ -20,20 +20,33 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     public static final String ROOT_PACKAGE_NAME = "Aggregated Results";
     private final Module module;
     private final Map<VirtualFile, FileGroup> fileCache = new HashMap<>();
+    private final Map<VirtualFile, FileGroup> lastFileCache;
     private final List<FileGroup> sortedFiles = new ArrayList<>();
     private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME, null);
     private boolean hasMultiplePackages = false;
 
-    {
-        rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
-    }
-
-    public PitExecutionRecorder(Module module) {
+    public PitExecutionRecorder(Module module, PitExecutionRecorder previousRecorder) {
         this.module = module;
+        this.lastFileCache = previousRecorder == null ? Collections.emptyMap() : previousRecorder.fileCache;
+        rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
     }
 
     public Module getModule() {
         return module;
+    }
+
+    private static Comparator<Directory> sortCmp(DisplayChoices choices) {
+        Comparator<Directory> fn;
+        switch (choices.sortBy()) {
+            case PROJECT -> fn = Comparator.comparing(Directory::getName);
+            //case NAME -> fn = Comparator.comparing(d->SysDiffs.lastSegmentOf(d.getName()));
+            case SCORE -> fn = Comparator.comparing(Directory::getScore);
+            default -> throw new IllegalArgumentException("Unsupported sorting by: " + choices.sortBy());
+        }
+        if (choices.sortDirection() == Sorting.Direction.DESC) {
+            fn = fn.reversed();
+        }
+        return fn;
     }
 
     public interface PackageDiver {
@@ -111,15 +124,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
         @Override
         public void sort(DisplayChoices choices) {
-            Comparator<Directory> fn;
-            switch (choices.sortBy()) {
-                case PROJECT -> fn = Comparator.comparing(Directory::getName);
-                case SCORE -> fn = Comparator.comparing(Directory::getScore);
-                default -> throw new IllegalArgumentException("Unsupported sorting by: " + choices.sortBy());
-            }
-            if (choices.sortDirection() == Sorting.Direction.DESC) {
-                fn = fn.reversed();
-            }
+            Comparator<Directory> fn = sortCmp(choices);
             sortedChildren = children.values().stream().sorted(fn).toList();
             children.values().forEach(c -> c.sort(choices));
         }
@@ -147,14 +152,14 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     }
 
     @VisibleForTesting
-    static class FileGroup extends BaseMutationsScore implements Directory {
+    class FileGroup extends BaseMutationsScore implements Directory {
         private final VirtualFile file;
         private final FileMutations fileMutations;
 
-        private FileGroup(VirtualFile file, String pkg, PkgGroup parent) {
+        private FileGroup(VirtualFile file, String pkg, PkgGroup parent, FileGroup lastFileGroup) {
             super(parent.children.size());
             this.file = file;
-            this.fileMutations = new FileMutations(pkg);
+            this.fileMutations = new FileMutations(pkg,lastFileGroup == null ? null : lastFileGroup.fileMutations);
         }
 
         @Override
@@ -199,7 +204,8 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         last.hasCodeFileChildren = true;
         final PkgGroup parent = last;
         FileGroup dir = (FileGroup) last.children.computeIfAbsent(file.getName(), _k -> {
-            FileGroup fileGroup = new FileGroup(file, pkg, parent);
+            FileGroup lastFileGroup = lastFileCache.get(file);
+            FileGroup fileGroup = new FileGroup(file, pkg, parent, lastFileGroup);
             fileCache.put(file, fileGroup);
             sortedFiles.add(fileGroup);
             return fileGroup;
@@ -223,14 +229,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     public void sort(DisplayChoices choices) {
         this.displayChoices = choices;
         rootDirectory.sort(choices);
-        Comparator<FileGroup> cmp =
-                choices.sortBy() == Sorting.By.SCORE
-                        ? Comparator.comparing(FileGroup::getScore)
-                        : Comparator.comparing(FileGroup::getName);
-        if (choices.sortDirection() == Sorting.Direction.DESC) {
-            cmp = cmp.reversed();
-        }
-        sortedFiles.sort(cmp);
+        sortedFiles.sort(sortCmp(choices));
     }
 
     public interface FileVisitor {

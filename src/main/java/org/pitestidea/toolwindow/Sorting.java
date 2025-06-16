@@ -4,8 +4,8 @@ public class Sorting {
 
     public enum By implements Displayable {
         PROJECT("Project", "Sort by project structure"),
-        SCORE("Score", "Sort by mutation score"),
-        ;
+        //NAME("Name", "Sort alphabetically by file name"),
+        SCORE("Score", "Sort by mutation score");
 
         final String displayName;
         final String tooltipText;

@@ -5,6 +5,7 @@ import com.intellij.util.PathsList;
 import org.junit.jupiter.api.*;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+import org.pitestidea.model.SysDiffs;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -37,8 +38,9 @@ class ClassPathConfiguratorTest {
     private final Map<Path, Set<Path>> directoryMap = new HashMap<>();
     private static Path libDir;
     static {
-        // Force class load, PITest fails otherwise
+        // JUnit bug? Without these, internal JUnit classloading error
         Object x = ClassPathConfigurator.class;
+        x = SysDiffs.class;
     }
 
     @BeforeAll
