@@ -623,6 +623,7 @@ public final class MutationControlPanel {
             isTop = false;
             targetRow
                     .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component, point, _button) -> showScoreDetailPopup(component, point, score.getScoreDescription()))
+                    //.addSegment(formatScoreDiff(score), ClickTree.Hover.NONE, (component, point, _button) -> {})
                     .addSegment(fileName, ClickTree.Hover.NONE, (_c, _p, button) -> {
                         if (button) {
                             IdeaDiscovery.openBrowserTo(IdeaDiscovery.getUrl(cachedRun, file));
@@ -634,7 +635,7 @@ public final class MutationControlPanel {
                             }
                         }
                     })
-                    .addDelegatedSegment("(Click open; Ctrl-click browser)", ClickTree.Hover.FLASH);
+                    .addDelegatedSegment(" (Click open; Ctrl-click browser)", ClickTree.Hover.FLASH);
         }
 
         public Level setLine(CachedRun cachedRun, String pkgName, String qualifiedPkgName, IMutationScore score) {
@@ -655,12 +656,34 @@ public final class MutationControlPanel {
                             IdeaDiscovery.openBrowserTo(url);
                         }
                     })
-                    .addDelegatedSegment("(Ctrl-click browser)", ClickTree.Hover.FLASH);
+                    .addDelegatedSegment(" (Ctrl-click browser)", ClickTree.Hover.FLASH);
             return level;
         }
 
         private String formatScore(IMutationScore score) {
-            return String.format("%.0f%%", score.getScore());
+            float currentScore = score.getScore();
+            String scoreText = String.format("%.0f", score.getScore());
+            IMutationScore lastScore = score.getLastScore();
+            if (lastScore != null) {
+                float diff = currentScore - lastScore.getScore();
+                String arrow = null;
+                if (diff > 0) {
+                    arrow = "<small>(<span style='color:green'>&#8593;</span>";
+                } else if (diff < 0) {
+                    arrow = "<small>(<span style='color:red'>&#8595;</span>";
+                }
+                if (arrow != null) {
+                    diff = Math.abs(diff);
+                    if (diff > 1.0) {
+                        String dv = String.format("%.0f&#37;", diff);
+                        arrow += dv;
+                    }
+                    scoreText =  "<html>"+ scoreText + "&#37;&nbsp;" + arrow+")</small></html>";
+                } else {
+                    scoreText += "%";
+                }
+            }
+            return scoreText;
         }
 
         public void showScoreDetailPopup(Component component, Point point, String message) {

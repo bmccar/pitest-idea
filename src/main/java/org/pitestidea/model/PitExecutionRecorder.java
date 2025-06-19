@@ -22,12 +22,15 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     private final Map<VirtualFile, FileGroup> fileCache = new HashMap<>();
     private final Map<VirtualFile, FileGroup> lastFileCache;
     private final List<FileGroup> sortedFiles = new ArrayList<>();
-    private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME, null);
+    private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME, null, null);
+    private final Map<VirtualFile, PkgGroup> pkgCache = new HashMap<>();
+    private final Map<VirtualFile, PkgGroup> lastPkgCache;
     private boolean hasMultiplePackages = false;
 
     public PitExecutionRecorder(Module module, PitExecutionRecorder previousRecorder) {
         this.module = module;
         this.lastFileCache = previousRecorder == null ? Collections.emptyMap() : previousRecorder.fileCache;
+        this.lastPkgCache = previousRecorder == null ? Collections.emptyMap() : previousRecorder.pkgCache;
         rootDirectory.hasCodeFileChildren = true; // Force this package to be displayed
     }
 
@@ -72,8 +75,8 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         private List<Directory> sortedChildren = null;
         private boolean hasCodeFileChildren = false;
 
-        private PkgGroup(String name, PkgGroup parent) {
-            super(parent == null ? 0 : parent.children.size());
+        private PkgGroup(String name, PkgGroup parent, PkgGroup lastGroup) {
+            super(parent == null ? 0 : parent.children.size(), lastGroup);
             this.parent = parent;
             this.name = name;
         }
@@ -157,7 +160,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         private final FileMutations fileMutations;
 
         private FileGroup(VirtualFile file, String pkg, PkgGroup parent, FileGroup lastFileGroup) {
-            super(parent.children.size());
+            super(parent.children.size(), lastFileGroup);
             this.file = file;
             this.fileMutations = new FileMutations(pkg,lastFileGroup == null ? null : lastFileGroup.fileMutations);
         }
@@ -194,7 +197,8 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         PkgGroup last = rootDirectory;
         for (String segment : pkg.split("\\.")) {
             final PkgGroup parent = last;
-            Directory dir = last.children.computeIfAbsent(segment, _k -> new PkgGroup(segment, parent));
+            PkgGroup lastPkg = lastPkgCache.get(file);
+            Directory dir = last.children.computeIfAbsent(segment, _k -> new PkgGroup(segment, parent, lastPkg));
             if (last.children.size() > 1) {
                 hasMultiplePackages = true;
             }

@@ -4,6 +4,7 @@ import com.intellij.ui.treeStructure.Tree;
 import com.intellij.util.TriConsumer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import javax.swing.*;
 import javax.swing.tree.*;
@@ -20,14 +21,13 @@ public class ClickTree {
     private final TreeRow rootTreeRow = new TreeRow(0);
 
     private final JTree tree = new Tree(rootTreeRow.node);
+    private final Font rowFont = tree.getFont();
     private final CustomTreeCellRenderer renderer;
-
-    // How much horizontal space in each row before the first segment
-    private final int rowPrefixWidth;
 
     private RowSegment hoverSegment = null;
     private int hoveredRow = -1;    // Index of the row currently under the mouse
-    private int rowXPos = -1;      // X position of the mouse
+    private int rowXPos = -1;       // X position of the mouse
+    private int rowXStart = -1;     // X position of the row
 
     private void setHoveredRow(int row, int x) {
         hoveredRow = row;
@@ -39,8 +39,6 @@ public class ClickTree {
         tree.setCellRenderer(renderer);
 
         rootTreeRow.addSegment("");
-        Insets insets = tree.getInsets();
-        rowPrefixWidth = tree.getMaximumSize().width - (insets.left + insets.right);
 
         clearExistingRows();
 
@@ -48,6 +46,14 @@ public class ClickTree {
             @Override
             public void mouseMoved(MouseEvent e) {
                 int row = tree.getClosestRowForLocation(e.getX(), e.getY());
+
+                if (row != -1) {
+                    Rectangle rowBounds = tree.getRowBounds(row);
+                    if (rowBounds != null) {
+                        rowXStart = rowBounds.x;
+                    }
+                }
+
                 setHoveredRow(row, e.getX());
                 hoverSegment = null;
                 tree.repaint();
@@ -101,6 +107,27 @@ public class ClickTree {
         });
     }
 
+    @VisibleForTesting
+    static int contentLength(@NotNull String s) {
+        int count = 0;
+        char exp = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c=='&') {
+                count++;
+                exp = ';';
+            } else if (c == exp) {
+                exp = 0;
+            } else if (c == '<') {
+                exp = '>';
+            } else if (exp == 0) {
+                count++;
+            }
+        }
+        return count;
+
+    }
+
     public enum Hover {
         NONE,  // Normal text, no change on hover
         UNDERLINE,   // Normal text that is underlined on hover
@@ -117,27 +144,53 @@ public class ClickTree {
         final private Dimension dim;
         @Nullable
         final private TriConsumer<Component,Point,Boolean> action;
+        @NotNull
+        private Font font;
 
         // When a delegate is set, the hover behavior of this segment will activate based on whether the
         // delegate is the current hover segment
         @Nullable
         private RowSegment delegate = null;
 
-        private RowSegment(@NotNull String text, @NotNull Hover hover, @Nullable TriConsumer<Component,Point,Boolean> action) {
+        private RowSegment(@NotNull String text, @NotNull Hover hover, @Nullable TriConsumer<Component,Point,Boolean> action, @NotNull Font font, boolean first) {
             this.action = action;
-            this.dim = new Dimension(8 * (text.length() + 1), 16);
+            this.font = font;
+            //String coreText = text;
+            final String html = first ? "<html>" : "<html>&nbsp;";
+            final boolean isHtml;
+            if (text.startsWith("<html>")) {
+                isHtml = true;
+                text = text.substring(6, text.length() - 7);
+            } else {
+                isHtml = false;
+                if (!first) {
+                    text = ' ' + text;
+                }
+            }
+
+            this.dim = new Dimension(8 * (contentLength(text)+1), 16);
             if (hover == Hover.FLASH) {
                 this.text = null;
-                this.altText = text;
+                this.altText = fmts(text,isHtml,html);
             } else {
-                this.text = text;
+                this.text = fmts(text,isHtml,html);
+                //final String coreText = text.startsWith("<html>") ? text.substring(6, text.length() - 7) : text;
+                //String htmlSpace = first ? "" : "&nbsp;";
                 if (hover == Hover.ITALICS) {
-                    this.altText = "<html><i>" + text + "</i></html>";
+                    this.altText = fmts("<i>" + text + "</i>", true, html);
                 } else if (hover == Hover.UNDERLINE) {
-                    this.altText = "<html><u>" + text + "</u></html>";
+                    this.altText = fmts("<u>" + text + "</u>", true, html);
                 } else {
                     this.altText = null;
                 }
+            }
+        }
+
+        private static String fmts(String text, boolean isHtml, String html) {
+            if (isHtml) {
+                return html + text + "</html>";
+            } else {
+                return text;
             }
         }
 
@@ -152,10 +205,25 @@ public class ClickTree {
                 hit = tree.hoverSegment == delegate;
             }
 
+            /*
+            String t = (hit && altText != null) ? altText : text;
+            if (t != null && !Character.isDigit(t.charAt(0))) {
+                if (t.startsWith("<html>")) {
+                    t = "<html>&nbsp;" + t.substring(6);
+                } else {
+                    t = " " + t;
+                }
+            }
+            label.setText(t);
+             */
             label.setText((hit && altText != null) ? altText : text);
+            /*
+            Dimension dim = label.getSize();
+            dim.setSize(dim.width+6, dim.height);
             label.setMinimumSize(dim);
             label.setPreferredSize(dim);
             label.setSize(dim);
+             */
             return dim.width;
         }
     }
@@ -184,7 +252,7 @@ public class ClickTree {
         }
 
         public TreeRow addSegment(@NotNull String text, @NotNull Hover hover, @Nullable TriConsumer<Component, Point, Boolean> action) {
-            rowSegments.add(new RowSegment(text, hover, action));
+            rowSegments.add(new RowSegment(text, hover, action, rowFont, rowSegments.isEmpty()));
             if (renderer.labels.size() < rowSegments.size()) {
                 JLabel label = new JLabel();
                 label.setOpaque(false);
@@ -206,7 +274,7 @@ public class ClickTree {
                 addSegment(text,hover,null);
                 RowSegment addedSegment = rowSegments.get(rowSegments.size() - 1);
                 addedSegment.delegate = target;
-                renderer.labels.get(renderer.labels.size() - 1).setFont(FLASH_FONT);
+                addedSegment.font = FLASH_FONT;
             }
             return this;
         }
@@ -247,7 +315,7 @@ public class ClickTree {
             if (value instanceof DefaultMutableTreeNode node) {
                 TreeRow treeRow = (TreeRow) node.getUserObject();
                 if (treeRow != null) {
-                    int boundaryXPos = treeRow.level * rowPrefixWidth;
+                    int boundaryXPos = rowXStart;
                     for (int i = 0; i < labels.size(); i++) {
                         JLabel label = labels.get(i);
                         if (i >= treeRow.rowSegments.size()) {
@@ -255,6 +323,7 @@ public class ClickTree {
                         } else {
                             label.setVisible(true);
                             RowSegment segment = treeRow.rowSegments.get(i);
+                            label.setFont(segment.font);
                             boundaryXPos += segment.apply(label, hoveredRow == row && rowXPos >= 0, rowXPos - boundaryXPos, ClickTree.this);
                         }
                     }

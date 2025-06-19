@@ -12,4 +12,5 @@ public interface IMutationScore {
     int getTimedOut();
     int getMutationsTotal();
     int getOrder();
+    IMutationScore getLastScore();
 }

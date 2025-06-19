@@ -1,6 +1,7 @@
 package org.pitestidea.model;
 
 public abstract class BaseMutationsScore implements IMutationScore {
+    protected final BaseMutationsScore lastScore;
     protected int survived = 0;
     protected int killed = 0;
     protected int noCoverage = 0;
@@ -9,8 +10,14 @@ public abstract class BaseMutationsScore implements IMutationScore {
 
     private final int order;
 
-    public BaseMutationsScore(int order) {
+    public BaseMutationsScore(int order, BaseMutationsScore lastScore) {
         this.order = order;
+        this.lastScore = lastScore;
+    }
+
+    @Override
+    public IMutationScore getLastScore() {
+        return lastScore;
     }
 
     @Override
