@@ -155,7 +155,6 @@ public class ClickTree {
         private RowSegment(@NotNull String text, @NotNull Hover hover, @Nullable TriConsumer<Component,Point,Boolean> action, @NotNull Font font, boolean first) {
             this.action = action;
             this.font = font;
-            //String coreText = text;
             final String html = first ? "<html>" : "<html>&nbsp;";
             final boolean isHtml;
             if (text.startsWith("<html>")) {
@@ -174,8 +173,6 @@ public class ClickTree {
                 this.altText = fmts(text,isHtml,html);
             } else {
                 this.text = fmts(text,isHtml,html);
-                //final String coreText = text.startsWith("<html>") ? text.substring(6, text.length() - 7) : text;
-                //String htmlSpace = first ? "" : "&nbsp;";
                 if (hover == Hover.ITALICS) {
                     this.altText = fmts("<i>" + text + "</i>", true, html);
                 } else if (hover == Hover.UNDERLINE) {
@@ -204,26 +201,7 @@ public class ClickTree {
             } else {
                 hit = tree.hoverSegment == delegate;
             }
-
-            /*
-            String t = (hit && altText != null) ? altText : text;
-            if (t != null && !Character.isDigit(t.charAt(0))) {
-                if (t.startsWith("<html>")) {
-                    t = "<html>&nbsp;" + t.substring(6);
-                } else {
-                    t = " " + t;
-                }
-            }
-            label.setText(t);
-             */
             label.setText((hit && altText != null) ? altText : text);
-            /*
-            Dimension dim = label.getSize();
-            dim.setSize(dim.width+6, dim.height);
-            label.setMinimumSize(dim);
-            label.setPreferredSize(dim);
-            label.setSize(dim);
-             */
             return dim.width;
         }
     }

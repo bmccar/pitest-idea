@@ -109,7 +109,6 @@ public class CachedRun implements Comparable<CachedRun> {
         PitToolWindowFactory.show(project, this);
     }
 
-
     @Override
     public int compareTo(@NotNull CachedRun that) {
         return executionRecord.compareTo(that.executionRecord);

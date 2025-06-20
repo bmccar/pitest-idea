@@ -160,7 +160,7 @@ class InputBundleTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/", "\\" })
+    @ValueSource(strings = {"/", "\\"})
     @DisplayName("Should handle different file separators")
     void handleDifferentFileSeparators(String separator) {
         try (MockedStatic<SysDiffs> sysDiffsMockedStatic = org.mockito.Mockito.mockStatic(SysDiffs.class)) {
@@ -228,25 +228,8 @@ class InputBundleTest {
         assertTrue(dirName.contains("a"));
     }
 
-    @Test
-    void removeThis() {
-        InputBundle bundle = new InputBundle()
-                .addPath(Category.SOURCE_FILE, "a.b/c");
-        String result = bundle.generateReportName(2);
-        assertEquals("c", result);
-
-        /*
-        InputBundle bundle = new InputBundle()
-                .addPath(Category.SOURCE_FILE, "a")
-                .addPath(Category.SOURCE_FILE, "b");
-
-        String result = bundle.generateReportName(1);
-        assertEquals("a,...", result);
-         */
-    }
-
     @ParameterizedTest
-    @ValueSource(strings = {"", "  " })
+    @ValueSource(strings = {"", "  "})
     @DisplayName("Should throw for empty or blank paths")
     void shouldThrowForEmptyOrBlankPaths(String invalidPath) {
         InputBundle bundle = new InputBundle();

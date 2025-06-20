@@ -218,7 +218,7 @@ public final class MutationControlPanel {
 
     private JComponent createClasspathButton(JComponent parent) {
         JButton button = new JButton("Show Classpath...");
-        button.setToolTipText("Show classpath used for most recent PIT run, including classpaths added by the plugin, in green");
+        button.setToolTipText("Show classpath used for most recent PIT run, including those added by the plugin (in green)");
         button.addActionListener(e -> {
             if (classPaths != null) {
                 String msg = classPaths.formatHtml();
@@ -623,7 +623,6 @@ public final class MutationControlPanel {
             isTop = false;
             targetRow
                     .addSegment(formatScore(score), ClickTree.Hover.UNDERLINE, (component, point, _button) -> showScoreDetailPopup(component, point, score.getScoreDescription()))
-                    //.addSegment(formatScoreDiff(score), ClickTree.Hover.NONE, (component, point, _button) -> {})
                     .addSegment(fileName, ClickTree.Hover.NONE, (_c, _p, button) -> {
                         if (button) {
                             IdeaDiscovery.openBrowserTo(IdeaDiscovery.getUrl(cachedRun, file));
@@ -661,29 +660,11 @@ public final class MutationControlPanel {
         }
 
         private String formatScore(IMutationScore score) {
-            float currentScore = score.getScore();
-            String scoreText = String.format("%.0f", score.getScore());
-            IMutationScore lastScore = score.getLastScore();
-            if (lastScore != null) {
-                float diff = currentScore - lastScore.getScore();
-                String arrow = null;
-                if (diff > 0) {
-                    arrow = "<small>(<span style='color:green'>&#8593;</span>";
-                } else if (diff < 0) {
-                    arrow = "<small>(<span style='color:red'>&#8595;</span>";
-                }
-                if (arrow != null) {
-                    diff = Math.abs(diff);
-                    if (diff > 1.0) {
-                        String dv = String.format("%.0f&#37;", diff);
-                        arrow += dv;
-                    }
-                    scoreText =  "<html>"+ scoreText + "&#37;&nbsp;" + arrow+")</small></html>";
-                } else {
-                    scoreText += "%";
-                }
-            }
-            return scoreText;
+            StringBuilder sb = new StringBuilder();
+            sb.append("<html>");
+            BaseMutationsScore.fmtFloat(sb,score,IMutationScore::getScore);
+            sb.append("</html>");
+            return sb.toString();
         }
 
         public void showScoreDetailPopup(Component component, Point point, String message) {

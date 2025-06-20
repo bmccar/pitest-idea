@@ -2,6 +2,7 @@ package org.pitestidea.toolwindow;
 
 import com.intellij.openapi.application.Application;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -17,6 +18,7 @@ import org.pitestidea.model.*;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+
 import com.intellij.openapi.diagnostic.Logger;
 
 public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware {
@@ -42,7 +44,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
      * Updates the scores and execution history in the toolwindow. The score content is set to reflect the
      * values in the provided recorder.
      *
-     * @param project project
+     * @param project   project
      * @param cachedRun to update scores from
      */
     public static void show(Project project, CachedRun cachedRun) {
@@ -61,7 +63,8 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         mutationControlPanel.setFullConsole();
         ToolWindow tw = getToolWindow(project);
         if (tw != null) {
-            tw.activate(()->{});
+            tw.activate(() -> {
+            });
         }
     }
 
@@ -78,6 +81,11 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
                     mutationControlPanel.reloadScores(cachedRun);
                 } else {
                     tw.activate(() -> mutationControlPanel.onFirstActivation(cachedRun));
+                }
+                VirtualFile fileToOpen = recorder.getNaturalFileToActivate();
+                if (fileToOpen != null) {
+                    FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
+                    fileEditorManager.openFile(fileToOpen, true);
                 }
             }
         }
@@ -123,7 +131,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
 
     public static void addAll(CachedRun cachedRun, MutationControlPanel mutationControlPanel, PitExecutionRecorder recorder) {
         MutationControlPanel.Level level = mutationControlPanel.getLevel();
-        recorder.visit(new HierarchyPlanner(cachedRun,level));
+        recorder.visit(new HierarchyPlanner(cachedRun, level));
         mutationControlPanel.refresh(recorder.hasMultiplePackages());
     }
 

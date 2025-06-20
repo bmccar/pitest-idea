@@ -108,7 +108,7 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
                     String pfx2 = null;
                     final boolean diff = lineImpact.getMutations(LineImpact.LineImpactPoint.PREVIOUS) != null;
                     if (diff) {
-                        pfx1 = "From <i>most recent<i> run";
+                        pfx1 = "From <i>most recent</i> run";
                         pfx2 = "From <i>previous</i> run";
                     }
 
@@ -137,7 +137,7 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
         StringBuilder sb = new StringBuilder();
         if (header != null) {
             sb.append(header);
-            sb.append(":<br>");
+            sb.append("&#58;<br>");
         }
         for (Mutation record : records) {
             String description = record.description();
@@ -145,7 +145,7 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
             if (anchor != null) {
                 description = "<a href=\"https://pitest.org/quickstart/mutators/#" + anchor + "\">" + description + "</a>";
             }
-            sb.append(String.format("%s: %s%n", record.mutationImpact(), description));
+            sb.append(String.format("%s&#58; %s%n", record.mutationImpact(), description));
         }
         return sb.toString();
     }

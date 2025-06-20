@@ -1,8 +1,10 @@
 package org.pitestidea.model;
 
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.reader.IMutationsRecorder;
 import org.pitestidea.render.IMutationsFileHandler;
@@ -22,12 +24,13 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     private final Map<VirtualFile, FileGroup> fileCache = new HashMap<>();
     private final Map<VirtualFile, FileGroup> lastFileCache;
     private final List<FileGroup> sortedFiles = new ArrayList<>();
-    private final PkgGroup rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME, null, null);
+    private final PkgGroup rootDirectory;
     private final Map<VirtualFile, PkgGroup> pkgCache = new HashMap<>();
     private final Map<VirtualFile, PkgGroup> lastPkgCache;
     private boolean hasMultiplePackages = false;
 
     public PitExecutionRecorder(Module module, PitExecutionRecorder previousRecorder) {
+        rootDirectory = new PkgGroup(ROOT_PACKAGE_NAME, null, previousRecorder == null ? null : previousRecorder.rootDirectory);
         this.module = module;
         this.lastFileCache = previousRecorder == null ? Collections.emptyMap() : previousRecorder.fileCache;
         this.lastPkgCache = previousRecorder == null ? Collections.emptyMap() : previousRecorder.pkgCache;
@@ -36,6 +39,37 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     public Module getModule() {
         return module;
+    }
+
+    /**
+     * Returns a file for which at least one mutation has been seen for this run. The selected file is the
+     * least obtrusive, with priority being the selected file or the first open file or the first file if non opened.
+     *
+     * @return the file to open in the editor, or none if empty (though that would be unexpected)
+     */
+    public @Nullable VirtualFile getNaturalFileToActivate() {
+        FileEditorManager fileEditorManager = FileEditorManager.getInstance(module.getProject());
+        List<VirtualFile> selectedFiles = Arrays.asList(fileEditorManager.getSelectedFiles());
+
+        VirtualFile firstFile = null;
+        VirtualFile firstOpenFile = null;
+        for (VirtualFile nextFile : fileCache.keySet()) {
+            if (firstFile == null) {
+                firstFile = nextFile;
+            }
+            if (firstOpenFile == null && fileEditorManager.isFileOpen(nextFile)) {
+                firstOpenFile = nextFile;
+            }
+            if (selectedFiles.contains(nextFile)) {
+                return nextFile;
+            }
+        }
+
+        if (firstOpenFile != null) {
+            return firstOpenFile;
+        } else {
+            return firstFile;
+        }
     }
 
     private static Comparator<Directory> sortCmp(DisplayChoices choices) {
@@ -162,7 +196,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         private FileGroup(VirtualFile file, String pkg, PkgGroup parent, FileGroup lastFileGroup) {
             super(parent.children.size(), lastFileGroup);
             this.file = file;
-            this.fileMutations = new FileMutations(pkg,lastFileGroup == null ? null : lastFileGroup.fileMutations);
+            this.fileMutations = new FileMutations(pkg, lastFileGroup == null ? null : lastFileGroup.fileMutations);
         }
 
         @Override
@@ -193,12 +227,54 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     @Override
     public void record(String pkg, VirtualFile file, MutationImpact impact, int lineNumber, String description) {
+        String[] segments = pkg.split("\\.");
+        PkgGroup parentGroup = recordPkg(segments, segments.length - 1, file.getParent(), impact, lineNumber, description);
+        parentGroup.hasCodeFileChildren = true;
+        FileGroup dir = (FileGroup) parentGroup.children.computeIfAbsent(file.getName(), _k -> {
+            FileGroup newFileGroup = new FileGroup(file, pkg, parentGroup, lastFileCache.get(file));
+            fileCache.put(file, newFileGroup);
+            sortedFiles.add(newFileGroup);
+            return newFileGroup;
+        });
+        dir.fileMutations.add(lineNumber, new Mutation(impact, description));
+        dir.accountFor(impact);
+    }
+
+    private PkgGroup recordPkg(String[] segments, int i, VirtualFile pkgFile, MutationImpact impact, int lineNumber, String description) {
+        final PkgGroup pkgGroup;
+        if (i < 0) {
+            pkgGroup = rootDirectory;
+        } else {
+            // Tests need not provide a parent, but in normal execution there should always be one
+            VirtualFile parentFile = pkgFile == null ? null : pkgFile.getParent();
+            PkgGroup parentGroup = recordPkg(segments, i - 1, parentFile, impact, lineNumber, description);
+            String segment = segments[i];
+            pkgGroup = pkgCache.computeIfAbsent(pkgFile, _k -> {
+                PkgGroup pg = new PkgGroup(segment, parentGroup, lastPkgCache.get(pkgFile));
+                parentGroup.children.put(segment, pg);
+                return pg;
+            });
+        }
+        pkgCache.put(pkgFile, pkgGroup);
+        if (pkgGroup.children.size() > 1) {
+            hasMultiplePackages = true;
+        }
+        pkgGroup.accountFor(impact);
+        return pkgGroup;
+    }
+
+    /*
+    public void record1(String pkg, VirtualFile file, MutationImpact impact, int lineNumber, String description) {
         rootDirectory.accountFor(impact);
         PkgGroup last = rootDirectory;
         for (String segment : pkg.split("\\.")) {
             final PkgGroup parent = last;
-            PkgGroup lastPkg = lastPkgCache.get(file);
-            Directory dir = last.children.computeIfAbsent(segment, _k -> new PkgGroup(segment, parent, lastPkg));
+            //PkgGroup lastPkg = lastPkgCache.get(file);
+            Directory dir = last.children.computeIfAbsent(segment, _k -> {
+                PkgGroup newPkgGroup = new PkgGroup(segment, parent, lastPkgCache.get(file));
+                pkgCache.put(file, newPkgGroup);
+                return newPkgGroup;
+            });
             if (last.children.size() > 1) {
                 hasMultiplePackages = true;
             }
@@ -208,15 +284,15 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         last.hasCodeFileChildren = true;
         final PkgGroup parent = last;
         FileGroup dir = (FileGroup) last.children.computeIfAbsent(file.getName(), _k -> {
-            FileGroup lastFileGroup = lastFileCache.get(file);
-            FileGroup fileGroup = new FileGroup(file, pkg, parent, lastFileGroup);
-            fileCache.put(file, fileGroup);
-            sortedFiles.add(fileGroup);
-            return fileGroup;
+            FileGroup newFileGroup = new FileGroup(file, pkg, parent, lastFileCache.get(file));
+            fileCache.put(file, newFileGroup);
+            sortedFiles.add(newFileGroup);
+            return newFileGroup;
         });
         dir.fileMutations.add(lineNumber, new Mutation(impact, description));
         dir.accountFor(impact);
     }
+     */
 
     @Override
     public void postProcess() {

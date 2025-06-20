@@ -10,6 +10,7 @@ public interface IMutationScore {
     int getKilled();
     int getNoCoverage();
     int getTimedOut();
+    int getRunErrors();
     int getMutationsTotal();
     int getOrder();
     IMutationScore getLastScore();

@@ -94,7 +94,7 @@ public class GradleUtils {
                 @Nullable DataNode<ModuleData> moduleNode =
                         ExternalSystemApiUtil.findChild(projectInfo.getExternalProjectStructure(),
                                 ProjectKeys.MODULE,
-                                m->m.getData().getExternalName().equals(finalModuleName));
+                                m -> m.getData().getExternalName().equals(finalModuleName));
 
                 if (moduleNode != null) {
                     @NotNull Collection<DataNode<LibraryDependencyData>> libraryNodes =
@@ -122,7 +122,6 @@ public class GradleUtils {
 
     private static boolean include(LibraryDependencyData libData) {
         String nm = libData.getTarget().getExternalName();
-        //System.out.println("Gradle dependency: " + nm + ", scope=" + libData.getScope());
         DependencyScope scope = libData.getScope();
         if (scope == DependencyScope.COMPILE || scope == DependencyScope.PROVIDED) {
             return true;

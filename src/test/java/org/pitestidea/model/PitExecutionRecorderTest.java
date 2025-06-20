@@ -2,7 +2,6 @@ package org.pitestidea.model;
 
 import com.intellij.openapi.vfs.VirtualFile;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mockito;
 import org.pitestidea.toolwindow.DisplayChoices;
@@ -35,10 +34,26 @@ class PitExecutionRecorderTest {
         // Expected elements are removed one-by-one on each callback from the recorder
         private final Set<String> expectedPackages = new HashSet<>();
         private final List<ExpectedFileLine> expectedFileLines = new ArrayList<>();
+        private final VirtualFile rootFile;
 
+        // Within a test, packages must have a unique name because of this simplistic map
+        private final Map<String, VirtualFile> packageMap = new HashMap<>();
 
         Tracker() {
-            expectedPackages.add(PitExecutionRecorder.ROOT_PACKAGE_NAME);
+            String nm = PitExecutionRecorder.ROOT_PACKAGE_NAME;
+            expectedPackages.add(nm);
+            rootFile = ensurePkg(null, PitExecutionRecorder.ROOT_PACKAGE_NAME);
+        }
+
+        private VirtualFile ensurePkg(VirtualFile parent, String childPkg) {
+            return packageMap.computeIfAbsent(childPkg, _k -> {
+                VirtualFile vf = Mockito.mock(VirtualFile.class);
+                when(vf.getName()).thenReturn(childPkg);
+                if (parent != null) {
+                    when(vf.getParent()).thenReturn(parent);
+                }
+                return vf;
+            });
         }
 
         void expect(String pkg, String file, MutationImpact impact, int lineNumber) {
@@ -50,6 +65,11 @@ class PitExecutionRecorderTest {
             String[] ps = pkg.split("\\.");
             expectedTopLevelPackages.add(ps[0]);
             expectedPackages.addAll(Arrays.asList(ps));
+            VirtualFile parent = rootFile;
+            for (int i = 0; i < ps.length; i++) {
+                parent = ensurePkg(parent, ps[i]);
+            }
+            when(vf.getParent()).thenReturn(parent);
             recorder.record(pkg, vf, impact, lineNumber, description);
         }
 
@@ -59,7 +79,7 @@ class PitExecutionRecorderTest {
             // Expect that the collective calls to visit() below would have removed all of these entries
             assertTrue(expectedFileLines.isEmpty(), "Missed files");
             int expSize = expectedTopLevelPackages.size() == 1 ? 1 : 0;  // Account for ROOT_PACKAGE_NAME
-            assertEquals(expSize, expectedPackages.size(), "Missed packages: " + expectedPackages);
+            assertEquals(expSize, expectedPackages.size(), "Expected packages: " + expectedPackages);
         }
 
         @Override
@@ -141,7 +161,7 @@ class PitExecutionRecorderTest {
     void twoMutationsTwoShallowFiles() {
         Tracker tracker = new Tracker();
         tracker.expect("aaa.bbb", "f1.java", MutationImpact.SURVIVED, 11);
-        tracker.expect("bbb.ccc", "f1.java", MutationImpact.KILLED, 11);
+        tracker.expect("ccc.ddd", "f1.java", MutationImpact.KILLED, 11);
         tracker.verify();
     }
 
