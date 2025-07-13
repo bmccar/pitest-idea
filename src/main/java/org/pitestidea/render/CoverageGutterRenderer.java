@@ -58,7 +58,7 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
 
     private static String locateIconFile(List<Mutation> records) {
         int count = records.size();
-        String sfx = count <= 4 ? String.valueOf(count) : "*";
+        String sfx = count <= 4 ? String.valueOf(count) : "many";
         int survived = 0;
         int killed = 0;
         int no_coverage = 0;
