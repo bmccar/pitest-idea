@@ -7,9 +7,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static org.pitestidea.model.SysDiffs.fs;
-import static org.pitestidea.model.SysDiffs.fss;
-
 /**
  * A bundle of input files for a PIT run.
  */
@@ -73,10 +70,10 @@ public class InputBundle {
          * Applies two transformers to each element of the list returned by {@link #get(Function)}. Sorting
          * is done only after the first transform.
          *
-         * @param fn to first apply
+         * @param fn          to first apply
          * @param transformer to apply second
+         * @param <T>         any type
          * @return list after applying both transforms
-         * @param <T> any type
          */
         public <T> List<T> transform(Function<Category, Boolean> fn, Function<String, T> transformer) {
             List<String> ss = get(fn);
@@ -94,7 +91,7 @@ public class InputBundle {
                 if (lastDot >= 0) {
                     s = s.substring(0, lastDot);
                 }
-                return s.replace(fs(), '.');
+                return s.replace('/', '.');
             };
         }
     }
@@ -113,7 +110,7 @@ public class InputBundle {
         public Function<String, String> getTransformer() {
             return s -> {
                 int lastDot = s.lastIndexOf('.');
-                int lastSlash = s.lastIndexOf(fs());
+                int lastSlash = s.lastIndexOf('/');
                 if (lastDot >= 0 && lastDot > lastSlash) {
                     s = s.substring(0, lastDot);
                 }
@@ -164,7 +161,7 @@ public class InputBundle {
     public @NotNull InputBundle addPath(Category category, @NotNull String element) {
         if (element.isBlank()) {
             throw new IllegalArgumentException("Empty path segment");
-        } else if (element.startsWith(fss())) {
+        } else if (element.startsWith("/")) {
             throw new IllegalArgumentException("Path must not start with a slash: " + element);
         }
         map.get(category).add(element);
@@ -172,7 +169,7 @@ public class InputBundle {
     }
 
     public void setPaths(@NotNull Category category, @NotNull List<String> elements) {
-        if (elements.stream().anyMatch(s -> s.startsWith(fss()))) {
+        if (elements.stream().anyMatch(s -> s.startsWith("/"))) {
             throw new IllegalArgumentException("No path must start with a slash: " + elements);
         }
         if (elements.contains(null)) {
@@ -264,7 +261,7 @@ public class InputBundle {
     }
 
     private static String nameFrom(String relPath) {
-        int from = relPath.lastIndexOf(fs()) + 1;
+        int from = relPath.lastIndexOf('/') + 1;
         int to = relPath.lastIndexOf('.');
         if (to < 0) {
             to = relPath.length();
@@ -280,7 +277,7 @@ public class InputBundle {
         String rn = String.valueOf(Math.abs(qns.hashCode()));
         if (!qns.isEmpty()) {
             String pfx = qns.get(0);
-            int ix = pfx.lastIndexOf(fs());
+            int ix = pfx.lastIndexOf('/');
             if (ix > 0) {
                 // Add a prefix just to ease the task of looking through files if/when necessary
                 pfx = pfx.substring(ix + 1);

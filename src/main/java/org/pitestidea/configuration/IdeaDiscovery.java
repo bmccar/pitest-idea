@@ -70,17 +70,42 @@ public class IdeaDiscovery {
                 : null;
     }
 
+    /**
+     * Returns a path that is a concatenation of the provided segments separated
+     * by the appropriate filesystem separator char. If the first segment is the
+     * empty String, said separator char will be included at the beginning as well.
+     *
+     * <p>This is only needed for classpaths since VirtualFile normalizes all paths
+     * with forward slashes and File accepts forward slashes even on Windows.
+     *
+     * @param segments to concatenate
+     * @return filesystem-dependent path string
+     */
+    public static String fsPath(String... segments) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < segments.length; i++) {
+            if (i > 0) {
+                sb.append(File.separatorChar);
+            }
+            String segment = segments[i];
+            if (segment != null && !segment.isEmpty()) {
+                sb.append(segments[i]);
+            }
+        }
+        return sb.toString();
+    }
+
     public static String getAndSetClassPathOuts(Module module, PathsList list) {
         String outDir = getModuleOutputDirectory(module);
-        String mutableCodePath = outDir + File.separatorChar + "classes";
-        File testClasses = new File(outDir + File.separatorChar + "test-classes");
+        String mutableCodePath = fsPath(outDir, "classes");
+        File testClasses = new File(fsPath(outDir, "test-classes"));
         if (testClasses.exists()) {  // true for Maven, false for Gradle
-            list.add(outDir + File.separatorChar + "classes");
+            list.add(fsPath(outDir, "classes"));
             list.add(testClasses.getPath());
         } else {
-            list.add(outDir + File.separatorChar + "classes/java/main");
-            list.add(outDir + File.separatorChar + "classes/java/test");
-            mutableCodePath += "/java/main";
+            list.add(fsPath(outDir, "classes", "java", "main"));
+            list.add(fsPath(outDir, "classes", "java", "test"));
+            mutableCodePath += fsPath("", "java", "main");
         }
         return mutableCodePath;
     }
@@ -107,7 +132,7 @@ public class IdeaDiscovery {
         // so ensure we're returning only the immediate child of the base
         String base = getAbsolutePathOfModule(module);
         if (base != null) {
-            int from = path.indexOf(File.separatorChar, base.length() + 2);
+            int from = path.indexOf('/', base.length() + 2);
             if (from > 0) {
                 return path.substring(0, from);
             }
@@ -122,7 +147,7 @@ public class IdeaDiscovery {
         }
         StringBuilder sb = new StringBuilder(path);
         for (String sub : subs) {
-            sb.append(FileSystems.getDefault().getSeparator());
+            sb.append('/');
             sb.append(sub);
         }
         return sb.toString();
@@ -136,7 +161,7 @@ public class IdeaDiscovery {
         if (subs != null && subs.length > 0) {
             StringBuilder sb = new StringBuilder(path);
             for (String sub : subs) {
-                sb.append(FileSystems.getDefault().getSeparator());
+                sb.append('/');
                 sb.append(sub);
             }
             path = sb.toString();
@@ -168,7 +193,7 @@ public class IdeaDiscovery {
     }
 
     public static String getPackageUrl(CachedRun run, String packageName) {
-        return "file://" + run.getReportDir() + File.separatorChar + packageName + File.separatorChar + "index.html";
+        return "file://" + run.getReportDir() + '/' + packageName + '/' + "index.html";
     }
 
     public static String getUrl(CachedRun run, VirtualFile file) {
@@ -177,9 +202,9 @@ public class IdeaDiscovery {
             if (file.isDirectory()) {
                 sfx += "/index.html";
             } else {
-                sfx += File.separatorChar + file.getName() + ".html";
+                sfx += '/' + file.getName() + ".html";
             }
-            return "file://" + run.getReportDir() + File.separatorChar + sfx;
+            return "file://" + run.getReportDir() + '/' + sfx;
         }
         return null;
     }
@@ -193,9 +218,9 @@ public class IdeaDiscovery {
             String sourcePath = sourceRoot.getPath();
             if (filePath.startsWith(sourcePath)) {
                 String relativePath = filePath.substring(sourcePath.length() + 1);
-                relativePath = relativePath.substring(0, relativePath.lastIndexOf(File.separatorChar));
+                relativePath = relativePath.substring(0, relativePath.lastIndexOf('/'));
 
-                return relativePath.replace(File.separatorChar, '.');
+                return relativePath.replace('/', '.');
             }
         }
 

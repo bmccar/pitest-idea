@@ -159,26 +159,6 @@ class InputBundleTest {
                 bundle.generateReportName(maxLength));
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"/", "\\"})
-    @DisplayName("Should handle different file separators")
-    void handleDifferentFileSeparators(String separator) {
-        try (MockedStatic<SysDiffs> sysDiffsMockedStatic = org.mockito.Mockito.mockStatic(SysDiffs.class)) {
-            sysDiffsMockedStatic.when(SysDiffs::fs).thenReturn(separator.charAt(0));
-            sysDiffsMockedStatic.when(SysDiffs::fss).thenReturn(separator);
-
-            InputBundle bundle = new InputBundle();
-
-            String path = "com" + separator + "example" + separator + "Test.java";
-            bundle.addPath(Category.SOURCE_FILE, path);
-
-            String reportName = bundle.generateReportName();
-            assertEquals("Test", reportName);
-            assertEquals(List.of("com.example.Test"), bundle.asQn().get(Category::isSource));
-            assertEquals(List.of(path), bundle.asPath().get(Category::isSource));
-        }
-    }
-
     @Test
     @DisplayName("Should throw IllegalStateException when file name is only an extension")
     void failWhenFileNameIsOnlyAnExtension() {

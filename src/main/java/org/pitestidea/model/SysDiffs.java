@@ -8,6 +8,7 @@ public class SysDiffs {
     public static char fs() {
         return File.separatorChar;
     }
+
     @VisibleForTesting
     public static String fss() {
         return File.separator;

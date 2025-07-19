@@ -8,7 +8,6 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import org.pitestidea.model.InputBundle;
 
-import java.io.File;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -67,7 +66,7 @@ public class PackageWalker {
 
     private static void addPkgSiblings(Project project, Set<VirtualFile> forFiles, Set<VirtualFile> fileCollection) {
         for (VirtualFile forFile : forFiles) {
-            VirtualFile sibling = getMatching(project, forFile, p->p);
+            VirtualFile sibling = getMatching(project, forFile, p -> p);
             if (sibling != null) {
                 fileCollection.add(sibling);
             }
@@ -92,7 +91,7 @@ public class PackageWalker {
         }
 
         String relativePath = file.getPath().substring(sourceRoot.getPath().length());
-        if (relativePath.startsWith(File.separator)) {
+        if (relativePath.startsWith("/")) {
             relativePath = relativePath.substring(1);
         }
         return relativePath;
@@ -187,18 +186,18 @@ public class PackageWalker {
         final String finalSfx = sfx;
 
         if (SUPPORTED_EXTENSIONS.contains(sfx)) {
-            return getMatching(project, virtualFile.getParent(), p->{
-                        for (Function<String, String> transformer : matchingNameTransformers) {
-                            String transformedName = transformer.apply(finalName);
-                            if (transformedName != null) {
-                                VirtualFile match = p.findChild(transformedName + '.' + finalSfx);
-                                if (match != null && match.exists()) {
-                                    return match;
-                                }
-                            }
+            return getMatching(project, virtualFile.getParent(), p -> {
+                for (Function<String, String> transformer : matchingNameTransformers) {
+                    String transformedName = transformer.apply(finalName);
+                    if (transformedName != null) {
+                        VirtualFile match = p.findChild(transformedName + '.' + finalSfx);
+                        if (match != null && match.exists()) {
+                            return match;
                         }
-                        return null;
-                    });
+                    }
+                }
+                return null;
+            });
         }
         return null;
     }
@@ -207,9 +206,9 @@ public class PackageWalker {
      * Finds a file in a source other than that containing virtualFile which (a) has the same relative path and
      * (b) passes the supplied fn that returns a non-null result.
      *
-     * @param project to search
+     * @param project     to search
      * @param virtualFile to match
-     * @param fn to determine the final result
+     * @param fn          to determine the final result
      * @return an existing valid file or null if none of the criteria above match
      */
     private static VirtualFile getMatching(Project project, VirtualFile virtualFile, Function<VirtualFile, VirtualFile> fn) {

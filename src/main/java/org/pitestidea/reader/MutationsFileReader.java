@@ -28,8 +28,8 @@ public class MutationsFileReader {
      * Reads and parses mutation lines from the file generated from pitest and sends each
      * line individually to a recorder.
      *
-     * @param project context
-     * @param file to read and parse
+     * @param project  context
+     * @param file     to read and parse
      * @param recorder to send results to
      */
     public static void read(Project project, File file, IMutationsRecorder recorder) throws InvalidMutatedFileException {
@@ -42,8 +42,9 @@ public class MutationsFileReader {
         }
     }
 
-    private static void readFull(Project project, File file, IMutationsRecorder recorder) throws ParserConfigurationException, IOException, SAXException,  InvalidMutatedFileException {
-        record Bad(String file, String reportPath) {}
+    private static void readFull(Project project, File file, IMutationsRecorder recorder) throws ParserConfigurationException, IOException, SAXException, InvalidMutatedFileException {
+        record Bad(String file, String reportPath) {
+        }
         Set<Bad> badFiles = new HashSet<>();
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         DocumentBuilder builder = factory.newDocumentBuilder();
@@ -52,7 +53,7 @@ public class MutationsFileReader {
 
         NodeList nodeList = document.getElementsByTagName("mutation");
         for (int i = 0; i < nodeList.getLength(); i++) {
-            Element node = (Element)nodeList.item(i);
+            Element node = (Element) nodeList.item(i);
             int lineNumber = Integer.parseInt(node.getElementsByTagName("lineNumber").item(0).getTextContent());
             String description = node.getElementsByTagName("description").item(0).getTextContent();
             MutationImpact impact = MutationImpact.valueOf(node.getAttribute("status"));
@@ -65,13 +66,12 @@ public class MutationsFileReader {
                 pkg = "";
                 filePath = sourceFile;
             } else {
-                pkg = filePath.substring(0,ix);
-                char fs = File.separatorChar;
-                filePath = pkg.replace('.',fs) + fs + sourceFile;
+                pkg = filePath.substring(0, ix);
+                filePath = pkg.replace('.', '/') + '/' + sourceFile;
             }
-            VirtualFile virtualFile = findFromPath(project,filePath);
+            VirtualFile virtualFile = findFromPath(project, filePath);
             if (virtualFile == null) {
-                badFiles.add(new Bad(filePath,file.getParent()));
+                badFiles.add(new Bad(filePath, file.getParent()));
             } else {
                 recorder.record(pkg, virtualFile, impact, lineNumber, description);
             }
