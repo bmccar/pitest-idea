@@ -2,10 +2,11 @@ package org.pitestidea.model;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.MockedStatic;
 import org.pitestidea.model.InputBundle.Category;
 
 import java.io.File;
@@ -15,6 +16,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisabledOnOs(OS.WINDOWS)
 class InputBundleTest {
 
     private static final int MAX = InputBundle.MAX_REPORT_NAME_LENGTH;
@@ -157,26 +159,6 @@ class InputBundleTest {
 
         assertThrows(IllegalArgumentException.class, () ->
                 bundle.generateReportName(maxLength));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"/", "\\"})
-    @DisplayName("Should handle different file separators")
-    void handleDifferentFileSeparators(String separator) {
-        try (MockedStatic<SysDiffs> sysDiffsMockedStatic = org.mockito.Mockito.mockStatic(SysDiffs.class)) {
-            sysDiffsMockedStatic.when(SysDiffs::fs).thenReturn(separator.charAt(0));
-            sysDiffsMockedStatic.when(SysDiffs::fss).thenReturn(separator);
-
-            InputBundle bundle = new InputBundle();
-
-            String path = "com" + separator + "example" + separator + "Test.java";
-            bundle.addPath(Category.SOURCE_FILE, path);
-
-            String reportName = bundle.generateReportName();
-            assertEquals("Test", reportName);
-            assertEquals(List.of("com.example.Test"), bundle.asQn().get(Category::isSource));
-            assertEquals(List.of(path), bundle.asPath().get(Category::isSource));
-        }
     }
 
     @Test

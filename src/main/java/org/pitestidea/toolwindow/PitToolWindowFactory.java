@@ -15,7 +15,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.pitestidea.model.*;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -106,7 +105,7 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
         @Override
         public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
             String filePath = file.getPath();
-            String fileName = filePath.substring(filePath.lastIndexOf(File.separator) + 1);
+            String fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
             level.setLine(cachedRun, file, fileName, score);
         }
 

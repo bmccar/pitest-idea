@@ -81,7 +81,7 @@ public class PitRepo {
      */
     public static @NotNull CachedRun register(@NotNull Module module, @NotNull ExecutionRecord record) {
         String reportDir = record.getReportDirectoryName();
-        String path = IdeaDiscovery.getAbsoluteOutputPath(module,PitRepo.PIT_IDEA_REPORTS_DIR, reportDir);
+        String path = IdeaDiscovery.getAbsoluteOutputPath(module, PitRepo.PIT_IDEA_REPORTS_DIR, reportDir);
         if (path == null) {
             throw new IllegalArgumentException("Unable to find output directory for " + reportDir +
                     " in " + module.getName());
@@ -102,7 +102,7 @@ public class PitRepo {
         ProjectRunRecords runRecords = projectMap.computeIfAbsent(project.getName(), _x -> new ProjectRunRecords());
         CachedRun old = runRecords.runHistory.stream().filter(r -> r.getExecutionRecord().equals(record)).findFirst().orElse(null);
 
-        PitExecutionRecorder recorder = new PitExecutionRecorder(module, old==null ? null : old.getRecorder());
+        PitExecutionRecorder recorder = new PitExecutionRecorder(module, old == null ? null : old.getRecorder());
         CachedRun cachedRun = new CachedRun(runRecords, record, recorder, reportDir);
         if (cachedRun.equals(runRecords.current)) {
             // While swapping in a new CachedRun, ensure the replacement is current if the original was
@@ -140,8 +140,8 @@ public class PitRepo {
             List<CachedRun> cachedRunsToDelete = new ArrayList<>(runRecords.runHistory);
             cachedRunsToDelete.forEach(CachedRun::deleteFilesForThisRun);
             runRecords.runHistory.clear();
+            runRecords.current = null;
         }
-        runRecords.current = null;
     }
 
     public static PitExecutionRecorder get(Project project) {

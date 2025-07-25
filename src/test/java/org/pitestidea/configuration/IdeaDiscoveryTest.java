@@ -1,15 +1,18 @@
 package org.pitestidea.configuration;
 
-import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.compiler.CompilerPaths;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.module.Module;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.project.ProjectManager;
+import com.intellij.openapi.project.ProjectUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 
 class IdeaDiscoveryTest {
@@ -40,5 +43,27 @@ class IdeaDiscoveryTest {
         Mockito.when(moduleDirFile.getPath()).thenReturn("/module");
         // We need only the immediate child of that directory plus the subs
         assertEquals("/module/a/x/y.z", IdeaDiscovery.getAbsoluteOutputPath(module, "x", "y.z"));
+    }
+
+    @Test
+    void getCurrentFile_withSelectedFile() {
+        try (MockedStatic<ProjectManager> projectManager = Mockito.mockStatic(ProjectManager.class);
+             MockedStatic<FileEditorManager> fileEditorManager = Mockito.mockStatic(FileEditorManager.class)) {
+
+            Project mockProject = Mockito.mock(Project.class);
+            ProjectManager mockProjectManager = Mockito.mock(ProjectManager.class);
+            projectManager.when(ProjectManager::getInstance).thenReturn(mockProjectManager);
+            Mockito.when(mockProjectManager.getOpenProjects()).thenReturn(new Project[]{mockProject});
+
+            FileEditorManager mockFileEditorManager = Mockito.mock(FileEditorManager.class);
+            fileEditorManager.when(() -> FileEditorManager.getInstance(mockProject)).thenReturn(mockFileEditorManager);
+
+            VirtualFile mockFile = Mockito.mock(VirtualFile.class);
+            Mockito.when(mockFileEditorManager.getSelectedFiles()).thenReturn(new VirtualFile[]{mockFile});
+
+            VirtualFile currentFile = IdeaDiscovery.getCurrentFile();
+
+            assertEquals(mockFile, currentFile);
+        }
     }
 }

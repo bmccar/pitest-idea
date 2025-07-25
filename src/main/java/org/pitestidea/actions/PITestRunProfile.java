@@ -73,6 +73,13 @@ public class PITestRunProfile implements ModuleRunProfile {
         return s.isEmpty() ? "*" : s + ".*";
     }
 
+    private static String windozePath(String s) {
+        if (File.separatorChar == '\\') {
+            s = s.replace('/', '\\');
+        }
+        return s;
+    }
+
     @Override
     public RunProfileState getState(@NotNull Executor executor, @NotNull ExecutionEnvironment environment) {
         String codeClasses = Stream.concat(
@@ -116,7 +123,7 @@ public class PITestRunProfile implements ModuleRunProfile {
 
                 PathsList classPath = javaParameters.getClassPath();
 
-                String mutableCodePath = IdeaDiscovery.getAndSetClassPathOuts(module, classPath);
+                String mutableCodePath = windozePath(IdeaDiscovery.getAndSetClassPathOptions(module, classPath));
 
                 String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
                 ParametersList params = javaParameters.getProgramParametersList();
@@ -125,7 +132,7 @@ public class PITestRunProfile implements ModuleRunProfile {
                 params.add("--targetClasses", codeClasses);
                 params.add("--targetTests", testClasses);
                 params.add("--mutableCodePaths", mutableCodePath);
-                params.add("--sourceDirs", projectDir + "/src/main/java");
+                params.add("--sourceDirs", windozePath(projectDir + "/src/main/java"));
                 params.add("--outputFormats", "XML,HTML");
                 params.add("--exportLineCoverage", "true");
                 MutationControlPanel mutationControlPanel = PitToolWindowFactory.getOrCreateControlPanel(project);
@@ -286,7 +293,7 @@ public class PITestRunProfile implements ModuleRunProfile {
         String fs = File.separator;
         final String match = "junit-jupiter-api" + fs;
         @NotNull List<String> ps = javaParameters.getClassPath().getPathList();
-        for (String next: ps) {
+        for (String next : ps) {
             int ix = next.indexOf(match);
             if (ix >= 0) {
                 int ij = next.indexOf(fs, ix + match.length());

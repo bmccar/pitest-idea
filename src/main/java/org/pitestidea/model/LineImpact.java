@@ -17,13 +17,13 @@ public class LineImpact {
         this.lineImpactSummary = lineSummary(mutations);
         this.mutations = mutations;
         this.lastMutations = resolveSameOrDifferent(mutations, lastMutations);
-        this.lastMutationImpactSummary = this.lastMutations==null ? lineImpactSummary : lineSummary(lastMutations);
+        this.lastMutationImpactSummary = this.lastMutations == null ? lineImpactSummary : lineSummary(lastMutations);
     }
 
     /**
      * Compares lists and returns null if the same.
      *
-     * @param mutations compare
+     * @param mutations     compare
      * @param lastMutations compare
      * @return null if same, else lastMutations
      */
@@ -33,7 +33,7 @@ public class LineImpact {
 
     public enum LineImpactPoint {
         CURRENT,
-        PREVIOUS;
+        PREVIOUS
     }
 
     public int getLineNumber() {
@@ -41,11 +41,11 @@ public class LineImpact {
     }
 
     public MutationImpact getLineImpactSummary(LineImpactPoint point) {
-        return point==LineImpactPoint.CURRENT?lineImpactSummary: lastMutationImpactSummary;
+        return point == LineImpactPoint.CURRENT ? lineImpactSummary : lastMutationImpactSummary;
     }
 
     public List<Mutation> getMutations(LineImpactPoint point) {
-        return point==LineImpactPoint.CURRENT?mutations: lastMutations;
+        return point == LineImpactPoint.CURRENT ? mutations : lastMutations;
     }
 
     @VisibleForTesting

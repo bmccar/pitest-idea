@@ -1,7 +1,5 @@
 package org.pitestidea.model;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,8 +32,8 @@ public class FileMutations /*extends BaseMutationsScore*/ {
     }
 
     public void visit(LineVisitor visitor) {
-        lineMutations.forEach((lineNumber,lines)->{
-            List<Mutation> lastMutations = lastFileMutations==null ? null : lastFileMutations.lineMutations.get(lineNumber);
+        lineMutations.forEach((lineNumber, lines) -> {
+            List<Mutation> lastMutations = lastFileMutations == null ? null : lastFileMutations.lineMutations.get(lineNumber);
             LineImpact lineImpact = new LineImpact(lineNumber, lines, lastMutations);
             visitor.visit(lineImpact);
         });
