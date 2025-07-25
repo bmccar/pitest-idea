@@ -19,7 +19,6 @@ import org.pitestidea.model.CachedRun;
 
 import java.awt.*;
 import java.io.File;
-import java.nio.file.FileSystems;
 
 /**
  * Various utilities for accessing elements of the opened project and files in Intellij.
@@ -95,7 +94,15 @@ public class IdeaDiscovery {
         return sb.toString();
     }
 
-    public static String getAndSetClassPathOuts(Module module, PathsList list) {
+    /**
+     * Sets path-related options in preparation for running PITest. These must follow os-specific
+     * formatting.
+     *
+     * @param module to apply for
+     * @param list   to update
+     * @return mutableCodePath
+     */
+    public static String getAndSetClassPathOptions(Module module, PathsList list) {
         String outDir = getModuleOutputDirectory(module);
         String mutableCodePath = fsPath(outDir, "classes");
         File testClasses = new File(fsPath(outDir, "test-classes"));

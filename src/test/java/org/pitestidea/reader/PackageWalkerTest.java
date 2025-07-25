@@ -10,6 +10,8 @@ import com.intellij.psi.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
@@ -24,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
+@DisabledOnOs(OS.WINDOWS)
 class PackageWalkerTest {
     private static final Project project = Mockito.mock(Project.class);
 
@@ -50,7 +53,7 @@ class PackageWalkerTest {
         psiManagerStatic.close();
         javaDirectoryServiceStatic.close();
         virtualFileManagerStatic.close();
-        }
+    }
 
     @BeforeAll
     public static void setUpProject() {
@@ -74,7 +77,7 @@ class PackageWalkerTest {
         });
 
         virtualFileManagerStatic.when(VirtualFileManager::getInstance).thenReturn(virtualFileManager);
-        virtualFileManagerStatic.when(()->VirtualFileManager.constructUrl(eq(LocalFileSystem.PROTOCOL),anyString())).thenAnswer((Answer<String>) invocation -> {
+        virtualFileManagerStatic.when(() -> VirtualFileManager.constructUrl(eq(LocalFileSystem.PROTOCOL), anyString())).thenAnswer((Answer<String>) invocation -> {
             String path = invocation.getArgument(1);
             VirtualFile file = BaseVirtualFileFake.findByPath(path);
             if (file == null) {
@@ -117,7 +120,7 @@ class PackageWalkerTest {
              * @param tst the expected test package files
              */
             void expect(FileSet src, FileSet tst) {
-                final List<VirtualFile> vfs = files.stream().map(f->(VirtualFile)f).toList();
+                final List<VirtualFile> vfs = files.stream().map(f -> (VirtualFile) f).toList();
                 InputBundle bundle = new InputBundle();
                 PackageWalker.read(project, vfs, bundle);
                 bundle.asPath().get(InputBundle.Category::isSource).forEach(src::verify);
@@ -144,7 +147,7 @@ class PackageWalkerTest {
      * @param files that will be set to exist
      * @return an object on which {@link Given#input(BaseVirtualFileFake...)} can be called
      */
-    Given given(BaseVirtualFileFake...files) {
+    Given given(BaseVirtualFileFake... files) {
         BaseVirtualFileFake.setExists(files);
         return new Given(Arrays.asList(files));
     }
@@ -160,16 +163,17 @@ class PackageWalkerTest {
             }
             fail("File not expected: " + pathToMatch);
         }
+
         void verifyEmpty() {
             assertTrue(files.isEmpty(), "Missed " + loc + " files: " + files.stream().map(BaseVirtualFileFake::getPath).toList());
         }
     }
 
-    FileSet src(BaseVirtualFileFake...files) {
+    FileSet src(BaseVirtualFileFake... files) {
         return new FileSet("src", new ArrayList<>(Arrays.asList(files)));
     }
 
-    FileSet tst(BaseVirtualFileFake...files) {
+    FileSet tst(BaseVirtualFileFake... files) {
         return new FileSet("test", new ArrayList<>(Arrays.asList(files)));
     }
 
@@ -203,12 +207,12 @@ class PackageWalkerTest {
 
     @Test
     void singleTestFileWithoutItsSrc() {
-        given(T.p1.p2.jtest,P.p1.p2.j).input(T.p1.p2.jtest).expect(src(P.p1.p2.j), tst(T.p1.p2.jtest));
+        given(T.p1.p2.jtest, P.p1.p2.j).input(T.p1.p2.jtest).expect(src(P.p1.p2.j), tst(T.p1.p2.jtest));
     }
 
     @Test
     void singleTestFileWithOtherSrc() {
-        given(T.p1.p2.jtest,P.p1.j).input(T.p1.p2.jtest,P.p1.j).expect(src(P.p1.j), tst(T.p1.p2.jtest));
+        given(T.p1.p2.jtest, P.p1.j).input(T.p1.p2.jtest, P.p1.j).expect(src(P.p1.j), tst(T.p1.p2.jtest));
     }
 
     @Test

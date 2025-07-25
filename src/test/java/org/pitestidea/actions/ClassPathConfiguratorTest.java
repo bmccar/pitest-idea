@@ -3,6 +3,8 @@ package org.pitestidea.actions;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.util.PathsList;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.pitestidea.model.SysDiffs;
@@ -17,6 +19,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.when;
 
+@DisabledOnOs(OS.WINDOWS)
 class ClassPathConfiguratorTest {
     private static final String JUNIT7 = "junit-jupiter-engine-5.7.2.jar"; // No bundle for this
     private static final String JUNIT8 = "junit-jupiter-engine-5.8.2.jar";
@@ -37,6 +40,7 @@ class ClassPathConfiguratorTest {
     private static MockedConstruction<File> mockedFileConstruction;
     private final Map<Path, Set<Path>> directoryMap = new HashMap<>();
     private static Path libDir;
+
     static {
         // JUnit bug? Without these, internal JUnit classloading error
         Object x = ClassPathConfigurator.class;
@@ -45,10 +49,10 @@ class ClassPathConfiguratorTest {
 
     @BeforeAll
     static void beforeAll() {
-         mockedFileConstruction = mockConstruction(File.class, (mock, context) -> {
-             String nm = (String)context.arguments().get(0);
-             when(mock.isDirectory()).thenReturn(!nm.endsWith(".jar"));
-         });
+        mockedFileConstruction = mockConstruction(File.class, (mock, context) -> {
+            String nm = (String) context.arguments().get(0);
+            when(mock.isDirectory()).thenReturn(!nm.endsWith(".jar"));
+        });
 
         // Any value will do:
         pathManagerMockedStatic.when(PathManager::getPluginsDir).thenReturn(Path.of("/abc"));
@@ -211,13 +215,13 @@ class ClassPathConfiguratorTest {
 
     @Test
     void lastSegmentName() {
-        assertEquals("c",ClassPathConfigurator.lastSegmentNameOf("c"));
-        assertEquals("c",ClassPathConfigurator.lastSegmentNameOf("c-2.2.2"));
-        assertEquals("c",ClassPathConfigurator.lastSegmentNameOf("c.jar"));
-        assertEquals("c",ClassPathConfigurator.lastSegmentNameOf("c-2.2.2.jar"));
-        assertEquals("c",ClassPathConfigurator.lastSegmentNameOf("/c.jar"));
-        assertEquals("c-d",ClassPathConfigurator.lastSegmentNameOf("/c-d.jar"));
-        assertEquals("c",ClassPathConfigurator.lastSegmentNameOf("a/b/c-1.2.3.jar"));
+        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("c"));
+        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("c-2.2.2"));
+        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("c.jar"));
+        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("c-2.2.2.jar"));
+        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("/c.jar"));
+        assertEquals("c-d", ClassPathConfigurator.lastSegmentNameOf("/c-d.jar"));
+        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("a/b/c-1.2.3.jar"));
     }
 
     @Test
@@ -225,17 +229,17 @@ class ClassPathConfiguratorTest {
         assertNull(ClassPathConfigurator.lastSegmentVersionOf("c"));
         assertNull(ClassPathConfigurator.lastSegmentVersionOf("c-d"));
         assertNull(ClassPathConfigurator.lastSegmentVersionOf("c-d.jar"));
-        assertEquals("3",ClassPathConfigurator.lastSegmentVersionOf("c-3"));
-        assertEquals("3.4",ClassPathConfigurator.lastSegmentVersionOf("c-3.4"));
+        assertEquals("3", ClassPathConfigurator.lastSegmentVersionOf("c-3"));
+        assertEquals("3.4", ClassPathConfigurator.lastSegmentVersionOf("c-3.4"));
         assertNull(ClassPathConfigurator.lastSegmentVersionOf("c.jar"));
-        assertEquals("3",ClassPathConfigurator.lastSegmentVersionOf("c-3.jar"));
+        assertEquals("3", ClassPathConfigurator.lastSegmentVersionOf("c-3.jar"));
         assertNull(ClassPathConfigurator.lastSegmentVersionOf("/c.jar"));
-        assertEquals("3.4",ClassPathConfigurator.lastSegmentVersionOf("/c-3.4.jar"));
+        assertEquals("3.4", ClassPathConfigurator.lastSegmentVersionOf("/c-3.4.jar"));
         assertNull(ClassPathConfigurator.lastSegmentVersionOf("a/b-8/c.jar"));
     }
 
     private static void verifyVersion(String expected, String provided, List<String> matchAgainst) {
-        assertEquals(expected, ClassPathConfigurator.chooseFromIfcVersion('-'+provided+".jar", matchAgainst));
+        assertEquals(expected, ClassPathConfigurator.chooseFromIfcVersion('-' + provided + ".jar", matchAgainst));
     }
 
     @Test

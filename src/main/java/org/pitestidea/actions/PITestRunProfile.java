@@ -116,7 +116,7 @@ public class PITestRunProfile implements ModuleRunProfile {
 
                 PathsList classPath = javaParameters.getClassPath();
 
-                String mutableCodePath = IdeaDiscovery.getAndSetClassPathOuts(module, classPath);
+                String mutableCodePath = IdeaDiscovery.getAndSetClassPathOptions(module, classPath);
 
                 String projectDir = IdeaDiscovery.getAbsolutePathOfModule(module);
                 ParametersList params = javaParameters.getProgramParametersList();
@@ -286,7 +286,7 @@ public class PITestRunProfile implements ModuleRunProfile {
         String fs = File.separator;
         final String match = "junit-jupiter-api" + fs;
         @NotNull List<String> ps = javaParameters.getClassPath().getPathList();
-        for (String next: ps) {
+        for (String next : ps) {
             int ix = next.indexOf(match);
             if (ix >= 0) {
                 int ij = next.indexOf(fs, ix + match.length());

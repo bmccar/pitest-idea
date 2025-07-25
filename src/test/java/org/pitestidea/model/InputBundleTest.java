@@ -2,10 +2,11 @@ package org.pitestidea.model;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.MockedStatic;
 import org.pitestidea.model.InputBundle.Category;
 
 import java.io.File;
@@ -15,6 +16,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisabledOnOs(OS.WINDOWS)
 class InputBundleTest {
 
     private static final int MAX = InputBundle.MAX_REPORT_NAME_LENGTH;

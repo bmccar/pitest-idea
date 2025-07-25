@@ -44,7 +44,7 @@ class ClassPathConfigurator {
      * else if none, then with two equal arguments. Also discounts a ".jar" suffix if present.
      *
      * @param path to read
-     * @param fn to call with two arguments bounding the version string if present, else both equal to the end
+     * @param fn   to call with two arguments bounding the version string if present, else both equal to the end
      * @return fn value
      */
     private static String versionBounds(String path, BiFunction<Integer, Integer, String> fn) {
@@ -52,32 +52,35 @@ class ClassPathConfigurator {
         if (path.endsWith(".jar")) {
             to -= 4;
         }
-        for (int i=to-1; i>=0; i--) {
+        for (int i = to - 1; i >= 0; i--) {
             char c = path.charAt(i);
-            if (! (Character.isDigit(c) || c == '.')) {
+            if (!(Character.isDigit(c) || c == '.')) {
                 if (c == '-') {
-                    return fn.apply(i+1, to);
+                    return fn.apply(i + 1, to);
                 }
                 break;
             }
         }
-        return fn.apply(to,to);
+        return fn.apply(to, to);
     }
 
 
     /**
-     * Returns "c" from "a/b/c-1.2.3.jar".
+     * Returns "c" from "a/b/c-1.2.3.jar". Works with either unix or win path separators.
      *
      * @param path to read
      * @return name, without the version, of a multi-segment pat
      */
     @VisibleForTesting
     static @NotNull String lastSegmentNameOf(String path) {
-        return versionBounds(path, (from, to)-> {
+        return versionBounds(path, (from, to) -> {
             if (from < to) {
-                to = from-1;  // Account for the necessary '-' of the version string
+                to = from - 1;  // Account for the necessary '-' of the version string
             }
             int ix = path.lastIndexOf(SysDiffs.fs(), from);
+            if (ix < 0 && SysDiffs.fs() != '/') {
+                ix = path.lastIndexOf('/', from);
+            }
             from = ix < 0 ? 0 : ix + 1;
             return path.substring(from, to);
         });
@@ -91,8 +94,8 @@ class ClassPathConfigurator {
      */
     @VisibleForTesting
     static @Nullable String lastSegmentVersionOf(String path) {
-        return versionBounds(path, (from, to)->
-            from < to ? path.substring(from,to) : null
+        return versionBounds(path, (from, to) ->
+                from < to ? path.substring(from, to) : null
         );
     }
 
@@ -237,7 +240,7 @@ class ClassPathConfigurator {
             if (path.endsWith(".jar")) {
                 String root = lastSegmentNameOf(path);
                 String existing = pathMap.get(root);
-                if (pathLte(existing,root)) {
+                if (pathLte(existing, root)) {
                     pathMap.put(root, path);
                 }
             }
