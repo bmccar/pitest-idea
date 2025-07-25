@@ -9,13 +9,10 @@ public class PitLinkAnchors {
      * @return anchor or null if none match
      */
     public static String linkFor(String mutationDescription) {
-        switch (mutationDescription) {
-            case "changed conditional boundary":
-                return "CONDITIONALS_BOUNDARY";
-            case "negated conditional":
-                return "NEGATE_CONDITIONALS";
-            default:
-                return null;
-        }
+        return switch (mutationDescription) {
+            case "changed conditional boundary" -> "CONDITIONALS_BOUNDARY";
+            case "negated conditional" -> "NEGATE_CONDITIONALS";
+            default -> null;
+        };
     }
 }

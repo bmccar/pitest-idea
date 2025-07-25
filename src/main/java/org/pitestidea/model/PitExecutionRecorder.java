@@ -43,7 +43,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     /**
      * Returns a file for which at least one mutation has been seen for this run. The selected file is the
-     * least obtrusive, with priority being the selected file or the first open file or the first file if non opened.
+     * least obtrusive, with priority being the selected file or the first open file or the first file if non-opened.
      *
      * @return the file to open in the editor, or none if empty (though that would be unexpected)
      */
@@ -262,37 +262,6 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         pkgGroup.accountFor(impact);
         return pkgGroup;
     }
-
-    /*
-    public void record1(String pkg, VirtualFile file, MutationImpact impact, int lineNumber, String description) {
-        rootDirectory.accountFor(impact);
-        PkgGroup last = rootDirectory;
-        for (String segment : pkg.split("\\.")) {
-            final PkgGroup parent = last;
-            //PkgGroup lastPkg = lastPkgCache.get(file);
-            Directory dir = last.children.computeIfAbsent(segment, _k -> {
-                PkgGroup newPkgGroup = new PkgGroup(segment, parent, lastPkgCache.get(file));
-                pkgCache.put(file, newPkgGroup);
-                return newPkgGroup;
-            });
-            if (last.children.size() > 1) {
-                hasMultiplePackages = true;
-            }
-            dir.accountFor(impact);
-            last = (PkgGroup) dir;
-        }
-        last.hasCodeFileChildren = true;
-        final PkgGroup parent = last;
-        FileGroup dir = (FileGroup) last.children.computeIfAbsent(file.getName(), _k -> {
-            FileGroup newFileGroup = new FileGroup(file, pkg, parent, lastFileCache.get(file));
-            fileCache.put(file, newFileGroup);
-            sortedFiles.add(newFileGroup);
-            return newFileGroup;
-        });
-        dir.fileMutations.add(lineNumber, new Mutation(impact, description));
-        dir.accountFor(impact);
-    }
-     */
 
     @Override
     public void postProcess() {

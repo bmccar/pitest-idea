@@ -10,7 +10,6 @@ import org.jetbrains.annotations.VisibleForTesting;
 import org.pitestidea.constants.PluginVersions;
 import org.pitestidea.model.SysDiffs;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
