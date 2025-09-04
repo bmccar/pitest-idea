@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2025-09-03
+
+### Fixed
+
+- Workaround breaking change in Intellij 2025.2.1 libraries that was preventing the classpath from being fully set, which caused PIT to fail.
+
 ## [0.5.0] - 2025-07-25
 
 ### Fixed
@@ -53,7 +59,8 @@
 
 - Initial release
 
-[Unreleased]: https://github.com/bmccar/pitest-idea/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/bmccar/pitest-idea/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/bmccar/pitest-idea/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bmccar/pitest-idea/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bmccar/pitest-idea/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/bmccar/pitest-idea/compare/v0.2.0...v0.3.0

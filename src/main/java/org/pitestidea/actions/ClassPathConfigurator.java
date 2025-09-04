@@ -146,7 +146,6 @@ class ClassPathConfigurator {
                 String root = lastSegmentNameOf(segment);
                 if (!pathMap.containsKey(root)) {
                     String toAdd = fullPath.toString();
-                    paths.add(toAdd);
                     addedPaths.add(toAdd);
                 }
             }
@@ -247,8 +246,7 @@ class ClassPathConfigurator {
 
         try {
             walkDir(pathMap, libDir(), paths, addedPaths, false);
-            classPath.clear();
-            classPath.addAll(paths);
+            classPath.addAll(addedPaths);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
