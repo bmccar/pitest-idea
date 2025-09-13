@@ -43,7 +43,8 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     /**
      * Returns a file for which at least one mutation has been seen for this run. The selected file is the
-     * least obtrusive, with priority being the selected file or the first open file or the first file if non-opened.
+     * least obtrusive from the user perspective, with priority being the selected file or the first open file
+     * or the first file if non-opened.
      *
      * @return the file to open in the editor, or none if empty (though that would be unexpected)
      */
@@ -137,8 +138,8 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         }
 
         /**
-         * Modifies the tree by merging packages containing a single package child by absorbing that child,
-         * e.g. "com"->"foo"->"bar.java" becomes "com.foo"->"bar.java" if "foo" is the only child of "com".
+         * Modifies the tree by merging packages containing a single package child by absorbing that child.
+         * For example, "com"->"foo"->"bar.java" becomes "com.foo"->"bar.java" if "foo" is the only child of "com".
          *
          * @param topLevel true if this is the top level line, which should not be merged
          */
@@ -190,18 +191,16 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
     @VisibleForTesting
     class FileGroup extends BaseMutationsScore implements Directory {
-        private final VirtualFile file;
         private final FileMutations fileMutations;
 
         private FileGroup(VirtualFile file, String pkg, PkgGroup parent, FileGroup lastFileGroup) {
             super(parent.children.size(), lastFileGroup);
-            this.file = file;
-            this.fileMutations = new FileMutations(pkg, lastFileGroup == null ? null : lastFileGroup.fileMutations);
+            this.fileMutations = new FileMutations(pkg, file, lastFileGroup == null ? null : lastFileGroup.fileMutations);
         }
 
         @Override
         public void walkInternal(FileVisitor visitor) {
-            visitor.visit(file, fileMutations, this);
+            visitor.visit(fileMutations, this);
         }
 
         @Override
@@ -216,7 +215,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
 
         @Override
         public String getName() {
-            return file.getName();
+            return fileMutations.getFileName();
         }
 
         @Override
@@ -225,8 +224,12 @@ public class PitExecutionRecorder implements IMutationsRecorder {
         }
     }
 
+    public FileMutations getFileMutations(VirtualFile file) {
+        return fileCache.get(file).fileMutations;
+    }
+
     @Override
-    public void record(String pkg, VirtualFile file, MutationImpact impact, int lineNumber, String description) {
+    public void record(String pkg, VirtualFile file, String methodName, MutationImpact impact, int lineNumber, String description) {
         String[] segments = pkg.split("\\.");
         PkgGroup parentGroup = recordPkg(segments, segments.length - 1, file.getParent(), impact, lineNumber, description);
         parentGroup.hasCodeFileChildren = true;
@@ -236,7 +239,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
             sortedFiles.add(newFileGroup);
             return newFileGroup;
         });
-        dir.fileMutations.add(lineNumber, new Mutation(impact, description));
+        dir.fileMutations.add(lineNumber, new Mutation(methodName, lineNumber, impact, description));
         dir.accountFor(impact);
     }
 
@@ -282,7 +285,7 @@ public class PitExecutionRecorder implements IMutationsRecorder {
     }
 
     public interface FileVisitor {
-        void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score);
+        void visit(FileMutations fileMutations, IMutationScore score);
 
         void visit(String pkg, String qualifiedPkg, PackageDiver diver, IMutationScore score);
     }

@@ -66,11 +66,11 @@ class PitExecutionRecorderTest {
             expectedTopLevelPackages.add(ps[0]);
             expectedPackages.addAll(Arrays.asList(ps));
             VirtualFile parent = rootFile;
-            for (int i = 0; i < ps.length; i++) {
-                parent = ensurePkg(parent, ps[i]);
+            for (String p : ps) {
+                parent = ensurePkg(parent, p);
             }
             when(vf.getParent()).thenReturn(parent);
-            recorder.record(pkg, vf, impact, lineNumber, description);
+            recorder.record(pkg, vf, "etc", impact, lineNumber, description);
         }
 
         void verify() {
@@ -83,9 +83,10 @@ class PitExecutionRecorderTest {
         }
 
         @Override
-        public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
+        public void visit(FileMutations fileMutations, IMutationScore score) {
             fileMutations.visit(lineImpact -> lineImpact.getMutations(LineImpact.LineImpactPoint.CURRENT).forEach(mutation -> {
                 int lineNumber = lineImpact.getLineNumber();
+                VirtualFile file = fileMutations.getFile();
                 ExpectedFileLine match = new ExpectedFileLine(fileMutations.getPkg(), file, mutation.mutationImpact(), lineNumber, "");
                 ExpectedFileLine expectedFileLine = expectedFileLines.stream().filter(t -> t.equals(match)).findFirst().orElse(null);
                 assertNotNull(expectedFileLine, "Unexpected mutation on file " + file.getName() + " line " + lineNumber + " " + mutation.mutationImpact());
@@ -246,7 +247,8 @@ class PitExecutionRecorderTest {
 
         tracker.recorder.visit(new PitExecutionRecorder.FileVisitor() {
             @Override
-            public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
+            public void visit(FileMutations fileMutations, IMutationScore score) {
+                VirtualFile file = fileMutations.getFile();
                 gotFileNames.add(file.getName());
             }
 

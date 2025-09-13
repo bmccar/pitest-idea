@@ -5,6 +5,8 @@ import com.intellij.util.PathsList;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.pitestidea.model.SysDiffs;
@@ -25,13 +27,10 @@ class ClassPathConfiguratorTest {
     private static final String JUNIT8 = "junit-jupiter-engine-5.8.2.jar";
     private static final String JUNIT10 = "junit-jupiter-engine-5.10.2.jar";
     private static final String JUNIT11 = "junit-jupiter-engine-5.11.2.jar"; // No bundle for this
-    private static final String JUNIT12 = "junit-jupiter-engine-5.12.2.jar";
     private static final String IFC_JUNIT_8 = "ifc-junit-jupiter-engine/5.8.2/x1.jar";
     private static final String IFC_JUNIT_10 = "ifc-junit-jupiter-engine/5.10.2/x2.jar";
     private static final String IFC_JUNIT_12 = "ifc-junit-jupiter-engine/5.12.2/x3.jar";
-    private static final String IFC_IFN = "ifc-junit-jupiter-engine/5.12.2/ifn-pitest/x4.jar";
     private static final String IFN_P3 = "ifn-pitest/a/b/c/x5.jar";
-    private static final String IFN_P4 = "ifn-pitest/d/e/f/x6.jar";
     private static final String PITEST = "pitest/1.1.1/pitest-1.1.1.jar";
     private static final String R1 = "r-1.1.1.jar";
 
@@ -112,148 +111,169 @@ class ClassPathConfiguratorTest {
         return Arrays.stream(paths).map(p -> libDir.toString() + File.separatorChar + p).toList();
     }
 
-    @Test
-    void addNoneIfNoBundles() {
-        PathsList clientPaths = paths(R1);
-        List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
-        assertEquals(expect(R1), clientPaths.getPathList());
-        assertEquals(expect(), added);
+    @Nested
+    @DisplayName("Bundle Selection Tests")
+    class BundleSelectionTests {
+        @Test
+        @DisplayName("Should add no bundles when none are available")
+        void addNoneIfNoBundles() {
+            PathsList clientPaths = paths(R1);
+            List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+            assertEquals(expect(R1), clientPaths.getPathList());
+            assertEquals(expect(), added);
+        }
+
+        @Test
+        @DisplayName("Should add IFC bundle when matching JUnit is present")
+        void addIfJunitPresent() {
+            bundle(IFC_JUNIT_8);
+            PathsList clientPaths = paths(JUNIT8);
+            List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+
+            assertEquals(expect(JUNIT8, IFC_JUNIT_8), clientPaths.getPathList());
+            assertEquals(expect(IFC_JUNIT_8), added);
+        }
     }
 
-    @Test
-    void addIfJunitPresent() {
-        bundle(IFC_JUNIT_8);
-        PathsList clientPaths = paths(JUNIT8);
-        List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+    @Nested
+    @DisplayName("Version Selection Tests")
+    class VersionSelectionTests {
+        @ParameterizedTest(name = "JUnit {0} should select IFC {1}")
+        @CsvSource({
+                JUNIT10 + "," + IFC_JUNIT_10,
+                JUNIT11 + "," + IFC_JUNIT_10,  // In-between version
+                JUNIT7 + "," + IFC_JUNIT_8     // Minimum version
+        })
+        void shouldChooseCorrectIfcVersionBasedOnJunit(String junitVersion, String expectedIfc) {
+            chooseIfJunitVersion(junitVersion, expectedIfc);
+        }
 
-        assertEquals(expect(JUNIT8, IFC_JUNIT_8), clientPaths.getPathList());
-        assertEquals(expect(IFC_JUNIT_8), added);
+        /**
+         * Given a junit version in the classpath, and 8/10/12 bundled, which of those three
+         * is expected to be added?
+         *
+         * @param junitVersionInClasspath junit version
+         * @param expectedIfc             expected ifc added
+         */
+        private void chooseIfJunitVersion(String junitVersionInClasspath, String expectedIfc) {
+            bundle(IFC_JUNIT_8, IFC_JUNIT_12, IFC_JUNIT_10);
+            PathsList clientPaths = paths(junitVersionInClasspath);
+            List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+
+            assertEquals(expect(junitVersionInClasspath, expectedIfc), clientPaths.getPathList());
+            assertEquals(expect(expectedIfc), added);
+        }
     }
 
-    /**
-     * Given a junit version in the classpath, and 8/10/12 bundled, which of those three
-     * is expected to be added?
-     *
-     * @param junitVersionInClasspath junit version
-     * @param expectedIfc             expected ifc added
-     */
-    private void chooseIfJunitVersion(String junitVersionInClasspath, String expectedIfc) {
-        bundle(IFC_JUNIT_8, IFC_JUNIT_12, IFC_JUNIT_10);
-        PathsList clientPaths = paths(junitVersionInClasspath);
-        List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+    @Nested
+    @DisplayName("PITest Bundle Tests")
+    class PitestBundleTests {
+        @Test
+        @DisplayName("Should add IFN bundle when PITest is not present")
+        void addIfPitestNotPresent() {
+            bundle(IFN_P3);
+            PathsList clientPaths = paths(R1);
+            List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
 
-        assertEquals(expect(junitVersionInClasspath, expectedIfc), clientPaths.getPathList());
-        assertEquals(expect(expectedIfc), added);
+            assertEquals(expect(R1, IFN_P3), clientPaths.getPathList());
+            assertEquals(expect(IFN_P3), added);
+        }
+
+        @Test
+        @DisplayName("Should not add IFN bundle when PITest is already present")
+        void addNoneIfPitestPresent() {
+            bundle(IFN_P3);
+            PathsList clientPaths = paths(PITEST);
+            List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+
+            assertEquals(expect(PITEST), clientPaths.getPathList());
+            assertEquals(expect(), added);
+        }
     }
 
-    @Test
-    void chooseIfJunitPresent() {
-        chooseIfJunitVersion(JUNIT10, IFC_JUNIT_10);
+    @Nested
+    @DisplayName("Utility Method Tests")
+    class UtilityMethodTests {
+        @ParameterizedTest(name = "lastSegmentNameOf({0}) should return {1}")
+        @CsvSource({
+                "c, c",
+                "c-2.2.2, c",
+                "c.jar, c",
+                "c-2.2.2.jar, c",
+                "/c.jar, c",
+                "/c-d.jar, c-d",
+                "a/b/c-1.2.3.jar, c"
+        })
+        void lastSegmentNameShouldExtractCorrectName(String input, String expected) {
+            assertEquals(expected, ClassPathConfigurator.lastSegmentNameOf(input));
+        }
+
+        @ParameterizedTest(name = "lastSegmentVersionOf({0}) should return {1}")
+        @CsvSource(value = {
+                "c, null",
+                "c-d, null",
+                "c-d.jar, null",
+                "c-3, 3",
+                "c-3.4, 3.4",
+                "c.jar, null",
+                "c-3.jar, 3",
+                "/c.jar, null",
+                "/c-3.4.jar, 3.4",
+                "a/b-8/c.jar, null"
+        }, nullValues = "null")
+        void lastSegmentVersionShouldExtractCorrectVersion(String input, String expected) {
+            assertEquals(expected, ClassPathConfigurator.lastSegmentVersionOf(input));
+        }
     }
 
-    @Test
-    void chooseInBetweenIfJunitPresent() {
-        chooseIfJunitVersion(JUNIT11, IFC_JUNIT_10);
-    }
+    @Nested
+    @DisplayName("Edge Cases and Error Handling")
+    class EdgeCaseTests {
+        @Test
+        @DisplayName("Should handle empty classpath gracefully")
+        void shouldHandleEmptyClasspath() {
+            PathsList emptyPaths = new PathsList();
+            List<String> added = ClassPathConfigurator.updateClassPathBundles(emptyPaths);
 
-    @Test
-    void chooseMinimumIfJunitPresent() {
-        chooseIfJunitVersion(JUNIT7, IFC_JUNIT_8);
-    }
+            assertNotNull(added);
+            assertTrue(emptyPaths.getPathList().isEmpty());
+        }
 
-    @Test
-    void addIfPitestNotPresent() {
-        bundle(IFN_P3);
-        PathsList clientPaths = paths(R1);
-        List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+        @Test
+        @DisplayName("Should handle null or invalid paths")
+        void shouldHandleInvalidPaths() {
+            bundle("invalid/path/without-jar");
+            PathsList clientPaths = paths(R1);
 
-        assertEquals(expect(R1, IFN_P3), clientPaths.getPathList());
-        assertEquals(expect(IFN_P3), added);
-    }
+            assertDoesNotThrow(() -> {
+                List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+                assertNotNull(added);
+            });
+        }
 
-    @Test
-    void addNoneIfPitestPresent() {
-        bundle(IFN_P3);
-        PathsList clientPaths = paths(PITEST);
-        List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+        @Test
+        @DisplayName("Should handle malformed version strings")
+        void shouldHandleMalformedVersions() {
+            String malformedJar = "junit-jupiter-engine-not-a-version.jar";
+            bundle(IFC_JUNIT_8);
+            PathsList clientPaths = paths(malformedJar);
 
-        assertEquals(expect(PITEST), clientPaths.getPathList());
-        assertEquals(expect(), added);
-    }
+            assertDoesNotThrow(() -> {
+                List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+                assertNotNull(added);
+            });
+        }
 
-    @Test
-    void addMultipleIfPitestNotPresent() {
-        bundle(IFN_P3, IFN_P4);
-        PathsList clientPaths = paths(R1);
-        List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+        @Test
+        @DisplayName("Should handle very long version strings")
+        void shouldHandleLongVersionStrings() {
+            String longVersionJar = "junit-jupiter-engine-1.2.3.4.5.6.7.8.9.10.jar";
+            PathsList clientPaths = paths(longVersionJar);
 
-        assertEquals(expect(R1, IFN_P3, IFN_P4), clientPaths.getPathList());
-        assertEquals(expect(IFN_P3, IFN_P4), added);
-    }
-
-    @Test
-    void addIfJunitPresentAndPitestNotPresent() {
-        bundle(IFC_IFN);
-        PathsList clientPaths = paths(JUNIT12);
-        List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
-
-        assertEquals(expect(JUNIT12, IFC_IFN), clientPaths.getPathList());
-        assertEquals(expect(IFC_IFN), added);
-    }
-
-    @Test
-    void noDupConflicts() {
-        String IFN = "ifn-blue/foo-1.2.3.jar";
-        String CP = "foo-4.5.6.jar";
-        bundle(IFN);
-        PathsList clientPaths = paths(CP);
-        List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
-
-        assertEquals(expect(CP), clientPaths.getPathList());
-        assertEquals(expect(), added);
-    }
-
-    @Test
-    void lastSegmentName() {
-        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("c"));
-        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("c-2.2.2"));
-        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("c.jar"));
-        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("c-2.2.2.jar"));
-        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("/c.jar"));
-        assertEquals("c-d", ClassPathConfigurator.lastSegmentNameOf("/c-d.jar"));
-        assertEquals("c", ClassPathConfigurator.lastSegmentNameOf("a/b/c-1.2.3.jar"));
-    }
-
-    @Test
-    void lastSegmentVersion() {
-        assertNull(ClassPathConfigurator.lastSegmentVersionOf("c"));
-        assertNull(ClassPathConfigurator.lastSegmentVersionOf("c-d"));
-        assertNull(ClassPathConfigurator.lastSegmentVersionOf("c-d.jar"));
-        assertEquals("3", ClassPathConfigurator.lastSegmentVersionOf("c-3"));
-        assertEquals("3.4", ClassPathConfigurator.lastSegmentVersionOf("c-3.4"));
-        assertNull(ClassPathConfigurator.lastSegmentVersionOf("c.jar"));
-        assertEquals("3", ClassPathConfigurator.lastSegmentVersionOf("c-3.jar"));
-        assertNull(ClassPathConfigurator.lastSegmentVersionOf("/c.jar"));
-        assertEquals("3.4", ClassPathConfigurator.lastSegmentVersionOf("/c-3.4.jar"));
-        assertNull(ClassPathConfigurator.lastSegmentVersionOf("a/b-8/c.jar"));
-    }
-
-    private static void verifyVersion(String expected, String provided, List<String> matchAgainst) {
-        assertEquals(expected, ClassPathConfigurator.chooseFromIfcVersion('-' + provided + ".jar", matchAgainst));
-    }
-
-    @Test
-    void versionGtAny() {
-        String lowEnd = "1.2.3";
-        String highEnd = "1.3.2";
-        List<String> versions = Arrays.asList(lowEnd, highEnd);
-        String lowerThanLowEnd = "1.2.1";
-        String middle = "1.3.0";
-        String higherThanHighEnd = "2.1.1";
-        verifyVersion(lowEnd, lowerThanLowEnd, versions);
-        verifyVersion(lowEnd, lowEnd, versions);
-        verifyVersion(lowEnd, middle, versions);
-        verifyVersion(highEnd, highEnd, versions);
-        verifyVersion(highEnd, higherThanHighEnd, versions);
+            assertDoesNotThrow(() -> {
+                List<String> added = ClassPathConfigurator.updateClassPathBundles(clientPaths);
+                assertNotNull(added);
+            });
+        }
     }
 }

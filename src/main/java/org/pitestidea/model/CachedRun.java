@@ -1,10 +1,8 @@
 package org.pitestidea.model;
 
 import com.intellij.execution.process.OSProcessHandler;
-import com.intellij.openapi.application.Application;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Computable;
+import com.intellij.openapi.module.Module;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.pitestidea.reader.InvalidMutatedFileException;
@@ -12,8 +10,6 @@ import org.pitestidea.reader.MutationsFileReader;
 import org.pitestidea.toolwindow.PitToolWindowFactory;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 
 /**
@@ -91,7 +87,9 @@ public class CachedRun implements Comparable<CachedRun> {
     }
 
     public @Nullable Project getProject() {
-        return recorder.getModule().getProject();
+        if (recorder == null) return null;
+        Module module = recorder.getModule();
+        return module != null ? module.getProject() : null;
     }
 
     public synchronized PitExecutionRecorder ensureLoaded() {
@@ -105,8 +103,10 @@ public class CachedRun implements Comparable<CachedRun> {
      */
     public synchronized void activate() {
         Project project = getProject();
-        setAsCurrent();
-        PitToolWindowFactory.show(project, this);
+        if (project != null) {
+            setAsCurrent();
+            PitToolWindowFactory.show(project, this);
+        }
     }
 
     @Override
@@ -196,18 +196,6 @@ public class CachedRun implements Comparable<CachedRun> {
         if (dir.exists() && dir.isDirectory()) {
             deleteFilesInDir(dir);
         }
-    }
-
-    // TODO find all cmd line
-    private static @NotNull Future<File[]> collectValidReportDirectories(File dir) {
-        final Application app = ApplicationManager.getApplication();
-        return app.executeOnPooledThread(() -> app.runReadAction((Computable<File[]>) () -> {
-            File[] files = dir.listFiles();
-            if (files != null && Arrays.stream(files).anyMatch(f -> f.getName().equals(MUTATIONS_FILE))) {
-                return files;
-            }
-            return null;
-        }));
     }
 
     private void deleteFilesInDir(File dir) {

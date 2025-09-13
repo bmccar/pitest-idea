@@ -129,7 +129,7 @@ public class CoverageGutterRenderer implements IMutationsFileHandler {
             RangeHighlighter highlighter = markupModel.addLineHighlighter(adjustedLineNumber, ICON_LAYER, ICON_TEXT_ATTRIBUTES);
             highlighter.putUserData(HIGHLIGHTER_KEY, Boolean.TRUE);
             String tooltip = createTooltipFrom(header, records);
-            highlighter.setGutterIconRenderer(new MutationGutterIconographer(icon, tooltip));
+            highlighter.setGutterIconRenderer(new MutationGutterIconographer(icon, adjustedLineNumber, tooltip));
         }
     }
 

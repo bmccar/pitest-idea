@@ -11,7 +11,7 @@ import java.util.Optional;
 public class FileMutationsTest {
 
     private Mutation mutation(int lineNumber, MutationImpact impact) {
-        return new Mutation(impact, String.format("%d-%s", lineNumber, impact));
+        return new Mutation("etc", 0, impact, String.format("%d-%s", lineNumber, impact));
     }
 
     private void mutate(FileMutations fm, int lineNumber, MutationImpact impact) {
@@ -49,7 +49,7 @@ public class FileMutationsTest {
 
     @Test
     public void mutationTypes() {
-        FileMutations fm = new FileMutations("somePkg", null);
+        FileMutations fm = new FileMutations("somePkg", null, null);
         mutate(fm, 1, MutationImpact.SURVIVED);
         mutate(fm, 2, MutationImpact.KILLED);
         mutate(fm, 3, MutationImpact.NO_COVERAGE);
@@ -58,7 +58,7 @@ public class FileMutationsTest {
 
     @Test
     public void testGetMutationsTotalWithNoMutations() {
-        FileMutations fm = new FileMutations("somePkg", null);
+        FileMutations fm = new FileMutations("somePkg", null, null);
         mutate(fm, 5, MutationImpact.KILLED);
         mutate(fm, 5, MutationImpact.SURVIVED);
         mutate(fm, 8, MutationImpact.KILLED);

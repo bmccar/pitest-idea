@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class LineImpactTest {
 
     private Mutation mutation(MutationImpact impact) {
-        return new Mutation(impact, String.format("%s", impact));
+        return new Mutation("etc", 0, impact, String.format("%s", impact));
     }
 
     @Test

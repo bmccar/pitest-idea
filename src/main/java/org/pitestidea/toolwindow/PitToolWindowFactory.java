@@ -103,7 +103,8 @@ public final class PitToolWindowFactory implements ToolWindowFactory, DumbAware 
                                     MutationControlPanel.Level level) implements PitExecutionRecorder.FileVisitor {
 
         @Override
-        public void visit(VirtualFile file, FileMutations fileMutations, IMutationScore score) {
+        public void visit(FileMutations fileMutations, IMutationScore score) {
+            VirtualFile file = fileMutations.getFile();
             String filePath = file.getPath();
             String fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
             level.setLine(cachedRun, file, fileName, score);

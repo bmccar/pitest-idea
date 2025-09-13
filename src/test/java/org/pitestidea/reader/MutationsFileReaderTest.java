@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 
 class MutationsFileReaderTest {
 
+    private static final String MUTATED_METHOD = "methodAbc";
     private static final MockedStatic<ProjectRootManager> projectRootManagerStatic = Mockito.mockStatic(ProjectRootManager.class);
 
     @AfterAll
@@ -75,7 +76,9 @@ class MutationsFileReaderTest {
             sb.append(getFileName());
             sb.append("</sourceFile><mutatedClass>");
             sb.append(mutatedClass);
-            sb.append("</mutatedClass><lineNumber>");
+            sb.append("</mutatedClass><mutatedMethod>");
+            sb.append(MUTATED_METHOD);
+            sb.append("</mutatedMethod><lineNumber>");
             sb.append(lineNumber);
             sb.append("</lineNumber><description>");
             sb.append(getDescription(lineNumber, impact));
@@ -91,7 +94,7 @@ class MutationsFileReaderTest {
         }
 
         @Override
-        public void record(String pkg, VirtualFile file, MutationImpact impact, int lineNumber, String description) {
+        public void record(String pkg, VirtualFile file, String methodName, MutationImpact impact, int lineNumber, String description) {
             assertEquals(getPkg(), pkg, "Unexpected package: " + pkg);
             assertEquals(this.file, file);
             assertTrue(expecting.remove(makeKey(lineNumber, impact)), "Unexpected mutation: " + description);

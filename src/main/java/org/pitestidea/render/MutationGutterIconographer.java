@@ -1,18 +1,33 @@
 package org.pitestidea.render;
 
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.editor.markup.GutterIconRenderer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.util.Objects;
 
 class MutationGutterIconographer extends GutterIconRenderer {
     private final @NotNull Icon icon;
+    private final int lineNumber;
     private final String toolTip;
 
-    MutationGutterIconographer(@NotNull Icon icon, String toolTip) {
+    MutationGutterIconographer(@NotNull Icon icon, int lineNumber, String toolTip) {
         this.icon = icon;
+        this.lineNumber = lineNumber;
         this.toolTip = toolTip;
+    }
+
+    @Override
+    public @Nullable AnAction getClickAction() {
+        return new AnAction() {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e) {
+                AiChatter.generateUnitTests(e, lineNumber);
+            }
+        };
     }
 
     @Override

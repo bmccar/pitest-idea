@@ -8,6 +8,7 @@ Run [PIT](https://pitest.org) mutation tests from IntelliJ IDEA. Features:
 * Sort/filter results, see score breakdown
 * View and re-execute previous runs
 * Visual indicators provide insights into how test changes impact results across runs
+* Generate prompts with mutation result contexts for LLM unit test generation
 * Maven and Gradle support
 
 <!-- Plugin description end -->
@@ -70,7 +71,7 @@ indicators wherever a run differs from the one preceding it. This shows up in th
 
 In the toolwindow, the % difference relative to the previous run is displayed, if different. This appears after the
 score in parentheses with a green up arrow (which indicates improvement) or a red down arrow (the opposite). If the
-difference is greater than zero the % difference will also be shown:
+difference is greater than zero, the % difference will also be shown:
 <p><img alt="Toolwindow deltas" src="toolWindowDelta.png" width="300">
 
 #### Change Tracking in the Score Popup
@@ -86,6 +87,18 @@ Each line that had a change from the previous run will have two icons, one for e
 The left icon is for the most recent one, while the right icon is for the run before that.
 <p><img alt="Editor icons" src="dualIcons.png" width="100">
 
+### Help With Improving Your Tests
+
+Improving your mutation results can sometimes be challenging. The plugin can help by generating LLM prompts for you.
+Clicking on any of the icons in the code editor opens a popup with a suggested 
+prompt for the enclosing method (all the icons within a method produce the same prompt):
+<p><img alt="Editor icons" src="promptPopup.png" height="400" width="700">
+
+You can copy the prompt and paste in any LLM input (such as JetBrains own AI Assistant) to generate unit tests 
+oriented toward improving your mutation score.
+This doesn't _always_ result in effective tests and is obviously dependent on LLM capabilities, but the additional
+context in this prompt can sometimes guide the LLM to generate better results than more generic prompts.
+
 ### Console Pane
 
 PIT generates output while it runs which is captured in the <i>console pane</i>. This is not visible by default when
@@ -100,9 +113,9 @@ though you might have to horizontally scroll rightward if that ">" button is not
 #### 1. <i>How does the plugin identify what tests to run for a given set of inputs?</i>
 
 For package directories, it matches the equivalent path between test and source.
-For files, it matches between source and test files using standard naming conventions, e.g. "FooTest.java" to "
-Foo.java".
-If you need an alternate mix, e.g., if your test for "Foo.java" is "MyTest.java",
+For files, it matches between source and test files using standard naming conventions, e.g. "FooTest.java" to
+"Foo.java."
+If you need an alternate mix, e.g., if your test for "Foo.java" is "MyTest.java,"
 you can multi-select and run both from the project menu. This matching also works in the reverse direction if you select
 test files first,
 but only if you haven't also included any source files.
@@ -129,7 +142,7 @@ be attempted if the project does not compile. Also, PIT sometimes complains abou
 wasn't built properly — "Rebuild all" can fix this.
 
 Second, make sure your tests (those targeted for a given run) pass. PIT will start but will exit with an error if it
-can't run the tests.
+can't run the tests. You'll see an error in the console pane if this is the case.
 
 Third, check for any classpath problems. See the [Configuration](configuration.html) page for guidance on handling
 classpath problems.

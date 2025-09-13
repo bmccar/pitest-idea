@@ -6,12 +6,7 @@ import java.awt.Graphics;
 import java.util.Objects;
 
 // Helper class for testing
-class MockIcon implements Icon {
-    private final String id;
-
-    public MockIcon(String id) {
-        this.id = id;
-    }
+record MockIcon(String id) implements Icon {
 
     @Override
     public void paintIcon(Component c, Graphics g, int x, int y) {
@@ -28,21 +23,12 @@ class MockIcon implements Icon {
         return 16;
     }
 
-    public String getId() {
-        return id;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         MockIcon mockIcon = (MockIcon) o;
         return Objects.equals(id, mockIcon.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
     }
 
     @Override

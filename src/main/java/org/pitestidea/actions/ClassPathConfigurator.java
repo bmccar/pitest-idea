@@ -89,7 +89,7 @@ class ClassPathConfigurator {
      * Returns "1.2.3" from "a/b/c-1.2.3.jar".
      *
      * @param path to read
-     * @return version of the last segment of a multi-segment path
+     * @return version extracted from the last segment of the multi-segment path
      */
     @VisibleForTesting
     static @Nullable String lastSegmentVersionOf(String path) {

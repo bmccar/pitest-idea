@@ -59,6 +59,7 @@ public class MutationsFileReader {
             MutationImpact impact = MutationImpact.valueOf(node.getAttribute("status"));
             String sourceFile = node.getElementsByTagName("sourceFile").item(0).getTextContent();
             String filePath = node.getElementsByTagName("mutatedClass").item(0).getTextContent();
+            String method = node.getElementsByTagName("mutatedMethod").item(0).getTextContent();
 
             int ix = filePath.lastIndexOf('.');
             final String pkg;
@@ -73,7 +74,7 @@ public class MutationsFileReader {
             if (virtualFile == null) {
                 badFiles.add(new Bad(filePath, file.getParent()));
             } else {
-                recorder.record(pkg, virtualFile, impact, lineNumber, description);
+                recorder.record(pkg, virtualFile, method, impact, lineNumber, description);
             }
         }
         recorder.postProcess();

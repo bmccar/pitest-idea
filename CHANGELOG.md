@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2025-09-12
+
+### Added
+- Unit-test prompt generation for LLM input. Discussed under the section "Help With Improving Your Tests" in README documentation.
+
 ## [0.6.0] - 2025-09-03
 
 ### Fixed
@@ -26,7 +31,7 @@
 
 ### Added
 
-- Tested JUnit5 5.13.0 (also works in previous release)
+- Tested JUnit5 5.13.0 (also works in the previous release)
 
 ### Fixed
 
