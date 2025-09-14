@@ -72,27 +72,27 @@ indicators wherever a run differs from the one preceding it. This shows up in th
 In the toolwindow, the % difference relative to the previous run is displayed, if different. This appears after the
 score in parentheses with a green up arrow (which indicates improvement) or a red down arrow (the opposite). If the
 difference is greater than zero, the % difference will also be shown:
-<p><img alt="Toolwindow deltas" src="toolWindowDelta.png" width="300">
+<p><img alt="Toolwindow deltas" src="toolWindowDelta.png" width="300"></p>
 
 #### Change Tracking in the Score Popup
 
 Clicking on the score (underlined in the image above) shows a breakdown of how the score was calculated. Any value that
 differed from the previous
 run will include the delta change. Any green arrow indicates an improvement, while any red arrow indicates the opposite:
-<p><img alt="Score popup" src="scoreCalc.png" width="600">
+<p><img alt="Score popup" src="scoreCalc.png" width="600"></p>
 
 #### Change Tracking in the editor
 
 Each line that had a change from the previous run will have two icons, one for each.
 The left icon is for the most recent one, while the right icon is for the run before that.
-<p><img alt="Editor icons" src="dualIcons.png" width="100">
+<p><img alt="Editor icons" src="dualIcons.png" width="100"></p>
 
 ### Help With Improving Your Tests
 
 Improving your mutation results can sometimes be challenging. The plugin can help by generating LLM prompts for you.
 Clicking on any of the icons in the code editor opens a popup with a suggested 
 prompt for the enclosing method (all the icons within a method produce the same prompt):
-<p><img alt="Editor icons" src="promptPopup.png" height="400" width="700">
+<p><img alt="Editor icons" src="promptPopup.png" height="400" width="700"></p>
 
 You can copy the prompt and paste in any LLM input (such as JetBrains own AI Assistant) to generate unit tests 
 oriented toward improving your mutation score.
