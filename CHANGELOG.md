@@ -5,6 +5,7 @@
 ## [0.7.0] - 2025-09-12
 
 ### Added
+
 - Unit-test prompt generation for LLM input. Discussed under the section "Help With Improving Your Tests" in README documentation.
 
 ## [0.6.0] - 2025-09-03
@@ -64,7 +65,8 @@
 
 - Initial release
 
-[Unreleased]: https://github.com/bmccar/pitest-idea/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/bmccar/pitest-idea/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/bmccar/pitest-idea/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/bmccar/pitest-idea/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/bmccar/pitest-idea/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/bmccar/pitest-idea/compare/v0.3.0...v0.4.0
